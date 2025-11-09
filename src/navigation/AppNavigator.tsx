@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { Platform } from 'react-native';
 import { theme } from '../theme/theme';
 import { MainTabParamList } from '../types';
 
@@ -30,15 +31,19 @@ export default function AppNavigator() {
             backgroundColor: theme.colors.background.secondary,
             borderTopWidth: 1,
             borderTopColor: theme.colors.border,
-            paddingBottom: 8,
-            paddingTop: 8,
-            height: 60,
+            height: Platform.OS === 'android' ? 85 : 65,
+            paddingBottom: Platform.OS === 'android' ? 20 : 10,
+            paddingTop: 10,
           },
           tabBarActiveTintColor: theme.colors.primary,
           tabBarInactiveTintColor: theme.colors.text.tertiary,
           tabBarLabelStyle: {
             fontSize: theme.fontSize.xs,
             fontWeight: theme.fontWeight.medium,
+            marginBottom: Platform.OS === 'android' ? 8 : 0,
+          },
+          tabBarIconStyle: {
+            marginTop: Platform.OS === 'android' ? 6 : 0,
           },
         }}
       >
