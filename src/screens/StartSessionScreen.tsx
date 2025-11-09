@@ -4,10 +4,12 @@ import {
   Text, 
   StyleSheet, 
   TextInput, 
-  ScrollView,
+  Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
-  Alert,
+  ScrollView,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme/theme';
@@ -21,6 +23,7 @@ export default function StartSessionScreen() {
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [showInputs, setShowInputs] = useState(false);
   
   const { 
     elapsedMs, 
@@ -38,14 +41,18 @@ export default function StartSessionScreen() {
   const handleStart = () => {
     const now = new Date().toISOString();
     setStartedAt(now);
+    setShowInputs(false);
     startTimer();
   };
 
   const handlePause = () => {
     pauseTimer();
+    setShowInputs(true);
   };
 
   const handleResume = () => {
+    Keyboard.dismiss();
+    setShowInputs(false);
     resumeTimer();
   };
 
@@ -59,21 +66,8 @@ export default function StartSessionScreen() {
       return;
     }
 
-    Alert.alert(
-      'Save Session',
-      'Would you like to save this session?',
-      [
-        {
-          text: 'Discard',
-          style: 'destructive',
-          onPress: handleDiscard,
-        },
-        {
-          text: 'Save',
-          onPress: handleSave,
-        },
-      ]
-    );
+    stopTimer();
+    setShowInputs(true);
   };
 
   const handleSave = async () => {
@@ -83,7 +77,7 @@ export default function StartSessionScreen() {
       const session: Session = {
         id: `session_${Date.now()}`,
         title: title.trim() || 'Untitled Session',
-        categoryId: 'default', // We'll add categories in Phase 2
+        categoryId: 'default',
         durationMs: elapsedMs,
         notes: notes.trim(),
         startedAt: startedAt!,
@@ -95,7 +89,7 @@ export default function StartSessionScreen() {
       await addSession(session);
       
       Alert.alert(
-        'Success!',
+        'Success! 🎉',
         'Session saved successfully',
         [{ text: 'OK', onPress: handleReset }]
       );
@@ -109,7 +103,18 @@ export default function StartSessionScreen() {
   };
 
   const handleDiscard = () => {
-    handleReset();
+    Alert.alert(
+      'Discard Session?',
+      'Are you sure you want to discard this session?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Discard', 
+          style: 'destructive',
+          onPress: handleReset 
+        },
+      ]
+    );
   };
 
   const handleReset = () => {
@@ -118,6 +123,7 @@ export default function StartSessionScreen() {
     setTitle('');
     setNotes('');
     setStartedAt(null);
+    setShowInputs(false);
   };
 
   return (
@@ -125,92 +131,161 @@ export default function StartSessionScreen() {
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Timer Display */}
-          <View style={styles.timerSection}>
-            <TimerDisplay elapsedMs={elapsedMs} size="large" />
-            
-            {isRunning && (
-              <View style={styles.statusBadge}>
-                <View style={[styles.statusDot, isPaused && styles.statusDotPaused]} />
-                <Text style={styles.statusText}>
-                  {isPaused ? 'Paused' : 'Recording'}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Timer Display */}
+            <View style={styles.timerSection}>
+              <TimerDisplay elapsedMs={elapsedMs} size="large" />
+              
+              {isRunning && !isPaused && (
+                <View style={styles.statusBadge}>
+                  <View style={styles.statusDot} />
+                  <Text style={styles.statusText}>Recording...</Text>
+                </View>
+              )}
+
+              {isPaused && (
+                <View style={[styles.statusBadge, styles.pausedBadge]}>
+                  <View style={styles.statusDotPaused} />
+                  <Text style={styles.statusText}>Paused</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Input Fields - Show when paused or stopped */}
+            {showInputs && (
+              <View style={styles.inputSection}>
+                <Text style={styles.inputLabel}>Session Title</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="What did you work on?"
+                  placeholderTextColor={theme.colors.text.tertiary}
+                  value={title}
+                  onChangeText={setTitle}
+                  returnKeyType="next"
+                />
+
+                <Text style={styles.inputLabel}>Notes (Optional)</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Add any notes..."
+                  placeholderTextColor={theme.colors.text.tertiary}
+                  value={notes}
+                  onChangeText={setNotes}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  returnKeyType="done"
+                  blurOnSubmit
+                />
+              </View>
+            )}
+
+            {/* Hint text when not running */}
+            {!isRunning && !showInputs && (
+              <View style={styles.hintSection}>
+                <Text style={styles.hintText}>
+                  Ready to track your session?
+                </Text>
+                <Text style={styles.hintSubtext}>
+                  You can add title and notes when you pause or finish
                 </Text>
               </View>
             )}
-          </View>
 
-          {/* Session Info Input */}
-          <View style={styles.inputSection}>
-            <Text style={styles.inputLabel}>Session Title</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="What are you working on?"
-              placeholderTextColor={theme.colors.text.tertiary}
-              value={title}
-              onChangeText={setTitle}
-              editable={!isRunning}
-            />
+            {/* Extra space to push buttons up when keyboard is visible */}
+            <View style={styles.spacer} />
 
-            <Text style={styles.inputLabel}>Notes (Optional)</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Add any notes about this session..."
-              placeholderTextColor={theme.colors.text.tertiary}
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              editable={!isRunning}
-            />
-          </View>
+            {/* Control Buttons */}
+            <View style={styles.controlsSection}>
+              {/* Not Started */}
+              {!isRunning && !showInputs && (
+                <TimerButton
+                  title="Start Session"
+                  icon="play-circle"
+                  onPress={handleStart}
+                  variant="primary"
+                  style={styles.fullButton}
+                />
+              )}
 
-          {/* Control Buttons */}
-          <View style={styles.controlsSection}>
-            {!isRunning ? (
-              <TimerButton
-                title="Start Session"
-                icon="play"
-                onPress={handleStart}
-                variant="primary"
-                style={styles.primaryButton}
-              />
-            ) : (
-              <View style={styles.runningControls}>
-                {!isPaused ? (
+              {/* Running (not paused) */}
+              {isRunning && !isPaused && (
+                <View style={styles.buttonRow}>
                   <TimerButton
                     title="Pause"
                     icon="pause"
                     onPress={handlePause}
                     variant="secondary"
-                    style={styles.controlButton}
+                    style={styles.halfButton}
                   />
-                ) : (
+                  <TimerButton
+                    title="Stop"
+                    icon="stop-circle"
+                    onPress={handleStop}
+                    variant="danger"
+                    style={styles.halfButton}
+                  />
+                </View>
+              )}
+
+              {/* Paused */}
+              {isPaused && (
+                <View style={styles.buttonColumn}>
                   <TimerButton
                     title="Resume"
                     icon="play"
                     onPress={handleResume}
                     variant="primary"
-                    style={styles.controlButton}
+                    style={styles.fullButton}
                   />
-                )}
-                
-                <TimerButton
-                  title="Stop & Save"
-                  icon="stop"
-                  onPress={handleStop}
-                  variant="danger"
-                  style={styles.controlButton}
-                />
-              </View>
-            )}
-          </View>
-        </ScrollView>
+                  <View style={styles.buttonRow}>
+                    <TimerButton
+                      title="Stop"
+                      icon="stop-circle"
+                      onPress={handleStop}
+                      variant="danger"
+                      style={styles.halfButton}
+                    />
+                    <TimerButton
+                      title="Discard"
+                      icon="trash"
+                      onPress={handleDiscard}
+                      variant="secondary"
+                      style={styles.halfButton}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* Stopped (ready to save) */}
+              {!isRunning && showInputs && (
+                <View style={styles.buttonColumn}>
+                  <TimerButton
+                    title="Save Session"
+                    icon="checkmark-circle"
+                    onPress={handleSave}
+                    variant="primary"
+                    style={styles.fullButton}
+                  />
+                  <TimerButton
+                    title="Discard"
+                    icon="close-circle"
+                    onPress={handleDiscard}
+                    variant="secondary"
+                    style={styles.fullButton}
+                  />
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -227,10 +302,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxl, // Extra padding at bottom
   },
   timerSection: {
     alignItems: 'center',
-    paddingVertical: theme.spacing.xxl,
+    paddingVertical: theme.spacing.xl,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -240,6 +316,11 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     backgroundColor: theme.colors.card,
     borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.success,
+  },
+  pausedBadge: {
+    borderColor: theme.colors.warning,
   },
   statusDot: {
     width: 8,
@@ -249,18 +330,40 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.sm,
   },
   statusDotPaused: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: theme.colors.warning,
+    marginRight: theme.spacing.sm,
   },
   statusText: {
     color: theme.colors.text.secondary,
     fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.medium,
   },
+  hintSection: {
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.lg,
+  },
+  hintText: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text.primary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  hintSubtext: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+  },
   inputSection: {
-    marginBottom: theme.spacing.xl,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
   },
   inputLabel: {
-    fontSize: theme.fontSize.md,
+    fontSize: theme.fontSize.sm,
     fontWeight: theme.fontWeight.semibold,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.sm,
@@ -276,20 +379,31 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
   },
   textArea: {
-    minHeight: 100,
+    minHeight: 80,
+    maxHeight: 120,
     paddingTop: theme.spacing.md,
   },
+  spacer: {
+    flex: 1,
+    minHeight: 20, 
+  },
   controlsSection: {
-    marginTop: 'auto',
-    paddingTop: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xl, 
   },
-  primaryButton: {
+  fullButton: {
     width: '100%',
+    marginBottom: theme.spacing.sm,
   },
-  runningControls: {
+  buttonRow: {
+    flexDirection: 'row',
     gap: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
-  controlButton: {
-    width: '100%',
+  buttonColumn: {
+    flexDirection: 'column',
+  },
+  halfButton: {
+    flex: 1,
   },
 });
