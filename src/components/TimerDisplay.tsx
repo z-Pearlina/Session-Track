@@ -8,7 +8,6 @@ interface TimerDisplayProps {
 }
 
 export function TimerDisplay({ elapsedMs, size = 'large' }: TimerDisplayProps) {
-  // Format milliseconds to HH:MM:SS
   const formatTime = (ms: number): string => {
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
@@ -54,7 +53,7 @@ const styles = StyleSheet.create({
   label: {
     color: theme.colors.text.secondary,
     fontWeight: theme.fontWeight.medium,
-    marginTop: theme.spacing.xs,
+    marginTop: theme.spacing[1],
   },
   labelLarge: {
     fontSize: theme.fontSize.md,

@@ -3,194 +3,248 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  FlatList, 
-  TouchableOpacity,
-  Alert,
+  ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme/theme';
 import { useSessionStore } from '../stores/useSessionStore';
-import { Session } from '../types';
-import { format } from 'date-fns';
+import { CustomHeader } from '../components/CustomHeader';
+import { EnergyRingCard } from '../components/EnergyRingCard';
+import { MiniStatCard } from '../components/MiniStatCard';
+import { CategoryProgressCard } from '../components/CategoryProgressCard';
+import { GlassCard } from '../components/GlassCard';
+import { FABButton } from '../components/FABButton';
 
 export default function HomeScreen() {
-  const { sessions, loadSessions, deleteSession, isLoading } = useSessionStore();
+  const navigation = useNavigation();
+  const { sessions, loadSessions } = useSessionStore();
 
   useEffect(() => {
     loadSessions();
   }, []);
 
-  const formatDuration = (ms: number): string => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
+  // Calculate stats
+  const todaySessions = sessions.filter(s => {
+    const sessionDate = new Date(s.startedAt);
+    const today = new Date();
+    return sessionDate.toDateString() === today.toDateString();
+  });
 
+  const todayTotalMs = todaySessions.reduce((sum, s) => sum + s.durationMs, 0);
+  const todayHours = Math.floor(todayTotalMs / (1000 * 60 * 60));
+  const todayMinutes = Math.floor((todayTotalMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  const formatDuration = (ms: number): string => {
+    const totalMinutes = Math.floor(ms / (1000 * 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
     if (hours > 0) {
       return `${hours}h ${minutes}m`;
     }
-    if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
-    }
-    return `${seconds}s`;
+    return `${minutes}m`;
   };
 
-  const handleDelete = (session: Session) => {
-    Alert.alert(
-      'Delete Session',
-      `Are you sure you want to delete "${session.title}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: () => deleteSession(session.id),
-        },
-      ]
-    );
+  const handleStartSession = () => {
+    navigation.navigate('StartSession' as never);
   };
-
-  const renderSession = ({ item }: { item: Session }) => (
-    <View style={styles.sessionCard}>
-      <View style={styles.sessionHeader}>
-        <View style={styles.sessionInfo}>
-          <Text style={styles.sessionTitle}>{item.title}</Text>
-          <Text style={styles.sessionDate}>
-            {format(new Date(item.startedAt), 'MMM d, yyyy • h:mm a')}
-          </Text>
-        </View>
-        <TouchableOpacity 
-          onPress={() => handleDelete(item)}
-          style={styles.deleteButton}
-        >
-          <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
-        </TouchableOpacity>
-      </View>
-      
-      <View style={styles.sessionFooter}>
-        <View style={styles.durationBadge}>
-          <Ionicons name="time-outline" size={16} color={theme.colors.accent} />
-          <Text style={styles.durationText}>{formatDuration(item.durationMs)}</Text>
-        </View>
-        
-        {item.notes && (
-          <Text style={styles.sessionNotes} numberOfLines={2}>
-            {item.notes}
-          </Text>
-        )}
-      </View>
-    </View>
-  );
-
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="time-outline" size={64} color={theme.colors.text.tertiary} />
-      <Text style={styles.emptyTitle}>No Sessions Yet</Text>
-      <Text style={styles.emptySubtitle}>
-        Start tracking your first session from the Track tab
-      </Text>
-    </View>
-  );
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <FlatList
-        data={sessions.sort((a, b) => 
-          new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
-        )}
-        renderItem={renderSession}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={renderEmpty}
-        refreshing={isLoading}
-        onRefresh={loadSessions}
+    <View style={styles.root}>
+      {/* Animated background gradient */}
+      <LinearGradient
+        colors={theme.gradients.backgroundAnimated}
+        style={styles.gradient}
       />
-    </SafeAreaView>
+
+      {/* Custom Header */}
+      <CustomHeader />
+
+      {/* Main content */}
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Energy Ring Hero Card */}
+        <EnergyRingCard
+          hours={todayHours}
+          minutes={todayMinutes}
+          percentageChange={15}
+        />
+
+        {/* Mini Stats Horizontal Scroll */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.miniStatsScroll}
+          style={styles.miniStatsContainer}
+        >
+          <MiniStatCard icon="flame" value="12 Days" label="Streak" />
+          <MiniStatCard icon="flag" value="75%" label="Goal Progress" />
+          <MiniStatCard icon="timer" value="47 min" label="Avg Session" />
+          <MiniStatCard icon="happy" value="Focused" label="Focus Mood" />
+        </ScrollView>
+
+        {/* Category Cards Grid */}
+        <View style={styles.categoriesGrid}>
+          <CategoryProgressCard
+            icon="briefcase"
+            title="Work"
+            progress={70}
+            color="#38BDF8"
+            gradientColors={['#38BDF8', '#67E8F9']}
+          />
+          <CategoryProgressCard
+            icon="school"
+            title="Study"
+            progress={45}
+            color="#34D399"
+            gradientColors={['#34D399', '#67E8F9']}
+          />
+        </View>
+
+        {/* Recent Sessions */}
+        <Text style={styles.sectionTitle}>Recent Sessions</Text>
+
+        <View style={styles.sessionsList}>
+          {/* Timeline line */}
+          <View style={styles.timelineLine} />
+
+          {sessions.length === 0 ? (
+            <GlassCard>
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No sessions yet</Text>
+                <Text style={styles.emptySubtext}>
+                  Tap "Start Session" below to begin tracking
+                </Text>
+              </View>
+            </GlassCard>
+          ) : (
+            sessions
+              .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
+              .slice(0, 10)
+              .map((session) => (
+                <View key={session.id} style={styles.sessionItem}>
+                  {/* Timeline dot */}
+                  <View style={styles.timelineDot} />
+                  
+                  {/* Session card */}
+                  <GlassCard style={styles.sessionCard}>
+                    <View style={styles.sessionContent}>
+                      <Text style={styles.sessionTitle}>{session.title}</Text>
+                      <Text style={styles.sessionMeta}>
+                        {formatDuration(session.durationMs)} • {session.categoryId === 'default' ? 'Work' : session.categoryId}
+                      </Text>
+                    </View>
+                  </GlassCard>
+                </View>
+              ))
+          )}
+        </View>
+
+        {/* Bottom padding for FAB and nav */}
+        <View style={{ height: 200 }} />
+      </ScrollView>
+
+      {/* FAB */}
+      <FABButton onPress={handleStartSession} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
   },
-  listContent: {
-    padding: theme.spacing.md,
-    flexGrow: 1,
+  gradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
-  sessionCard: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    ...theme.shadows.sm,
+  scrollContent: {
+    paddingHorizontal: theme.spacing[4],
+    paddingTop: 112, // Account for custom header
+    paddingBottom: theme.spacing[8],
   },
-  sessionHeader: {
+  miniStatsContainer: {
+    marginBottom: theme.spacing[8],
+    marginHorizontal: -theme.spacing[4],
+  },
+  miniStatsScroll: {
+    paddingHorizontal: theme.spacing[4],
+    gap: theme.spacing[3],
+  },
+  categoriesGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: theme.spacing.sm,
+    gap: theme.spacing[4],
+    marginBottom: theme.spacing[8],
   },
-  sessionInfo: {
-    flex: 1,
-  },
-  sessionTitle: {
+  sectionTitle: {
     fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
-  },
-  sessionDate: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.text.secondary,
-  },
-  deleteButton: {
-    padding: theme.spacing.sm,
-    marginLeft: theme.spacing.sm,
-  },
-  sessionFooter: {
-    marginTop: theme.spacing.sm,
-  },
-  durationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: theme.colors.background.tertiary,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
-  },
-  durationText: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.accent,
-    marginLeft: theme.spacing.xs,
-  },
-  sessionNotes: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.text.secondary,
-    marginTop: theme.spacing.sm,
-    fontStyle: 'italic',
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: theme.fontSize.xl,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.primary,
-    marginTop: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing[3],
   },
-  emptySubtitle: {
-    fontSize: theme.fontSize.md,
+  sessionsList: {
+    position: 'relative',
+    gap: theme.spacing[4],
+  },
+  timelineLine: {
+    position: 'absolute',
+    left: 5.5,
+    top: 0,
+    width: 1,
+    height: '100%',
+    backgroundColor: 'rgba(103, 232, 249, 0.5)',
+    opacity: 0.3,
+  },
+  sessionItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.spacing[4],
+    marginBottom: theme.spacing[4],
+  },
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: theme.colors.primary.cyan,
+    backgroundColor: theme.colors.background.primary,
+    marginTop: 8,
+  },
+  sessionCard: {
+    flex: 1,
+  },
+  sessionContent: {
+    padding: theme.spacing[3],
+  },
+  sessionTitle: {
+    fontSize: theme.fontSize.base,
+    fontWeight: theme.fontWeight.medium,
     color: theme.colors.text.secondary,
+    marginBottom: theme.spacing[1],
+  },
+  sessionMeta: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text.tertiary,
+  },
+  emptyState: {
+    padding: theme.spacing[6],
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: theme.fontSize.base,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing[1],
+  },
+  emptySubtext: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text.tertiary,
     textAlign: 'center',
   },
 });

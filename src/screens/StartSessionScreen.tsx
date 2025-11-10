@@ -10,20 +10,23 @@ import {
   Platform,
   ScrollView,
   TouchableWithoutFeedback,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
 import { useTimer } from '../hooks/useTimer';
-import { TimerDisplay } from '../components/TimerDisplay';
-import { TimerButton } from '../components/TimerButton';
 import { useSessionStore } from '../stores/useSessionStore';
 import { Session } from '../types';
+import { useNavigation } from '@react-navigation/native';
 
 export default function StartSessionScreen() {
+  const navigation = useNavigation();
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [startedAt, setStartedAt] = useState<string | null>(null);
-  const [showInputs, setShowInputs] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('Work');
   
   const { 
     elapsedMs, 
@@ -38,25 +41,28 @@ export default function StartSessionScreen() {
   
   const { addSession } = useSessionStore();
 
+  const categories = ['Work', 'Study', 'Habits', 'Fitness'];
+
   const handleStart = () => {
     const now = new Date().toISOString();
     setStartedAt(now);
-    setShowInputs(false);
     startTimer();
   };
 
   const handlePause = () => {
     pauseTimer();
-    setShowInputs(true);
   };
 
   const handleResume = () => {
     Keyboard.dismiss();
-    setShowInputs(false);
     resumeTimer();
   };
 
-  const handleStop = () => {
+  const handleReset = () => {
+    resetTimer();
+  };
+
+  const handleStop = async () => {
     if (elapsedMs < 1000) {
       Alert.alert(
         'Session Too Short',
@@ -66,18 +72,13 @@ export default function StartSessionScreen() {
       return;
     }
 
-    stopTimer();
-    setShowInputs(true);
-  };
-
-  const handleSave = async () => {
     try {
       const endedAt = new Date().toISOString();
       
       const session: Session = {
         id: `session_${Date.now()}`,
         title: title.trim() || 'Untitled Session',
-        categoryId: 'default',
+        categoryId: selectedCategory.toLowerCase(),
         durationMs: elapsedMs,
         notes: notes.trim(),
         startedAt: startedAt!,
@@ -91,7 +92,7 @@ export default function StartSessionScreen() {
       Alert.alert(
         'Success! 🎉',
         'Session saved successfully',
-        [{ text: 'OK', onPress: handleReset }]
+        [{ text: 'OK', onPress: handleFullReset }]
       );
     } catch (error) {
       Alert.alert(
@@ -102,308 +103,338 @@ export default function StartSessionScreen() {
     }
   };
 
-  const handleDiscard = () => {
-    Alert.alert(
-      'Discard Session?',
-      'Are you sure you want to discard this session?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Discard', 
-          style: 'destructive',
-          onPress: handleReset 
-        },
-      ]
-    );
-  };
-
-  const handleReset = () => {
+  const handleFullReset = () => {
     stopTimer();
     resetTimer();
     setTitle('');
     setNotes('');
     setStartedAt(null);
-    setShowInputs(false);
+    setSelectedCategory('Work');
+  };
+
+  const formatTime = (ms: number): string => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <ScrollView 
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+    <LinearGradient
+      colors={theme.gradients.backgroundAnimated}
+      style={styles.gradient}
+    >
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        {/* Custom Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={() => navigation.goBack()}
           >
-            {/* Timer Display */}
-            <View style={styles.timerSection}>
-              <TimerDisplay elapsedMs={elapsedMs} size="large" />
-              
-              {isRunning && !isPaused && (
-                <View style={styles.statusBadge}>
-                  <View style={styles.statusDot} />
-                  <Text style={styles.statusText}>Recording...</Text>
-                </View>
-              )}
+            <Ionicons name="close" size={24} color={theme.colors.text.secondary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Start New Session</Text>
+          <TouchableOpacity style={styles.headerButton}>
+            <Ionicons name="ellipsis-vertical" size={24} color={theme.colors.text.secondary} />
+          </TouchableOpacity>
+        </View>
 
-              {isPaused && (
-                <View style={[styles.statusBadge, styles.pausedBadge]}>
-                  <View style={styles.statusDotPaused} />
-                  <Text style={styles.statusText}>Paused</Text>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <ScrollView 
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Timer Display with Glow */}
+              <View style={styles.timerContainer}>
+                {/* Animated glow ring */}
+                <View style={styles.glowRing} />
+                
+                {/* Timer circle */}
+                <View style={styles.timerCircle}>
+                  <Text style={styles.timerText}>{formatTime(elapsedMs)}</Text>
                 </View>
-              )}
-            </View>
+              </View>
 
-            {/* Input Fields - Show when paused or stopped */}
-            {showInputs && (
+              {/* Action Buttons */}
+              <View style={styles.actionButtons}>
+                <TouchableOpacity 
+                  style={styles.iconButton}
+                  onPress={handleReset}
+                >
+                  <Ionicons name="refresh" size={28} color={theme.colors.text.secondary} />
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.mainButton, isRunning && styles.stopButton]}
+                  onPress={isRunning ? handleStop : handleStart}
+                >
+                  <Text style={styles.mainButtonText}>
+                    {isRunning ? 'Stop' : 'Start'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.iconButton}
+                  onPress={isPaused ? handleResume : handlePause}
+                  disabled={!isRunning}
+                >
+                  <Ionicons 
+                    name={isPaused ? 'play' : 'pause'} 
+                    size={28} 
+                    color={isRunning ? theme.colors.text.secondary : theme.colors.text.quaternary} 
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Input Section */}
               <View style={styles.inputSection}>
-                <Text style={styles.inputLabel}>Session Title</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="What did you work on?"
-                  placeholderTextColor={theme.colors.text.tertiary}
-                  value={title}
-                  onChangeText={setTitle}
-                  returnKeyType="next"
-                />
+                {/* Session Title */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Session Title</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="E.g., Design Sprint"
+                    placeholderTextColor={theme.colors.text.quaternary}
+                    value={title}
+                    onChangeText={setTitle}
+                    returnKeyType="next"
+                  />
+                </View>
 
-                <Text style={styles.inputLabel}>Notes (Optional)</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  placeholder="Add any notes..."
-                  placeholderTextColor={theme.colors.text.tertiary}
-                  value={notes}
-                  onChangeText={setNotes}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                  returnKeyType="done"
-                  blurOnSubmit
-                />
+                {/* Optional Notes */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Optional Notes</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    placeholder="Add some details about your session"
+                    placeholderTextColor={theme.colors.text.quaternary}
+                    value={notes}
+                    onChangeText={setNotes}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+                </View>
+
+                {/* Category Selector */}
+                <View style={styles.categorySection}>
+                  <Text style={styles.inputLabel}>Select a Category</Text>
+                  <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.categoriesScroll}
+                  >
+                    {categories.map((category) => (
+                      <TouchableOpacity
+                        key={category}
+                        style={[
+                          styles.categoryButton,
+                          selectedCategory === category && styles.categoryButtonActive
+                        ]}
+                        onPress={() => setSelectedCategory(category)}
+                      >
+                        <Text style={[
+                          styles.categoryButtonText,
+                          selectedCategory === category && styles.categoryButtonTextActive
+                        ]}>
+                          {category}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                    
+                    {/* Add New Category */}
+                    <TouchableOpacity style={styles.addCategoryButton}>
+                      <Ionicons name="add" size={16} color={theme.colors.text.secondary} />
+                      <Text style={styles.addCategoryText}>New</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
               </View>
-            )}
 
-            {/* Hint text when not running */}
-            {!isRunning && !showInputs && (
-              <View style={styles.hintSection}>
-                <Text style={styles.hintText}>
-                  Ready to track your session?
-                </Text>
-                <Text style={styles.hintSubtext}>
-                  You can add title and notes when you pause or finish
-                </Text>
-              </View>
-            )}
-
-            {/* Extra space to push buttons up when keyboard is visible */}
-            <View style={styles.spacer} />
-
-            {/* Control Buttons */}
-            <View style={styles.controlsSection}>
-              {/* Not Started */}
-              {!isRunning && !showInputs && (
-                <TimerButton
-                  title="Start Session"
-                  icon="play-circle"
-                  onPress={handleStart}
-                  variant="primary"
-                  style={styles.fullButton}
-                />
-              )}
-
-              {/* Running (not paused) */}
-              {isRunning && !isPaused && (
-                <View style={styles.buttonRow}>
-                  <TimerButton
-                    title="Pause"
-                    icon="pause"
-                    onPress={handlePause}
-                    variant="secondary"
-                    style={styles.halfButton}
-                  />
-                  <TimerButton
-                    title="Stop"
-                    icon="stop-circle"
-                    onPress={handleStop}
-                    variant="danger"
-                    style={styles.halfButton}
-                  />
-                </View>
-              )}
-
-              {/* Paused */}
-              {isPaused && (
-                <View style={styles.buttonColumn}>
-                  <TimerButton
-                    title="Resume"
-                    icon="play"
-                    onPress={handleResume}
-                    variant="primary"
-                    style={styles.fullButton}
-                  />
-                  <View style={styles.buttonRow}>
-                    <TimerButton
-                      title="Stop"
-                      icon="stop-circle"
-                      onPress={handleStop}
-                      variant="danger"
-                      style={styles.halfButton}
-                    />
-                    <TimerButton
-                      title="Discard"
-                      icon="trash"
-                      onPress={handleDiscard}
-                      variant="secondary"
-                      style={styles.halfButton}
-                    />
-                  </View>
-                </View>
-              )}
-
-              {/* Stopped (ready to save) */}
-              {!isRunning && showInputs && (
-                <View style={styles.buttonColumn}>
-                  <TimerButton
-                    title="Save Session"
-                    icon="checkmark-circle"
-                    onPress={handleSave}
-                    variant="primary"
-                    style={styles.fullButton}
-                  />
-                  <TimerButton
-                    title="Discard"
-                    icon="close-circle"
-                    onPress={handleDiscard}
-                    variant="secondary"
-                    style={styles.fullButton}
-                  />
-                </View>
-              )}
-            </View>
-          </ScrollView>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+              {/* Bottom padding */}
+              <View style={{ height: 100 }} />
+            </ScrollView>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[2],
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text.primary,
+    letterSpacing: -0.5,
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl, // Extra padding at bottom
+    paddingHorizontal: theme.spacing[4],
+    paddingTop: theme.spacing[8],
+    paddingBottom: theme.spacing[6],
   },
-  timerSection: {
+  timerContainer: {
     alignItems: 'center',
-    paddingVertical: theme.spacing.xl,
+    justifyContent: 'center',
+    marginBottom: theme.spacing[12],
+    height: 280,
   },
-  statusBadge: {
+  glowRing: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: theme.colors.primary.cyan + '10',
+    ...theme.shadows.glowEnergyRing,
+  },
+  timerCircle: {
+    width: 256,
+    height: 256,
+    borderRadius: 128,
+    borderWidth: 4,
+    borderColor: theme.colors.background.secondary,
+    backgroundColor: theme.colors.background.primary + '80',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  timerText: {
+    fontSize: 56,
+    fontWeight: theme.fontWeight.black,
+    color: theme.colors.text.primary,
+    letterSpacing: -2,
+  },
+  actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: 1,
-    borderColor: theme.colors.success,
+    justifyContent: 'center',
+    gap: theme.spacing[4],
+    marginBottom: theme.spacing[10],
   },
-  pausedBadge: {
-    borderColor: theme.colors.warning,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.success,
-    marginRight: theme.spacing.sm,
-  },
-  statusDotPaused: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.warning,
-    marginRight: theme.spacing.sm,
-  },
-  statusText: {
-    color: theme.colors.text.secondary,
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.medium,
-  },
-  hintSection: {
+  iconButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: theme.colors.background.secondary,
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.lg,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.glass.border,
   },
-  hintText: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.text.primary,
-    textAlign: 'center',
-    marginBottom: theme.spacing.xs,
+  mainButton: {
+    minWidth: 150,
+    paddingVertical: theme.spacing[5],
+    paddingHorizontal: theme.spacing[8],
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.primary.cyan,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.glowCyan,
   },
-  hintSubtext: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
+  stopButton: {
+    backgroundColor: theme.colors.danger,
+  },
+  mainButtonText: {
+    fontSize: theme.fontSize.xl,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text.inverse,
   },
   inputSection: {
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.lg,
+    gap: theme.spacing[6],
+  },
+  inputGroup: {
+    gap: theme.spacing[2],
   },
   inputLabel: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
-    marginTop: theme.spacing.md,
+    fontSize: theme.fontSize.base,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.text.secondary,
   },
   input: {
-    backgroundColor: theme.colors.card,
+    height: 56,
+    backgroundColor: theme.colors.background.secondary,
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    fontSize: theme.fontSize.md,
+    borderColor: theme.colors.glass.border,
+    borderRadius: theme.borderRadius.lg,
+    paddingHorizontal: theme.spacing[4],
+    fontSize: theme.fontSize.base,
     color: theme.colors.text.primary,
   },
   textArea: {
-    minHeight: 80,
-    maxHeight: 120,
-    paddingTop: theme.spacing.md,
+    height: 112,
+    paddingTop: theme.spacing[4],
+    textAlignVertical: 'top',
   },
-  spacer: {
-    flex: 1,
-    minHeight: 20, 
+  categorySection: {
+    gap: theme.spacing[3],
   },
-  controlsSection: {
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.xl, 
+  categoriesScroll: {
+    gap: theme.spacing[3],
   },
-  fullButton: {
-    width: '100%',
-    marginBottom: theme.spacing.sm,
+  categoryButton: {
+    paddingVertical: theme.spacing[2],
+    paddingHorizontal: theme.spacing[4],
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.background.secondary,
+    borderWidth: 1,
+    borderColor: theme.colors.glass.border,
   },
-  buttonRow: {
+  categoryButtonActive: {
+    backgroundColor: theme.colors.primary.cyan,
+    borderColor: theme.colors.primary.cyan,
+  },
+  categoryButtonText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.text.secondary,
+  },
+  categoryButtonTextActive: {
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text.inverse,
+  },
+  addCategoryButton: {
     flexDirection: 'row',
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
+    alignItems: 'center',
+    gap: theme.spacing[1],
+    paddingVertical: theme.spacing[2],
+    paddingHorizontal: theme.spacing[4],
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: theme.colors.text.secondary + '30',
+    borderStyle: 'dashed',
   },
-  buttonColumn: {
-    flexDirection: 'column',
-  },
-  halfButton: {
-    flex: 1,
+  addCategoryText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.medium,
+    color: theme.colors.text.secondary,
   },
 });

@@ -1,8 +1,8 @@
 import React from 'react';
+import { View, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
 import { theme } from '../theme/theme';
 import { MainTabParamList } from '../types';
 
@@ -18,42 +18,45 @@ export default function AppNavigator() {
     <NavigationContainer>
       <Tab.Navigator
         screenOptions={{
-          headerStyle: {
-            backgroundColor: theme.colors.background.secondary,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-          },
-          headerTintColor: theme.colors.text.primary,
-          headerTitleStyle: {
-            fontWeight: theme.fontWeight.semibold,
-          },
+          headerShown: false,
           tabBarStyle: {
-            backgroundColor: theme.colors.background.secondary,
-            borderTopWidth: 1,
-            borderTopColor: theme.colors.border,
-            height: Platform.OS === 'android' ? 85 : 65,
-            paddingBottom: Platform.OS === 'android' ? 20 : 10,
+            position: 'absolute',
+            bottom: 16,
+            left: 16,
+            right: 16,
+            height: 70,
+            borderRadius: theme.borderRadius['2xl'],
+            backgroundColor: theme.colors.glass.background,
+            borderTopWidth: 0,
+            borderWidth: 1,
+            borderColor: theme.colors.glass.border,
+            paddingBottom: 10,
             paddingTop: 10,
+            elevation: 8,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
           },
-          tabBarActiveTintColor: theme.colors.primary,
-          tabBarInactiveTintColor: theme.colors.text.tertiary,
-          tabBarLabelStyle: {
-            fontSize: theme.fontSize.xs,
-            fontWeight: theme.fontWeight.medium,
-            marginBottom: Platform.OS === 'android' ? 8 : 0,
-          },
-          tabBarIconStyle: {
-            marginTop: Platform.OS === 'android' ? 6 : 0,
-          },
+          tabBarActiveTintColor: theme.colors.primary.cyan,
+          tabBarInactiveTintColor: theme.colors.text.quaternary,
+          tabBarShowLabel: false,
         }}
       >
         <Tab.Screen
           name="Home"
           component={HomeScreen}
           options={{
-            title: 'Sessions',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="list" size={size} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <View style={styles.iconContainer}>
+                {focused && <View style={styles.activeGlow} />}
+                <Ionicons 
+                  name="home" 
+                  size={26} 
+                  color={color}
+                  style={styles.icon}
+                />
+              </View>
             ),
           }}
         />
@@ -62,8 +65,16 @@ export default function AppNavigator() {
           component={StartSessionScreen}
           options={{
             title: 'Track',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="play-circle" size={size} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <View style={styles.iconContainer}>
+                {focused && <View style={styles.activeGlow} />}
+                <Ionicons 
+                  name="list" 
+                  size={26} 
+                  color={color}
+                  style={styles.icon}
+                />
+              </View>
             ),
           }}
         />
@@ -72,8 +83,16 @@ export default function AppNavigator() {
           component={StatsScreen}
           options={{
             title: 'Stats',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="stats-chart" size={size} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <View style={styles.iconContainer}>
+                {focused && <View style={styles.activeGlow} />}
+                <Ionicons 
+                  name="stats-chart" 
+                  size={26} 
+                  color={color}
+                  style={styles.icon}
+                />
+              </View>
             ),
           }}
         />
@@ -81,9 +100,17 @@ export default function AppNavigator() {
           name="Settings"
           component={SettingsScreen}
           options={{
-            title: 'Settings',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="settings" size={size} color={color} />
+            title: 'Profile',
+            tabBarIcon: ({ color, focused }) => (
+              <View style={styles.iconContainer}>
+                {focused && <View style={styles.activeGlow} />}
+                <Ionicons 
+                  name="person" 
+                  size={26} 
+                  color={color}
+                  style={styles.icon}
+                />
+              </View>
             ),
           }}
         />
@@ -91,3 +118,26 @@ export default function AppNavigator() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  iconContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 50,
+    height: 50,
+  },
+  icon: {
+    zIndex: 10,
+  },
+  activeGlow: {
+    position: 'absolute',
+    width: 45,
+    height: 45,
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.primary.cyan,
+    backgroundColor: theme.colors.primary.cyan + '20',
+    ...theme.shadows.glowBottomNav,
+  },
+});

@@ -1,5 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
 
@@ -20,41 +21,53 @@ export function TimerButton({
   disabled = false,
   style 
 }: TimerButtonProps) {
-  const getBackgroundColor = () => {
-    if (disabled) return theme.colors.text.tertiary;
+  const getGradientColors = () => {
+    if (disabled) return [theme.colors.background.tertiary, theme.colors.background.tertiary];
+    
     switch (variant) {
       case 'primary':
-        return theme.colors.primary;
+        return theme.gradients.primary;
       case 'secondary':
-        return theme.colors.secondary;
+        return [theme.colors.background.tertiary, theme.colors.background.secondary];
       case 'danger':
-        return theme.colors.danger;
+        return [theme.colors.danger, '#E85555'];
       default:
-        return theme.colors.primary;
+        return theme.gradients.primary;
     }
   };
 
   return (
     <TouchableOpacity
-      style={[
-        styles.button,
-        { backgroundColor: getBackgroundColor() },
-        disabled && styles.disabled,
-        style,
-      ]}
       onPress={onPress}
       disabled={disabled}
-      activeOpacity={0.7}
+      activeOpacity={0.8}
+      style={style}
     >
-      {icon && (
-        <Ionicons 
-          name={icon} 
-          size={24} 
-          color={theme.colors.text.primary} 
-          style={styles.icon}
-        />
-      )}
-      <Text style={styles.buttonText}>{title}</Text>
+      <LinearGradient
+        colors={getGradientColors()}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[
+          styles.button,
+          variant === 'primary' && styles.primaryButton,
+          disabled && styles.disabled,
+        ]}
+      >
+        {icon && (
+          <Ionicons 
+            name={icon} 
+            size={24} 
+            color={variant === 'secondary' ? theme.colors.primary.cyan : theme.colors.text.primary} 
+            style={styles.icon}
+          />
+        )}
+        <Text style={[
+          styles.buttonText,
+          variant === 'secondary' && styles.secondaryText
+        ]}>
+          {title}
+        </Text>
+      </LinearGradient>
     </TouchableOpacity>
   );
 }
@@ -64,21 +77,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing[4] + 2,
+    paddingHorizontal: theme.spacing[6],
+    borderRadius: theme.borderRadius.xl,
     minWidth: 120,
-    ...theme.shadows.md,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  primaryButton: {
+    ...theme.shadows.glowAqua,
+    borderColor: theme.colors.primary.cyan + '30',
   },
   buttonText: {
     color: theme.colors.text.primary,
     fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.semibold,
+    fontWeight: theme.fontWeight.bold,
+    letterSpacing: 0.5,
+  },
+  secondaryText: {
+    color: theme.colors.primary.cyan,
   },
   icon: {
-    marginRight: theme.spacing.sm,
+    marginRight: theme.spacing[2],
   },
   disabled: {
-    opacity: 0.5,
+    opacity: 0.4,
   },
 });
