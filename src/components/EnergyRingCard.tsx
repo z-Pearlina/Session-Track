@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { GlassCard } from './GlassCard';
 import { theme } from '../theme/theme';
 
@@ -41,14 +40,15 @@ const styles = StyleSheet.create({
   container: {
     position: 'relative',
     justifyContent: 'center',
-    marginBottom: theme.spacing[8],
+    marginBottom: theme.spacing[4], // Reduced from [8] to [4]
+    marginTop: theme.spacing[4], // Added top margin
   },
   energyRing: {
     position: 'absolute',
     top: -16,
     left: 0,
     right: 0,
-    height: 300,
+    height: 220, // Reduced from 300
     borderRadius: theme.borderRadius.full,
     backgroundColor: 'rgba(103, 232, 249, 0.1)',
     ...theme.shadows.glowEnergyRing,
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   content: {
     position: 'relative',
     alignItems: 'center',
-    paddingVertical: theme.spacing[6],
+    paddingVertical: theme.spacing[5], // Reduced from [6]
     paddingHorizontal: theme.spacing[4],
   },
   patternOverlay: {
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[2],
   },
   time: {
-    fontSize: theme.fontSize['4xl'],
+    fontSize: theme.fontSize['3xl'], // Reduced from ['4xl']
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.primary,
     letterSpacing: -2,
