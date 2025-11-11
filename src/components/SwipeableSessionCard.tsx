@@ -19,13 +19,9 @@ import { useSessionStore } from '../stores/useSessionStore';
 
 interface SwipeableSessionCardProps {
   session: Session;
-  onPress?: () => void;
 }
 
-export function SwipeableSessionCard({
-  session,
-  onPress,
-}: SwipeableSessionCardProps) {
+export function SwipeableSessionCard({ session }: SwipeableSessionCardProps) {
   const { deleteSession } = useSessionStore();
   const { getCategoryById } = useCategoryStore();
   const navigation = useNavigation<RootStackNavigationProp>();
@@ -110,6 +106,10 @@ export function SwipeableSessionCard({
     );
   };
 
+  const handleViewDetails = () => {
+    navigation.navigate('SessionDetails', { sessionId: session.id });
+  };
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !isDeleting,
@@ -187,7 +187,7 @@ export function SwipeableSessionCard({
       >
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={onPress}
+          onPress={handleViewDetails}
           style={{ flex: 1 }}
         >
           <GlassCard style={styles.card}>
@@ -231,15 +231,20 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: theme.spacing[3],
     position: 'relative',
+    overflow: 'hidden',
+    borderRadius: theme.borderRadius['2xl'],
   },
   actionsContainer: {
     position: 'absolute',
-    right: theme.spacing[2],
+    right: 0,
     top: 0,
     bottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingRight: theme.spacing[2],
     gap: theme.spacing[2],
+    zIndex: 1,
   },
   actionButton: {
     width: 56,
@@ -269,6 +274,8 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     width: '100%',
+    zIndex: 10,
+    backgroundColor: theme.colors.background.primary,
   },
   card: {
     flex: 1,
@@ -284,6 +291,7 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     flex: 1,
+    paddingRight: theme.spacing[2],
   },
   title: {
     fontSize: theme.fontSize.base,
@@ -295,6 +303,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: theme.spacing[1],
+    flexWrap: 'wrap',
   },
   meta: {
     fontSize: theme.fontSize.sm,

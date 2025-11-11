@@ -12,6 +12,8 @@ import StartSessionScreen from '../screens/StartSessionScreen';
 import StatsScreen from '../screens/StatsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import EditSessionScreen from '../screens/EditSessionScreen';
+import SessionDetailsScreen from '../screens/SessionDetailsScreen';
+
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -115,6 +117,13 @@ export default function AppNavigator() {
           component={EditSessionScreen}
           options={{
             presentation: 'modal',
+          }}
+        />
+        <Stack.Screen
+          name="SessionDetails"
+          component={SessionDetailsScreen}
+          options={{
+            presentation: 'card',
           }}
         />
       </Stack.Navigator>

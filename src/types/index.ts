@@ -1,4 +1,4 @@
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { StackNavigationProp } from '@react-navigation/stack';
 
 export interface Session {
   id: string;
@@ -47,6 +47,7 @@ export type DateRangePreset = 'today' | 'week' | 'month' | 'custom';
 export type RootStackParamList = {
   MainTabs: undefined;
   EditSession: { sessionId: string };
+  SessionDetails: { sessionId: string };
 };
 
 export type MainTabParamList = {
@@ -56,4 +57,5 @@ export type MainTabParamList = {
   Settings: undefined;
 };
 
-export type RootStackNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+// Navigation prop types
+export type RootStackNavigationProp = StackNavigationProp<RootStackParamList>;
