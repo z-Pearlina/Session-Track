@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +13,7 @@ interface CategoryProgressCardProps {
   gradientColors: string[];
 }
 
-export function CategoryProgressCard({ 
+function CategoryProgressCardComponent({ 
   icon, 
   title, 
   progress, 
@@ -48,6 +48,24 @@ export function CategoryProgressCard({
     </GlassCard>
   );
 }
+
+// ✅ Custom comparison function for React.memo
+const areEqual = (
+  prevProps: CategoryProgressCardProps,
+  nextProps: CategoryProgressCardProps
+): boolean => {
+  return (
+    prevProps.icon === nextProps.icon &&
+    prevProps.title === nextProps.title &&
+    prevProps.progress === nextProps.progress &&
+    prevProps.color === nextProps.color &&
+    prevProps.gradientColors.length === nextProps.gradientColors.length &&
+    prevProps.gradientColors.every((color, index) => color === nextProps.gradientColors[index])
+  );
+};
+
+// ✅ Export memoized component
+export const CategoryProgressCard = memo(CategoryProgressCardComponent, areEqual);
 
 const styles = StyleSheet.create({
   card: {

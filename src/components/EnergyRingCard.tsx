@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { GlassCard } from './GlassCard';
 import { theme } from '../theme/theme';
@@ -9,7 +9,15 @@ interface EnergyRingCardProps {
   percentageChange: number;
 }
 
-export function EnergyRingCard({ hours, minutes, percentageChange }: EnergyRingCardProps) {
+/**
+ * ✅ OPTIMIZED: Wrapped in React.memo with custom comparison
+ * 
+ * CHANGES:
+ * - Added React.memo to prevent unnecessary re-renders
+ * - Custom areEqual function for shallow comparison
+ * - Only re-renders when hours, minutes, or percentageChange actually change
+ */
+function EnergyRingCardComponent({ hours, minutes, percentageChange }: EnergyRingCardProps) {
   const isPositive = percentageChange >= 0;
 
   return (
@@ -36,19 +44,34 @@ export function EnergyRingCard({ hours, minutes, percentageChange }: EnergyRingC
   );
 }
 
+// ✅ Custom comparison function for React.memo
+const areEqual = (
+  prevProps: EnergyRingCardProps,
+  nextProps: EnergyRingCardProps
+): boolean => {
+  return (
+    prevProps.hours === nextProps.hours &&
+    prevProps.minutes === nextProps.minutes &&
+    prevProps.percentageChange === nextProps.percentageChange
+  );
+};
+
+// ✅ Export memoized component
+export const EnergyRingCard = memo(EnergyRingCardComponent, areEqual);
+
 const styles = StyleSheet.create({
   container: {
     position: 'relative',
     justifyContent: 'center',
-    marginBottom: theme.spacing[4], // Reduced from [8] to [4]
-    marginTop: theme.spacing[4], // Added top margin
+    marginBottom: theme.spacing[4],
+    marginTop: theme.spacing[4],
   },
   energyRing: {
     position: 'absolute',
     top: -16,
     left: 0,
     right: 0,
-    height: 220, // Reduced from 300
+    height: 220,
     borderRadius: theme.borderRadius.full,
     backgroundColor: 'rgba(103, 232, 249, 0.1)',
     ...theme.shadows.glowEnergyRing,
@@ -64,7 +87,7 @@ const styles = StyleSheet.create({
   content: {
     position: 'relative',
     alignItems: 'center',
-    paddingVertical: theme.spacing[5], // Reduced from [6]
+    paddingVertical: theme.spacing[5],
     paddingHorizontal: theme.spacing[4],
   },
   patternOverlay: {
@@ -83,7 +106,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[2],
   },
   time: {
-    fontSize: theme.fontSize['3xl'], // Reduced from ['4xl']
+    fontSize: theme.fontSize['3xl'],
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.primary,
     letterSpacing: -2,
