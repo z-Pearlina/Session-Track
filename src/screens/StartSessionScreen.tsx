@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
   Alert,
   Keyboard,
   KeyboardAvoidingView,
@@ -15,18 +15,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme/theme';
 import { useTimer } from '../hooks/useTimer';
 import { useSessionStore } from '../stores/useSessionStore';
+import { useCategoryStore } from '../stores/useCategoryStore';
 import { Session } from '../types';
-import { useNavigation } from '@react-navigation/native';
+import { RootStackNavigationProp } from '../types';
 
 export default function StartSessionScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<RootStackNavigationProp>();
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [startedAt, setStartedAt] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState('Work');
+  const [selectedCategory, setSelectedCategory] = useState('work');
   
   const { 
     elapsedMs, 
@@ -40,8 +42,12 @@ export default function StartSessionScreen() {
   } = useTimer();
   
   const { addSession } = useSessionStore();
+  const { categories, loadCategories } = useCategoryStore();
 
-  const categories = ['Work', 'Study', 'Habits', 'Fitness'];
+  // Load categories when screen mounts
+  useEffect(() => {
+    loadCategories();
+  }, []);
 
   const handleStart = () => {
     const now = new Date().toISOString();
@@ -78,7 +84,7 @@ export default function StartSessionScreen() {
       const session: Session = {
         id: `session_${Date.now()}`,
         title: title.trim() || 'Untitled Session',
-        categoryId: selectedCategory.toLowerCase(),
+        categoryId: selectedCategory,
         durationMs: elapsedMs,
         notes: notes.trim(),
         startedAt: startedAt!,
@@ -109,7 +115,7 @@ export default function StartSessionScreen() {
     setTitle('');
     setNotes('');
     setStartedAt(null);
-    setSelectedCategory('Work');
+    setSelectedCategory('work');
   };
 
   const formatTime = (ms: number): string => {
@@ -119,6 +125,10 @@ export default function StartSessionScreen() {
     const seconds = totalSeconds % 60;
 
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const handleOpenCategoryManager = () => {
+    navigation.navigate('CategoryManager');
   };
 
   return (
@@ -224,7 +234,16 @@ export default function StartSessionScreen() {
 
                 {/* Category Selector */}
                 <View style={styles.categorySection}>
-                  <Text style={styles.inputLabel}>Select a Category</Text>
+                  <View style={styles.categoryHeader}>
+                    <Text style={styles.inputLabel}>Select a Category</Text>
+                    <TouchableOpacity 
+                      style={styles.manageCategoriesButton}
+                      onPress={handleOpenCategoryManager}
+                    >
+                      <Ionicons name="settings" size={16} color={theme.colors.primary.cyan} />
+                      <Text style={styles.manageCategoriesText}>Manage</Text>
+                    </TouchableOpacity>
+                  </View>
                   <ScrollView 
                     horizontal 
                     showsHorizontalScrollIndicator={false}
@@ -232,27 +251,37 @@ export default function StartSessionScreen() {
                   >
                     {categories.map((category) => (
                       <TouchableOpacity
-                        key={category}
+                        key={category.id}
                         style={[
                           styles.categoryButton,
-                          selectedCategory === category && styles.categoryButtonActive
+                          selectedCategory === category.id && styles.categoryButtonActive,
+                          { borderColor: category.color + '40' },
+                          selectedCategory === category.id && { 
+                            backgroundColor: category.color,
+                            borderColor: category.color 
+                          }
                         ]}
-                        onPress={() => setSelectedCategory(category)}
+                        onPress={() => setSelectedCategory(category.id)}
                       >
-                        <Text style={[
-                          styles.categoryButtonText,
-                          selectedCategory === category && styles.categoryButtonTextActive
-                        ]}>
-                          {category}
+                        <Ionicons
+                          name={category.icon as any}
+                          size={16}
+                          color={
+                            selectedCategory === category.id
+                              ? theme.colors.text.inverse
+                              : category.color
+                          }
+                        />
+                        <Text
+                          style={[
+                            styles.categoryButtonText,
+                            selectedCategory === category.id && styles.categoryButtonTextActive,
+                          ]}
+                        >
+                          {category.name}
                         </Text>
                       </TouchableOpacity>
                     ))}
-                    
-                    {/* Add New Category */}
-                    <TouchableOpacity style={styles.addCategoryButton}>
-                      <Ionicons name="add" size={16} color={theme.colors.text.secondary} />
-                      <Text style={styles.addCategoryText}>New</Text>
-                    </TouchableOpacity>
                   </ScrollView>
                 </View>
               </View>
@@ -396,10 +425,30 @@ const styles = StyleSheet.create({
   categorySection: {
     gap: theme.spacing[3],
   },
+  categoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  manageCategoriesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[1],
+    paddingHorizontal: theme.spacing[2],
+    paddingVertical: theme.spacing[1],
+  },
+  manageCategoriesText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.primary.cyan,
+  },
   categoriesScroll: {
     gap: theme.spacing[3],
   },
   categoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[1.5],
     paddingVertical: theme.spacing[2],
     paddingHorizontal: theme.spacing[4],
     borderRadius: theme.borderRadius.full,
@@ -408,8 +457,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.glass.border,
   },
   categoryButtonActive: {
-    backgroundColor: theme.colors.primary.cyan,
-    borderColor: theme.colors.primary.cyan,
+    borderWidth: 2,
   },
   categoryButtonText: {
     fontSize: theme.fontSize.sm,
@@ -419,22 +467,5 @@ const styles = StyleSheet.create({
   categoryButtonTextActive: {
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.inverse,
-  },
-  addCategoryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing[1],
-    paddingVertical: theme.spacing[2],
-    paddingHorizontal: theme.spacing[4],
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: theme.colors.text.secondary + '30',
-    borderStyle: 'dashed',
-  },
-  addCategoryText: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.medium,
-    color: theme.colors.text.secondary,
   },
 });

@@ -82,13 +82,15 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { categories } = get();
-      const category = categories.find(c => c.id === categoryId);
       
-      if (category?.isDefault) {
-        throw new Error('Cannot delete default categories');
-      }
-
+      // Allow deleting any category (removed isDefault check)
       const updatedCategories = categories.filter(c => c.id !== categoryId);
+      
+      // Make sure at least one category remains
+      if (updatedCategories.length === 0) {
+        throw new Error('Cannot delete the last category. At least one category must exist.');
+      }
+      
       await AsyncStorage.setItem(CATEGORIES_KEY, JSON.stringify(updatedCategories));
       set({ categories: updatedCategories, isLoading: false });
     } catch (error) {

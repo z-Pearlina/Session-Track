@@ -27,7 +27,7 @@ export default function EditSessionScreen() {
   const { sessionId } = route.params as { sessionId: string };
 
   const { sessions, updateSession, deleteSession } = useSessionStore();
-  const { categories } = useCategoryStore();
+  const { categories, loadCategories } = useCategoryStore();
 
   const session = sessions.find(s => s.id === sessionId);
 
@@ -45,6 +45,10 @@ export default function EditSessionScreen() {
       navigation.goBack();
     }
   }, [session]);
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
 
   if (!session) return null;
 
@@ -115,7 +119,6 @@ export default function EditSessionScreen() {
   return (
     <LinearGradient colors={theme.gradients.backgroundAnimated} style={styles.gradient}>
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        {/* Custom Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={theme.colors.text.secondary} />
@@ -132,7 +135,6 @@ export default function EditSessionScreen() {
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-              {/* Session Info Card */}
               <GlassCard style={styles.infoCard}>
                 <View style={styles.infoContent}>
                   <View style={styles.infoRow}>
@@ -146,9 +148,7 @@ export default function EditSessionScreen() {
                 </View>
               </GlassCard>
 
-              {/* Input Section */}
               <View style={styles.inputSection}>
-                {/* Session Title */}
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Session Title</Text>
                   <TextInput
@@ -161,7 +161,6 @@ export default function EditSessionScreen() {
                   />
                 </View>
 
-                {/* Duration */}
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Duration (minutes)</Text>
                   <TextInput
@@ -175,7 +174,6 @@ export default function EditSessionScreen() {
                   />
                 </View>
 
-                {/* Optional Notes */}
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Notes (Optional)</Text>
                   <TextInput
@@ -190,9 +188,17 @@ export default function EditSessionScreen() {
                   />
                 </View>
 
-                {/* Category Selector */}
                 <View style={styles.categorySection}>
-                  <Text style={styles.inputLabel}>Category</Text>
+                  <View style={styles.categoryHeader}>
+                    <Text style={styles.inputLabel}>Category</Text>
+                    <TouchableOpacity
+                      style={styles.manageCategoriesButton}
+                      onPress={() => navigation.navigate('CategoryManager' as never)}
+                    >
+                      <Ionicons name="settings" size={16} color={theme.colors.primary.cyan} />
+                      <Text style={styles.manageCategoriesText}>Manage</Text>
+                    </TouchableOpacity>
+                  </View>
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -203,8 +209,11 @@ export default function EditSessionScreen() {
                         key={category.id}
                         style={[
                           styles.categoryButton,
-                          selectedCategory === category.id && styles.categoryButtonActive,
                           { borderColor: category.color + '40' },
+                          selectedCategory === category.id && {
+                            backgroundColor: category.color,
+                            borderColor: category.color,
+                          },
                         ]}
                         onPress={() => setSelectedCategory(category.id)}
                       >
@@ -231,7 +240,6 @@ export default function EditSessionScreen() {
                 </View>
               </View>
 
-              {/* Save Button */}
               <TouchableOpacity
                 style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
                 onPress={handleSave}
@@ -389,5 +397,22 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.lg,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.inverse,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  manageCategoriesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[1],
+    paddingHorizontal: theme.spacing[2],
+    paddingVertical: theme.spacing[1],
+  },
+  manageCategoriesText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.primary.cyan,
   },
 });

@@ -49,6 +49,7 @@ export type RootStackParamList = {
   EditSession: { sessionId: string };
   SessionDetails: { sessionId: string };
   Calendar: undefined;
+  CategoryManager: undefined;
 };
 
 export type MainTabParamList = {
