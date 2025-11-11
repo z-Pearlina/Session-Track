@@ -27,7 +27,6 @@ import { SearchBar } from '../components/SearchBar';
 import { Ionicons } from '@expo/vector-icons';
 import { Session } from '../types';
 
-// ✅ Helper functions moved outside component (no recreation on render)
 const getTodayDateString = () => new Date().toDateString();
 const getYesterdayDateString = () => {
   const yesterday = new Date();
@@ -42,7 +41,6 @@ const getSessionDateString = (session: Session) => {
 export default function HomeScreen() {
   const navigation = useNavigation();
   
-  // ✅ HOTFIX: Use the original store pattern temporarily
   const { sessions, filteredSessions, loadSessions, filter, setFilter } = useSessionStore();
   const { categories, loadCategories } = useCategoryStore();
   const { preferences, loadPreferences } = useDashboardStore();
@@ -51,14 +49,11 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // ✅ FIX: Store filter values separately to prevent infinite loop
   const [localCategoryId, setLocalCategoryId] = useState(filter.categoryId);
   const [localDateRange, setLocalDateRange] = useState(filter.dateRange);
 
-  // ✅ FIX: Debounced search WITHOUT reading filter in dependencies
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      // ✅ CRITICAL FIX: Build new filter object from local state
       setFilter({
         categoryId: localCategoryId,
         dateRange: localDateRange,
@@ -67,9 +62,8 @@ export default function HomeScreen() {
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, localCategoryId, localDateRange]); // ✅ Removed 'filter' from deps
+  }, [searchQuery, localCategoryId, localDateRange]);
 
-  // ✅ Use InteractionManager for initial load
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {
       Promise.all([
@@ -84,7 +78,6 @@ export default function HomeScreen() {
     return () => task.cancel();
   }, []);
 
-  // ✅ Fix navigation listener with proper dependencies
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       InteractionManager.runAfterInteractions(() => {
@@ -97,7 +90,6 @@ export default function HomeScreen() {
     return unsubscribe;
   }, [navigation, loadSessions, loadCategories, loadPreferences]);
 
-  // ✅ Memoize expensive calculations
   const todayDateString = useMemo(() => getTodayDateString(), []);
   const yesterdayDateString = useMemo(() => getYesterdayDateString(), []);
 
@@ -201,7 +193,6 @@ export default function HomeScreen() {
     navigation.navigate('StartSession' as never);
   }, [navigation]);
 
-  // ✅ FIX: Clear search without reading filter
   const handleClearSearch = useCallback(() => {
     setSearchQuery('');
     setLocalCategoryId(undefined);
@@ -379,7 +370,6 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   flatListContent: {
-    paddingHorizontal: 0,
     paddingTop: 120,
     paddingBottom: theme.spacing[8],
   },

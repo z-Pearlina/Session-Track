@@ -21,16 +21,6 @@ interface SwipeableSessionCardProps {
   session: Session;
 }
 
-/**
- * ✅ OPTIMIZED: Swipeable card with performance fixes
- * 
- * CHANGES:
- * - Added React.memo to prevent unnecessary re-renders
- * - Memoized PanResponder creation (moved to useMemo)
- * - Memoized all callbacks
- * - Optimized date/time formatting
- * - Fixed gesture conflicts with navigation
- */
 function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
   const { deleteSession } = useSessionStore();
   const { getCategoryById } = useCategoryStore();
@@ -42,7 +32,6 @@ function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
 
   const category = getCategoryById(session.categoryId);
 
-  // ✅ Memoize expensive formatting functions
   const formattedDuration = useMemo(() => {
     const totalMinutes = Math.floor(session.durationMs / (1000 * 60));
     const hours = Math.floor(totalMinutes / 60);
@@ -73,7 +62,6 @@ function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
     }
   }, [session.startedAt]);
 
-  // ✅ Memoized callbacks
   const handleEdit = useCallback(() => {
     Animated.spring(translateX, {
       toValue: 0,
@@ -122,13 +110,14 @@ function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
     navigation.navigate('SessionDetails', { sessionId: session.id });
   }, [navigation, session.id]);
 
-  // ✅ OPTIMIZATION: Memoize PanResponder (was recreated every render)
+  // قم بتغيير هذه القيمة لتقليل عرض الحاوية المكشوفة وبالتالي إزاحة الأزرار لليسار
+  const ACTIONS_WIDTH = 120; // كانت 128، جرب 120 أو 122، أو حتى 118 لتغطية أكثر
+
   const panResponder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => !isDeleting,
         onMoveShouldSetPanResponder: (_, gestureState) => {
-          // ✅ GESTURE FIX: Require more horizontal movement to avoid conflicts
           return Math.abs(gestureState.dx) > 10 && 
                  Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && 
                  !isDeleting;
@@ -138,14 +127,16 @@ function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
           translateX.setValue(0);
         },
         onPanResponderMove: (_, gestureState) => {
-          // Only allow left swipe
-          if (gestureState.dx < 0) {
+          if (gestureState.dx < 0 && gestureState.dx >= -ACTIONS_WIDTH) {
             translateX.setValue(gestureState.dx);
+          } else if (gestureState.dx > 0 && lastOffset.current === -ACTIONS_WIDTH) {
+            translateX.setValue(gestureState.dx - ACTIONS_WIDTH);
           }
         },
         onPanResponderRelease: (_, gestureState) => {
           const shouldOpen = gestureState.dx < -80;
-          const toValue = shouldOpen ? -120 : 0;
+          // تأكد أن toValue يستخدم نفس قيمة ACTIONS_WIDTH
+          const toValue = shouldOpen ? -ACTIONS_WIDTH : 0; 
 
           lastOffset.current = toValue;
           translateX.flattenOffset();
@@ -157,7 +148,6 @@ function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
             friction: 10,
           }).start();
         },
-        // ✅ GESTURE FIX: Terminate gesture if it conflicts with navigation
         onPanResponderTerminationRequest: () => lastOffset.current === 0,
       }),
     [isDeleting, translateX]
@@ -178,13 +168,14 @@ function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.actionsContainer}>
+      {/* هنا نستخدم ACTIONS_WIDTH لعرض الحاوية */}
+      <View style={[styles.actionsContainer, { width: ACTIONS_WIDTH }]}>
         <TouchableOpacity
           style={[styles.actionButton, styles.editButton]}
           onPress={handleEdit}
           activeOpacity={0.8}
         >
-          <Ionicons name="pencil" size={22} color="#fff" />
+          <Ionicons name="pencil" size={20} color="#fff" />
           <Text style={styles.actionText}>Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -192,7 +183,7 @@ function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
           onPress={handleDelete}
           activeOpacity={0.8}
         >
-          <Ionicons name="trash" size={22} color="#fff" />
+          <Ionicons name="trash" size={20} color="#fff" />
           <Text style={styles.actionText}>Delete</Text>
         </TouchableOpacity>
       </View>
@@ -246,7 +237,6 @@ function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
   );
 }
 
-// ✅ Custom comparison function for React.memo
 const areEqual = (
   prevProps: SwipeableSessionCardProps,
   nextProps: SwipeableSessionCardProps
@@ -261,7 +251,6 @@ const areEqual = (
   );
 };
 
-// ✅ Export memoized component
 export const SwipeableSessionCard = memo(SwipeableSessionCardComponent, areEqual);
 
 const styles = StyleSheet.create({
@@ -270,6 +259,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     borderRadius: theme.borderRadius['2xl'],
+    marginHorizontal: theme.spacing[4],
   },
   actionsContainer: {
     position: 'absolute',
@@ -279,20 +269,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    paddingRight: theme.spacing[2],
-    gap: theme.spacing[2],
+    gap: theme.spacing[1],
     zIndex: 1,
   },
   actionButton: {
-    width: 56,
-    height: 56,
+    width: 58,
+    height: 58,
     borderRadius: theme.borderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     gap: theme.spacing[0.5],
   },
   actionText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: theme.fontWeight.semibold,
     color: '#fff',
     marginTop: 2,
@@ -312,14 +301,14 @@ const styles = StyleSheet.create({
   cardContainer: {
     width: '100%',
     zIndex: 10,
-    backgroundColor: theme.colors.background.primary,
   },
   card: {
     flex: 1,
   },
   content: {
     flexDirection: 'row',
-    padding: theme.spacing[4],
+    paddingVertical: theme.spacing[4],
+    paddingHorizontal: theme.spacing[4],
   },
   categoryIndicator: {
     width: 4,
@@ -359,12 +348,14 @@ const styles = StyleSheet.create({
   },
   deletingContainer: {
     marginBottom: theme.spacing[3],
+    marginHorizontal: theme.spacing[4],
   },
   deletingContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: theme.spacing[4],
+    paddingVertical: theme.spacing[4],
+    paddingHorizontal: theme.spacing[4],
     gap: theme.spacing[2],
   },
   deletingText: {
