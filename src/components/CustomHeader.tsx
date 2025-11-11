@@ -1,15 +1,22 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme/theme';
+import { RootStackNavigationProp } from '../types';
 
 export function CustomHeader() {
+  const navigation = useNavigation<RootStackNavigationProp>();
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        {/* Menu Button */}
-        <TouchableOpacity style={styles.iconButton}>
-          <Ionicons name="menu" size={28} color={theme.colors.text.secondary} />
+        {/* Calendar Button (was Menu) */}
+        <TouchableOpacity 
+          style={styles.iconButton}
+          onPress={() => navigation.navigate('Calendar')}
+        >
+          <Ionicons name="calendar" size={28} color={theme.colors.text.secondary} />
         </TouchableOpacity>
 
         {/* Title */}
@@ -35,9 +42,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 30,
-    backgroundColor: theme.colors.backdrop,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.glass.border,
+    backgroundColor: theme.colors.backdrop,
   },
   content: {
     flexDirection: 'row',
