@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   ScrollView,
   RefreshControl,
+  Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -19,17 +20,29 @@ import { GlassCard } from '../components/GlassCard';
 import { FABButton } from '../components/FABButton';
 import { SwipeableSessionCard } from '../components/SwipeableSessionCard';
 import { FilterChips } from '../components/FilterChips';
+import { SearchBar } from '../components/SearchBar';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
-  const { sessions, filteredSessions, loadSessions, filter } = useSessionStore();
+  const { sessions, filteredSessions, loadSessions, filter, setFilter } = useSessionStore();
   const { categories, loadCategories } = useCategoryStore();
-  const [refreshing, setRefreshing] = React.useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
 
   useEffect(() => {
     loadSessions();
     loadCategories();
   }, []);
+
+  useEffect(() => {
+    // Debounce search
+    const timeoutId = setTimeout(() => {
+      setFilter({ ...filter, searchQuery });
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -124,6 +137,14 @@ export default function HomeScreen() {
     navigation.navigate('StartSession' as never);
   };
 
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setFilter({ ...filter, searchQuery: '' });
+    Keyboard.dismiss();
+  };
+
+  const hasActiveFilters = filter.categoryId || filter.dateRange || searchQuery;
+
   return (
     <View style={styles.root}>
       <LinearGradient
@@ -145,6 +166,7 @@ export default function HomeScreen() {
             progressViewOffset={100}
           />
         }
+        keyboardShouldPersistTaps="handled"
       >
         <EnergyRingCard
           hours={todayHours}
@@ -195,25 +217,45 @@ export default function HomeScreen() {
           />
         </View>
 
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <SearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onClear={handleClearSearch}
+            placeholder="Search by title or notes..."
+          />
+        </View>
+
         <FilterChips />
 
-        <Text style={styles.sectionTitle}>
-          {filter.categoryId || filter.dateRange ? 'Filtered Sessions' : 'Recent Sessions'}
-        </Text>
+        {/* Sessions Header with Count */}
+        <View style={styles.sessionsHeader}>
+          <Text style={styles.sectionTitle}>
+            {hasActiveFilters ? 'Filtered Sessions' : 'Recent Sessions'}
+          </Text>
+          {sessionsToDisplay.length > 0 && (
+            <View style={styles.countBadge}>
+              <Text style={styles.countText}>{sessionsToDisplay.length}</Text>
+            </View>
+          )}
+        </View>
 
         <View style={styles.sessionsList}>
           {sessionsToDisplay.length === 0 ? (
             <GlassCard>
               <View style={styles.emptyState}>
                 <Text style={styles.emptyText}>
-                  {filter.categoryId || filter.dateRange 
+                  {hasActiveFilters
                     ? 'No sessions found'
                     : 'No sessions yet'
                   }
                 </Text>
                 <Text style={styles.emptySubtext}>
-                  {filter.categoryId || filter.dateRange
-                    ? 'Try adjusting your filters'
+                  {hasActiveFilters
+                    ? searchQuery 
+                      ? `No sessions match "${searchQuery}"`
+                      : 'Try adjusting your filters'
                     : 'Tap "Start Session" below to begin tracking'
                   }
                 </Text>
@@ -227,9 +269,6 @@ export default function HomeScreen() {
                 <SwipeableSessionCard
                   key={session.id}
                   session={session}
-                  onPress={() => {
-                    // Optional: Navigate to session details
-                  }}
                 />
               ))
           )}
@@ -276,12 +315,34 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[6],
     paddingHorizontal: theme.spacing[4],
   },
+  searchContainer: {
+    paddingHorizontal: theme.spacing[4],
+    marginBottom: theme.spacing[4],
+  },
+  sessionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing[3],
+    paddingHorizontal: theme.spacing[4],
+  },
   sectionTitle: {
     fontSize: theme.fontSize.lg,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing[3],
-    paddingHorizontal: theme.spacing[4],
+  },
+  countBadge: {
+    backgroundColor: theme.colors.primary.cyan + '20',
+    paddingHorizontal: theme.spacing[2.5],
+    paddingVertical: theme.spacing[1],
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.primary.cyan + '40',
+  },
+  countText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.primary.cyan,
   },
   sessionsList: {
     paddingHorizontal: theme.spacing[4],
