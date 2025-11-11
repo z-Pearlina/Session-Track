@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const DASHBOARD_PREFS_KEY = '@session_track:dashboard_prefs';
-const MAX_VISIBLE_CATEGORIES = 3; // Maximum 3 cards
+const MAX_VISIBLE_CATEGORIES = 4;
 
 interface DashboardPreferences {
   visibleCategoryIds: string[];
