@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme/theme';
 import { useSessionStore } from '../stores/useSessionStore';
 import { useCategoryStore } from '../stores/useCategoryStore';
+import { useDashboardStore } from '../stores/useDashboardStore';
 import { CustomHeader } from '../components/CustomHeader';
 import { EnergyRingCard } from '../components/EnergyRingCard';
 import { MiniStatCard } from '../components/MiniStatCard';
@@ -21,19 +22,32 @@ import { FABButton } from '../components/FABButton';
 import { SwipeableSessionCard } from '../components/SwipeableSessionCard';
 import { FilterChips } from '../components/FilterChips';
 import { SearchBar } from '../components/SearchBar';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
   const { sessions, filteredSessions, loadSessions, filter, setFilter } = useSessionStore();
   const { categories, loadCategories } = useCategoryStore();
+  const { preferences, loadPreferences } = useDashboardStore();
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
 
   useEffect(() => {
     loadSessions();
     loadCategories();
+    loadPreferences();
   }, []);
+
+  // Reload when screen comes into focus (catches updates from other screens)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadSessions();
+      loadCategories();
+      loadPreferences();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     // Debounce search
@@ -48,6 +62,7 @@ export default function HomeScreen() {
     setRefreshing(true);
     await loadSessions();
     await loadCategories();
+    await loadPreferences();
     setRefreshing(false);
   }, []);
 
@@ -115,7 +130,7 @@ export default function HomeScreen() {
     : 0;
   const avgMinutes = Math.round(avgSessionMs / (1000 * 60));
 
-  // Calculate CATEGORY PROGRESS
+  // Calculate CATEGORY PROGRESS - Dynamic based on visible categories
   const calculateCategoryProgress = (categoryId: string): number => {
     const categorySessions = sessions.filter(s => s.categoryId === categoryId);
     const totalMs = categorySessions.reduce((sum, s) => sum + s.durationMs, 0);
@@ -125,8 +140,10 @@ export default function HomeScreen() {
     return Math.min(Math.round((hours / monthlyGoal) * 100), 100);
   };
 
-  const workProgress = calculateCategoryProgress('work');
-  const studyProgress = calculateCategoryProgress('study');
+  // Get visible categories based on user preferences
+  const visibleCategories = categories.filter(cat => 
+    preferences.visibleCategoryIds.includes(cat.id)
+  );
 
   // Use filtered sessions
   const sessionsToDisplay = filter.categoryId || filter.dateRange || filter.searchQuery
@@ -200,22 +217,32 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        <View style={styles.categoriesGrid}>
-          <CategoryProgressCard
-            icon="briefcase"
-            title="Work"
-            progress={workProgress}
-            color="#38BDF8"
-            gradientColors={['#38BDF8', '#67E8F9']}
-          />
-          <CategoryProgressCard
-            icon="school"
-            title="Study"
-            progress={studyProgress}
-            color="#34D399"
-            gradientColors={['#34D399', '#67E8F9']}
-          />
-        </View>
+        {/* Dynamic Category Cards */}
+        {visibleCategories.length > 0 ? (
+          <View style={styles.categoriesGrid}>
+            {visibleCategories.map((category) => (
+              <CategoryProgressCard
+                key={category.id}
+                icon={category.icon as keyof typeof Ionicons.glyphMap}
+                title={category.name}
+                progress={calculateCategoryProgress(category.id)}
+                color={category.color}
+                gradientColors={[category.color, theme.colors.primary.mint]}
+              />
+            ))}
+          </View>
+        ) : (
+          <GlassCard style={styles.emptyCardsCard}>
+            <View style={styles.emptyCardsContent}>
+              <Text style={styles.emptyCardsText}>
+                No category cards selected
+              </Text>
+              <Text style={styles.emptyCardsSubtext}>
+                Tap Settings to customize your dashboard
+              </Text>
+            </View>
+          </GlassCard>
+        )}
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
@@ -310,10 +337,31 @@ const styles = StyleSheet.create({
     gap: theme.spacing[3],
   },
   categoriesGrid: {
-    flexDirection: 'row',
-    gap: theme.spacing[4],
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: theme.spacing[4],
+  marginBottom: theme.spacing[6],
+  paddingHorizontal: theme.spacing[4],
+  justifyContent: 'space-between', // Better distribution
+},
+  emptyCardsCard: {
+    marginHorizontal: theme.spacing[4],
     marginBottom: theme.spacing[6],
-    paddingHorizontal: theme.spacing[4],
+  },
+  emptyCardsContent: {
+    padding: theme.spacing[6],
+    alignItems: 'center',
+  },
+  emptyCardsText: {
+    fontSize: theme.fontSize.base,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing[1],
+  },
+  emptyCardsSubtext: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text.tertiary,
+    textAlign: 'center',
   },
   searchContainer: {
     paddingHorizontal: theme.spacing[4],

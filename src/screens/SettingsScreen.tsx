@@ -12,42 +12,49 @@ export default function SettingsScreen() {
   const navigation = useNavigation<RootStackNavigationProp>();
 
   const settingsOptions = [
-    {
-      icon: 'apps',
-      title: 'Manage Categories',
-      subtitle: 'Add, edit, or delete categories',
-      onPress: () => navigation.navigate('CategoryManager'),
-      color: theme.colors.primary.cyan,
-    },
-    {
-      icon: 'notifications',
-      title: 'Notifications',
-      subtitle: 'Coming soon',
-      onPress: () => {},
-      color: theme.colors.primary.mint,
-    },
-    {
-      icon: 'download',
-      title: 'Export Data',
-      subtitle: 'Coming soon',
-      onPress: () => {},
-      color: theme.colors.primary.aqua,
-    },
-    {
-      icon: 'help-circle',
-      title: 'Help & Support',
-      subtitle: 'Coming soon',
-      onPress: () => {},
-      color: theme.colors.primary.cyan,
-    },
-    {
-      icon: 'information-circle',
-      title: 'About',
-      subtitle: 'Version 1.0.0',
-      onPress: () => {},
-      color: theme.colors.primary.mint,
-    },
-  ];
+  {
+    icon: 'grid',
+    title: 'Customize Dashboard',
+    subtitle: 'Choose which category cards to display',
+    onPress: () => navigation.navigate('CustomizeDashboard'),
+    color: theme.colors.primary.cyan,
+  },
+  {
+    icon: 'apps',
+    title: 'Manage Categories',
+    subtitle: 'Add, edit, or delete categories',
+    onPress: () => navigation.navigate('CategoryManager'),
+    color: theme.colors.primary.mint,
+  },
+  {
+    icon: 'notifications',
+    title: 'Notifications',
+    subtitle: 'Coming soon',
+    onPress: () => {},
+    color: theme.colors.primary.aqua,
+  },
+  {
+    icon: 'download',
+    title: 'Export Data',
+    subtitle: 'Coming soon',
+    onPress: () => {},
+    color: theme.colors.primary.cyan,
+  },
+  {
+    icon: 'help-circle',
+    title: 'Help & Support',
+    subtitle: 'Coming soon',
+    onPress: () => {},
+    color: theme.colors.primary.mint,
+  },
+  {
+    icon: 'information-circle',
+    title: 'About',
+    subtitle: 'Version 1.0.0',
+    onPress: () => {},
+    color: theme.colors.primary.aqua,
+  },
+];
 
   return (
     <View style={styles.root}>

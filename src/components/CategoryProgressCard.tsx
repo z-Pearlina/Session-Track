@@ -33,7 +33,7 @@ export function CategoryProgressCard({
           <Text style={styles.title}>{title}</Text>
           <View style={styles.progressBar}>
             <LinearGradient
-              colors={gradientColors}
+              colors={gradientColors as [string, ...string[]]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[

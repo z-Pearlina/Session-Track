@@ -15,6 +15,7 @@ import EditSessionScreen from '../screens/EditSessionScreen';
 import SessionDetailsScreen from '../screens/SessionDetailsScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import CategoryManagerScreen from '../screens/CategoryManagerScreen';
+import CustomizeDashboardScreen from '../screens/CustomizeDashboardScreen';
 
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -138,6 +139,13 @@ export default function AppNavigator() {
         <Stack.Screen
           name="CategoryManager"
           component={CategoryManagerScreen}
+          options={{
+            presentation: 'card',
+          }}
+        />
+        <Stack.Screen
+          name="CustomizeDashboard"
+          component={CustomizeDashboardScreen}
           options={{
             presentation: 'card',
           }}
