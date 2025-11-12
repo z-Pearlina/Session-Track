@@ -110,8 +110,8 @@ function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
     navigation.navigate('SessionDetails', { sessionId: session.id });
   }, [navigation, session.id]);
 
-  // قم بتغيير هذه القيمة لتقليل عرض الحاوية المكشوفة وبالتالي إزاحة الأزرار لليسار
-  const ACTIONS_WIDTH = 120; // كانت 128، جرب 120 أو 122، أو حتى 118 لتغطية أكثر
+  
+  const ACTIONS_WIDTH = 125; 
 
   const panResponder = useMemo(
     () =>
@@ -135,7 +135,6 @@ function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
         },
         onPanResponderRelease: (_, gestureState) => {
           const shouldOpen = gestureState.dx < -80;
-          // تأكد أن toValue يستخدم نفس قيمة ACTIONS_WIDTH
           const toValue = shouldOpen ? -ACTIONS_WIDTH : 0; 
 
           lastOffset.current = toValue;
@@ -168,7 +167,6 @@ function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
 
   return (
     <View style={styles.container}>
-      {/* هنا نستخدم ACTIONS_WIDTH لعرض الحاوية */}
       <View style={[styles.actionsContainer, { width: ACTIONS_WIDTH }]}>
         <TouchableOpacity
           style={[styles.actionButton, styles.editButton]}
@@ -356,7 +354,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: theme.spacing[4],
     paddingHorizontal: theme.spacing[4],
-    gap: theme.spacing[2],
+    gap: theme.spacing[1],
   },
   deletingText: {
     fontSize: theme.fontSize.sm,
