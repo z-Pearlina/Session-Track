@@ -1,60 +1,136 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { theme } from '../theme/theme';
 import { GlassCard } from '../components/GlassCard';
 import { RootStackNavigationProp } from '../types';
+import { useSessionStore } from '../stores/useSessionStore';
+import { useCategoryStore } from '../stores/useCategoryStore';
+
 
 export default function SettingsScreen() {
   const navigation = useNavigation<RootStackNavigationProp>();
+  const { sessions } = useSessionStore();
+  const { categories } = useCategoryStore();
+  const [isExporting, setIsExporting] = useState(false);
+
+  const exportData = async () => {
+    try {
+      setIsExporting(true);
+
+      // Prepare export data
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        version: '1.0.0',
+        categories: categories,
+        sessions: sessions,
+        statistics: {
+          totalSessions: sessions.length,
+          totalDurationMs: sessions.reduce((sum, s) => sum + s.durationMs, 0),
+          totalHours: (sessions.reduce((sum, s) => sum + s.durationMs, 0) / (1000 * 60 * 60)).toFixed(2),
+        }
+      };
+
+      // Convert to JSON
+      const jsonString = JSON.stringify(exportData, null, 2);
+
+      // Create filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const fileName = `session-track-export-${timestamp}.json`;
+
+      // Use the new File API
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+      
+      // Write file using the new API
+      await FileSystem.writeAsStringAsync(fileUri, jsonString, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      // Check if sharing is available
+      const isAvailable = await Sharing.isAvailableAsync();
+      
+      if (isAvailable) {
+        // Share the file
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'application/json',
+          dialogTitle: 'Export Session Track Data',
+          UTI: 'public.json',
+        });
+
+        Alert.alert(
+          'Export Successful! ✅',
+          `Your data has been exported to:\n${fileName}`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Export Complete',
+          `File saved to:\n${fileUri}\n\nYou can find it in your device's file manager.`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+      Alert.alert(
+        'Export Failed ❌',
+        error instanceof Error ? error.message : 'An unknown error occurred',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const settingsOptions = [
-  {
-    icon: 'grid',
-    title: 'Customize Dashboard',
-    subtitle: 'Choose which category cards to display',
-    onPress: () => navigation.navigate('CustomizeDashboard'),
-    color: theme.colors.primary.cyan,
-  },
-  {
-    icon: 'apps',
-    title: 'Manage Categories',
-    subtitle: 'Add, edit, or delete categories',
-    onPress: () => navigation.navigate('CategoryManager'),
-    color: theme.colors.primary.mint,
-  },
-  {
-    icon: 'notifications',
-    title: 'Notifications',
-    subtitle: 'Coming soon',
-    onPress: () => {},
-    color: theme.colors.primary.aqua,
-  },
-  {
-    icon: 'download',
-    title: 'Export Data',
-    subtitle: 'Coming soon',
-    onPress: () => {},
-    color: theme.colors.primary.cyan,
-  },
-  {
-    icon: 'help-circle',
-    title: 'Help & Support',
-    subtitle: 'Coming soon',
-    onPress: () => {},
-    color: theme.colors.primary.mint,
-  },
-  {
-    icon: 'information-circle',
-    title: 'About',
-    subtitle: 'Version 1.0.0',
-    onPress: () => {},
-    color: theme.colors.primary.aqua,
-  },
-];
+    {
+      icon: 'grid',
+      title: 'Customize Dashboard',
+      subtitle: 'Choose which category cards to display',
+      onPress: () => navigation.navigate('CustomizeDashboard'),
+      color: theme.colors.primary.cyan,
+    },
+    {
+      icon: 'apps',
+      title: 'Manage Categories',
+      subtitle: 'Add, edit, or delete categories',
+      onPress: () => navigation.navigate('CategoryManager'),
+      color: theme.colors.primary.mint,
+    },
+    {
+      icon: 'notifications',
+      title: 'Notifications',
+      subtitle: 'Coming soon',
+      onPress: () => {},
+      color: theme.colors.primary.aqua,
+    },
+    {
+      icon: 'download',
+      title: 'Export Data',
+      subtitle: isExporting ? 'Exporting...' : `Export ${sessions.length} sessions to JSON`,
+      onPress: exportData,
+      color: theme.colors.primary.cyan,
+      disabled: isExporting,
+    },
+    {
+      icon: 'help-circle',
+      title: 'Help & Support',
+      subtitle: 'Coming soon',
+      onPress: () => {},
+      color: theme.colors.primary.mint,
+    },
+    {
+      icon: 'information-circle',
+      title: 'About',
+      subtitle: 'Version 1.0.0',
+      onPress: () => {},
+      color: theme.colors.primary.aqua,
+    },
+  ];
 
   return (
     <View style={styles.root}>
@@ -82,15 +158,24 @@ export default function SettingsScreen() {
                 style={styles.optionButton}
                 onPress={option.onPress}
                 activeOpacity={0.7}
+                disabled={option.disabled}
               >
                 <View style={[styles.iconContainer, { backgroundColor: option.color + '20' }]}>
-                  <Ionicons name={option.icon as any} size={24} color={option.color} />
+                  <Ionicons 
+                    name={option.icon as any} 
+                    size={24} 
+                    color={option.disabled ? theme.colors.text.quaternary : option.color} 
+                  />
                 </View>
                 <View style={styles.optionText}>
                   <Text style={styles.optionTitle}>{option.title}</Text>
                   <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={24} color={theme.colors.text.tertiary} />
+                <Ionicons 
+                  name="chevron-forward" 
+                  size={24} 
+                  color={option.disabled ? theme.colors.text.quaternary : theme.colors.text.tertiary} 
+                />
               </TouchableOpacity>
             </GlassCard>
           ))}
