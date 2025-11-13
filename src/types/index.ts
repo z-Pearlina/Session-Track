@@ -29,6 +29,11 @@ export interface UserProfile {
   createdAt: string;
 }
 
+// Dashboard preferences
+export interface DashboardPreferences {
+  visibleCategoryIds: string[];
+}
+
 // Filter types
 export interface SessionFilter {
   categoryId?: string | null;
