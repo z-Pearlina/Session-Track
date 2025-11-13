@@ -1,15 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Session, Category, DashboardPreferences } from '../types';
+import { logger } from './logger';
+import {
+  APP_CONFIG,
+  STORAGE_KEYS,
+  ERROR_MESSAGES,
+  SUCCESS_MESSAGES
+} from '../config/constants';
 
-const STORAGE_KEYS = {
-  SESSIONS: '@sessions',
-  CATEGORIES: '@categories',
-  PREFERENCES: '@preferences',
-  VERSION: '@storage_version',
-  BACKUP: '@backup',
-} as const;
-
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = APP_CONFIG.STORAGE_VERSION;
 
 const isValidSession = (data: any): data is Session => {
   return (
@@ -47,48 +46,48 @@ export class StorageService {
   static async initialize(): Promise<void> {
     try {
       await this.checkAndMigrate();
-      console.log('✅ Storage initialized successfully');
+      logger.success('Storage initialized successfully');
     } catch (error) {
-      console.error('❌ Storage initialization failed:', error);
-      throw new Error('Failed to initialize storage');
+      logger.error('Storage initialization failed', error);
+      throw new Error(ERROR_MESSAGES.STORAGE_INIT_FAILED);
     }
   }
 
   private static async checkAndMigrate(): Promise<void> {
     try {
-      const versionStr = await AsyncStorage.getItem(STORAGE_KEYS.VERSION);
+      const versionStr = await AsyncStorage.getItem(STORAGE_KEYS.STORAGE_VERSION);
       const currentVersion = versionStr ? parseInt(versionStr, 10) : 0;
 
       if (currentVersion < CURRENT_VERSION) {
-        console.log(`🔄 Migrating from version ${currentVersion} to ${CURRENT_VERSION}`);
+        logger.info(`Migrating storage from version ${currentVersion} to ${CURRENT_VERSION}`);
         await this.migrate(currentVersion, CURRENT_VERSION);
-        await AsyncStorage.setItem(STORAGE_KEYS.VERSION, CURRENT_VERSION.toString());
+        await AsyncStorage.setItem(STORAGE_KEYS.STORAGE_VERSION, CURRENT_VERSION.toString());
       }
     } catch (error) {
-      console.error('Migration failed:', error);
+      logger.error('Storage migration failed', error);
     }
   }
 
   private static async migrate(fromVersion: number, toVersion: number): Promise<void> {
-    console.log(`Migration from ${fromVersion} to ${toVersion} complete`);
+    logger.info(`Migration from version ${fromVersion} to ${toVersion} complete`);
   }
 
   private static async createBackup(key: string, data: any): Promise<void> {
     try {
-      const backupKey = `${STORAGE_KEYS.BACKUP}_${key}_${Date.now()}`;
+      const backupKey = `${STORAGE_KEYS.BACKUP_PREFIX}${key}_${Date.now()}`;
       await AsyncStorage.setItem(backupKey, JSON.stringify(data));
-      
+
       const allKeys = await AsyncStorage.getAllKeys();
       const backupKeys = allKeys
-        .filter(k => k.startsWith(`${STORAGE_KEYS.BACKUP}_${key}`))
+        .filter(k => k.startsWith(`${STORAGE_KEYS.BACKUP_PREFIX}${key}`))
         .sort()
         .reverse();
-      
-      if (backupKeys.length > 3) {
-        await AsyncStorage.multiRemove(backupKeys.slice(3));
+
+      if (backupKeys.length > APP_CONFIG.STORAGE_BACKUP_COUNT) {
+        await AsyncStorage.multiRemove(backupKeys.slice(APP_CONFIG.STORAGE_BACKUP_COUNT));
       }
     } catch (error) {
-      console.warn('Backup creation failed:', error);
+      logger.warn('Backup creation failed', { error });
     }
   }
 
@@ -99,53 +98,90 @@ export class StorageService {
   ): Promise<T> {
     try {
       const raw = await AsyncStorage.getItem(key);
-      
+
       if (!raw) {
         return defaultValue;
       }
 
       const parsed = JSON.parse(raw);
-      
+
       if (Array.isArray(defaultValue)) {
         if (!Array.isArray(parsed)) {
-          console.error(`Invalid data type for ${key}: expected array`);
+          logger.error(`Invalid data type for ${key}: expected array`);
           return defaultValue;
         }
-        
+
         const validItems = parsed.filter(item => {
           const isValid = validator(item);
           if (!isValid) {
-            console.warn(`Invalid item in ${key}:`, item);
+            logger.warn(`Invalid item in ${key}`, { item });
           }
           return isValid;
         });
-        
+
         return validItems as T;
       } else {
         if (!validator(parsed)) {
-          console.error(`Invalid data structure for ${key}`);
+          logger.error(`Invalid data structure for ${key}`);
           return defaultValue;
         }
         return parsed;
       }
     } catch (error) {
-      console.error(`Failed to read ${key}:`, error);
+      logger.error(`Failed to read ${key}`, error);
       return defaultValue;
     }
   }
 
+  /**
+   * Safely writes data to storage with retry logic
+   * Uses exponential backoff for retries
+   */
   private static async safeWrite(key: string, data: any): Promise<void> {
+    // Create backup before writing
     try {
       const existing = await AsyncStorage.getItem(key);
       if (existing) {
         await this.createBackup(key, JSON.parse(existing));
       }
-
-      await AsyncStorage.setItem(key, JSON.stringify(data));
     } catch (error) {
-      console.error(`Failed to write ${key}:`, error);
-      throw new Error(`Storage write failed for ${key}`);
+      logger.warn(`Failed to create backup for ${key}`, { error });
+      // Continue with write even if backup fails
     }
+
+    // Retry logic with exponential backoff
+    let lastError: Error | null = null;
+    const maxAttempts = APP_CONFIG.STORAGE_RETRY_ATTEMPTS;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await AsyncStorage.setItem(key, JSON.stringify(data));
+
+        // Success - log only if it took multiple attempts
+        if (attempt > 1) {
+          logger.info(`Successfully wrote ${key} on attempt ${attempt}`);
+        }
+
+        return; // Success!
+      } catch (error) {
+        lastError = error as Error;
+        logger.warn(`Write attempt ${attempt}/${maxAttempts} failed for ${key}`, { error });
+
+        // If not the last attempt, wait with exponential backoff
+        if (attempt < maxAttempts) {
+          const delayMs =
+            APP_CONFIG.STORAGE_RETRY_DELAY_BASE_MS *
+            Math.pow(APP_CONFIG.STORAGE_RETRY_MULTIPLIER, attempt - 1);
+
+          logger.debug(`Retrying write for ${key} in ${delayMs}ms`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      }
+    }
+
+    // All retries failed
+    logger.error(`Failed to write ${key} after ${maxAttempts} attempts`, lastError);
+    throw new Error(ERROR_MESSAGES.STORAGE_SAVE_FAILED);
   }
 
   static async getSessions(): Promise<Session[]> {
@@ -282,7 +318,7 @@ export class StorageService {
 
   static async getPreferences(): Promise<DashboardPreferences> {
     return this.safeRead<DashboardPreferences>(
-      STORAGE_KEYS.PREFERENCES,
+      STORAGE_KEYS.DASHBOARD_PREFERENCES,
       isValidPreferences,
       { visibleCategoryIds: [] }
     );
@@ -293,7 +329,7 @@ export class StorageService {
       throw new Error('Invalid preferences data');
     }
 
-    await this.safeWrite(STORAGE_KEYS.PREFERENCES, preferences);
+    await this.safeWrite(STORAGE_KEYS.DASHBOARD_PREFERENCES, preferences);
   }
 
   static async updatePreferences(updates: Partial<DashboardPreferences>): Promise<void> {
@@ -304,7 +340,7 @@ export class StorageService {
       throw new Error('Invalid preferences data after update');
     }
 
-    await this.safeWrite(STORAGE_KEYS.PREFERENCES, updated);
+    await this.safeWrite(STORAGE_KEYS.DASHBOARD_PREFERENCES, updated);
   }
 
   static async getStorageStats(): Promise<{
@@ -327,7 +363,7 @@ export class StorageService {
         estimatedSizeKB,
       };
     } catch (error) {
-      console.error('Failed to get storage stats:', error);
+      logger.error('Failed to get storage stats', error);
       return { sessionCount: 0, categoryCount: 0, estimatedSizeKB: 0 };
     }
   }
@@ -337,11 +373,11 @@ export class StorageService {
       await AsyncStorage.multiRemove([
         STORAGE_KEYS.SESSIONS,
         STORAGE_KEYS.CATEGORIES,
-        STORAGE_KEYS.PREFERENCES,
+        STORAGE_KEYS.DASHBOARD_PREFERENCES,
       ]);
-      console.log('✅ All data cleared');
+      logger.success('All data cleared');
     } catch (error) {
-      console.error('Failed to clear data:', error);
+      logger.error('Failed to clear data', error);
       throw new Error('Failed to clear storage');
     }
   }
@@ -384,10 +420,10 @@ export class StorageService {
     await Promise.all([
       this.safeWrite(STORAGE_KEYS.SESSIONS, validSessions),
       this.safeWrite(STORAGE_KEYS.CATEGORIES, validCategories),
-      this.safeWrite(STORAGE_KEYS.PREFERENCES, data.preferences),
+      this.safeWrite(STORAGE_KEYS.DASHBOARD_PREFERENCES, data.preferences),
     ]);
 
-    console.log(`✅ Restored ${validSessions.length} sessions and ${validCategories.length} categories`);
+    logger.success(`Restored ${validSessions.length} sessions and ${validCategories.length} categories`);
   }
 
   static async healthCheck(): Promise<{ healthy: boolean; error?: string }> {

@@ -20,6 +20,8 @@ import { theme } from '../theme/theme';
 import { useSessionStore } from '../stores/useSessionStore';
 import { useCategoryStore } from '../stores/useCategoryStore';
 import { GlassCard } from '../components/GlassCard';
+import { validation } from '../services/validation';
+import { SUCCESS_MESSAGES, ERROR_MESSAGES } from '../config/constants';
 
 export default function EditSessionScreen() {
   const navigation = useNavigation();
@@ -53,31 +55,52 @@ export default function EditSessionScreen() {
   if (!session) return null;
 
   const handleSave = async () => {
-    if (!title.trim()) {
-      Alert.alert('Error', 'Please enter a session title');
+    // Validate session title
+    const titleError = validation.validateSessionTitle(title);
+    if (titleError) {
+      Alert.alert('Validation Error', titleError);
       return;
     }
 
-    const minutes = parseInt(durationMinutes, 10);
-    if (isNaN(minutes) || minutes < 1) {
-      Alert.alert('Error', 'Please enter a valid duration (at least 1 minute)');
+    // Validate session notes
+    const notesError = validation.validateSessionNotes(notes);
+    if (notesError) {
+      Alert.alert('Validation Error', notesError);
+      return;
+    }
+
+    // Parse and validate duration
+    const minutes = validation.parseDuration(durationMinutes);
+    const durationError = validation.validateSessionDurationMinutes(minutes);
+    if (durationError) {
+      Alert.alert('Validation Error', durationError);
+      return;
+    }
+
+    // Validate category exists
+    const categoryError = validation.validateCategoryExists(selectedCategory, categories);
+    if (categoryError) {
+      Alert.alert('Validation Error', categoryError);
       return;
     }
 
     setIsSaving(true);
     try {
       await updateSession(sessionId, {
-        title: title.trim(),
+        title: title.trim() || 'Untitled Session',
         notes: notes.trim(),
         categoryId: selectedCategory,
         durationMs: minutes * 60 * 1000,
       });
 
-      Alert.alert('Success', 'Session updated successfully', [
+      Alert.alert('Success', SUCCESS_MESSAGES.SESSION_SAVED, [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
-      Alert.alert('Error', 'Failed to update session');
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : ERROR_MESSAGES.SESSION_SAVE_FAILED
+      );
     } finally {
       setIsSaving(false);
     }
@@ -97,7 +120,10 @@ export default function EditSessionScreen() {
               await deleteSession(sessionId);
               navigation.goBack();
             } catch (error) {
-              Alert.alert('Error', 'Failed to delete session');
+              Alert.alert(
+                'Error',
+                error instanceof Error ? error.message : ERROR_MESSAGES.SESSION_DELETE_FAILED
+              );
             }
           },
         },

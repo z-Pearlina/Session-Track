@@ -3,6 +3,8 @@ import * as Sharing from 'expo-sharing';
 import { Alert, Platform } from 'react-native';
 import { StorageService } from './StorageService';
 import { Session, Category, DashboardPreferences } from '../types';
+import { logger } from './logger';
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../config/constants';
 
 export class ExportService {
   private static getDocumentDirectory(): string {
@@ -52,12 +54,12 @@ export class ExportService {
         );
       }
 
-      console.log(`✅ Exported ${data.sessions.length} sessions to ${filename}`);
+      logger.success(`Exported ${data.sessions.length} sessions to ${filename}`);
     } catch (error) {
-      console.error('Export to JSON failed:', error);
+      logger.error('Export to JSON failed', error);
       Alert.alert(
         'Export Failed',
-        'Could not create backup file. Please try again.'
+        ERROR_MESSAGES.EXPORT_FAILED
       );
       throw error;
     }
@@ -108,10 +110,10 @@ export class ExportService {
         ]
       );
     } catch (error) {
-      console.error('Import from JSON failed:', error);
+      logger.error('Import from JSON failed', error);
       Alert.alert(
         'Import Failed',
-        'Could not read backup file. Make sure it\'s a valid Session Tracker backup.'
+        ERROR_MESSAGES.IMPORT_FAILED
       );
       throw error;
     }
@@ -179,12 +181,12 @@ export class ExportService {
         );
       }
 
-      console.log(`✅ Exported ${sessions.length} sessions to CSV`);
+      logger.success(`Exported ${sessions.length} sessions to CSV`);
     } catch (error) {
-      console.error('Export to CSV failed:', error);
+      logger.error('Export to CSV failed', error);
       Alert.alert(
         'Export Failed',
-        'Could not create CSV file. Please try again.'
+        ERROR_MESSAGES.EXPORT_FAILED
       );
       throw error;
     }
@@ -285,10 +287,10 @@ export class ExportService {
         });
       }
 
-      console.log('✅ Statistics exported to CSV');
+      logger.success('Statistics exported to CSV');
     } catch (error) {
-      console.error('Export statistics failed:', error);
-      Alert.alert('Export Failed', 'Could not create statistics file.');
+      logger.error('Export statistics failed', error);
+      Alert.alert('Export Failed', ERROR_MESSAGES.EXPORT_FAILED);
       throw error;
     }
   }
