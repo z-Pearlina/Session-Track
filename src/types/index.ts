@@ -1,13 +1,77 @@
 import { StackNavigationProp } from '@react-navigation/stack';
 
+export type GoalPeriod = 'daily' | 'weekly' | 'monthly';
+export type GoalStatus = 'active' | 'completed' | 'failed' | 'archived';
+
+export interface Goal {
+  id: string;
+  title: string;
+  description?: string;
+  categoryId?: string;
+  targetMinutes: number;
+  period: GoalPeriod;
+  startDate: string;
+  endDate: string;
+  currentProgress: number;
+  status: GoalStatus;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
+export type AchievementCategory = 
+  | 'milestone' 
+  | 'streak' 
+  | 'consistency' 
+  | 'speed' 
+  | 'variety' 
+  | 'dedication';
+
+export type AchievementTier = 'bronze' | 'silver' | 'gold' | 'platinum';
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  category: AchievementCategory;
+  tier: AchievementTier;
+  icon: string;
+  requirement: {
+    type: 'totalHours' | 'streak' | 'sessionCount' | 'categoryCount' | 'custom';
+    value: number;
+  };
+  unlockedAt?: string;
+  isUnlocked: boolean;
+  progress: number;
+}
+
+export interface UserAchievementProgress {
+  achievementId: string;
+  progress: number;
+  isUnlocked: boolean;
+  unlockedAt?: string;
+  notificationShown: boolean;
+}
+
+export interface NotificationPreferences {
+  enabled: boolean;
+  dailyReminderEnabled: boolean;
+  dailyReminderTime: string;
+  streakReminderEnabled: boolean;
+  goalReminderEnabled: boolean;
+  achievementNotificationsEnabled: boolean;
+  soundEnabled: boolean;
+  vibrationEnabled: boolean;
+}
+
 export interface Session {
   id: string;
   title: string;
   categoryId: string;
   durationMs: number;
   notes?: string;
-  startedAt: string;  // ISO 8601 timestamp
-  endedAt: string;    // ISO 8601 timestamp
+  startedAt: string;
+  endedAt: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -18,7 +82,7 @@ export interface Category {
   color: string;
   icon: string;
   createdAt: string;
-  isDefault?: boolean; // Can't be deleted
+  isDefault?: boolean;
 }
 
 export interface UserProfile {
@@ -29,12 +93,10 @@ export interface UserProfile {
   createdAt: string;
 }
 
-// Dashboard preferences
 export interface DashboardPreferences {
   visibleCategoryIds: string[];
 }
 
-// Filter types
 export interface SessionFilter {
   categoryId?: string | null;
   dateRange?: DateRange | null;
@@ -42,13 +104,12 @@ export interface SessionFilter {
 }
 
 export interface DateRange {
-  start: string; // ISO date
-  end: string;   // ISO date
+  start: string;
+  end: string;
 }
 
 export type DateRangePreset = 'today' | 'week' | 'month' | 'custom';
 
-// Navigation types
 export type RootStackParamList = {
   MainTabs: undefined;
   EditSession: { sessionId: string };
@@ -65,5 +126,4 @@ export type MainTabParamList = {
   Settings: undefined;
 };
 
-// Navigation prop types
 export type RootStackNavigationProp = StackNavigationProp<RootStackParamList>;

@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Session, Category, DashboardPreferences } from '../types';
+import { Session, Category, DashboardPreferences, Goal, Achievement } from '../types';
 import { logger } from './logger';
 import {
   APP_CONFIG,
@@ -39,6 +39,27 @@ const isValidPreferences = (data: any): data is DashboardPreferences => {
     typeof data === 'object' &&
     Array.isArray(data.visibleCategoryIds) &&
     data.visibleCategoryIds.every((id: any) => typeof id === 'string')
+  );
+};
+
+const isValidGoal = (data: any): data is Goal => {
+  return (
+    typeof data === 'object' &&
+    typeof data.id === 'string' &&
+    typeof data.title === 'string' &&
+    typeof data.targetMinutes === 'number' &&
+    typeof data.period === 'string' &&
+    typeof data.status === 'string'
+  );
+};
+
+const isValidAchievement = (data: any): data is Achievement => {
+  return (
+    typeof data === 'object' &&
+    typeof data.id === 'string' &&
+    typeof data.title === 'string' &&
+    typeof data.category === 'string' &&
+    typeof data.tier === 'string'
   );
 };
 
@@ -133,12 +154,7 @@ export class StorageService {
     }
   }
 
-  /**
-   * Safely writes data to storage with retry logic
-   * Uses exponential backoff for retries
-   */
   private static async safeWrite(key: string, data: any): Promise<void> {
-    // Create backup before writing
     try {
       const existing = await AsyncStorage.getItem(key);
       if (existing) {
@@ -146,10 +162,8 @@ export class StorageService {
       }
     } catch (error) {
       logger.warn(`Failed to create backup for ${key}`, { error });
-      // Continue with write even if backup fails
     }
 
-    // Retry logic with exponential backoff
     let lastError: Error | null = null;
     const maxAttempts = APP_CONFIG.STORAGE_RETRY_ATTEMPTS;
 
@@ -157,17 +171,15 @@ export class StorageService {
       try {
         await AsyncStorage.setItem(key, JSON.stringify(data));
 
-        // Success - log only if it took multiple attempts
         if (attempt > 1) {
           logger.info(`Successfully wrote ${key} on attempt ${attempt}`);
         }
 
-        return; // Success!
+        return;
       } catch (error) {
         lastError = error as Error;
         logger.warn(`Write attempt ${attempt}/${maxAttempts} failed for ${key}`, { error });
 
-        // If not the last attempt, wait with exponential backoff
         if (attempt < maxAttempts) {
           const delayMs =
             APP_CONFIG.STORAGE_RETRY_DELAY_BASE_MS *
@@ -179,7 +191,6 @@ export class StorageService {
       }
     }
 
-    // All retries failed
     logger.error(`Failed to write ${key} after ${maxAttempts} attempts`, lastError);
     throw new Error(ERROR_MESSAGES.STORAGE_SAVE_FAILED);
   }
@@ -441,6 +452,79 @@ export class StorageService {
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
+  }
+
+  static async getGoals(): Promise<Goal[]> {
+    const data = await this.safeRead<Goal[]>(
+      STORAGE_KEYS.GOALS,
+      (data: any): data is Goal[] => Array.isArray(data) && data.every(isValidGoal),
+      []
+    );
+    return data;
+  }
+
+  static async saveGoal(goal: Goal): Promise<void> {
+    if (!isValidGoal(goal)) {
+      throw new Error('Invalid goal data');
+    }
+
+    const goals = await this.getGoals();
+    goals.push(goal);
+    await this.safeWrite(STORAGE_KEYS.GOALS, goals);
+  }
+
+  static async updateGoal(goalId: string, updates: Partial<Goal>): Promise<void> {
+    const goals = await this.getGoals();
+    const index = goals.findIndex((g) => g.id === goalId);
+
+    if (index === -1) {
+      throw new Error('Goal not found');
+    }
+
+    goals[index] = { ...goals[index], ...updates, updatedAt: new Date().toISOString() };
+    await this.safeWrite(STORAGE_KEYS.GOALS, goals);
+  }
+
+  static async deleteGoal(goalId: string): Promise<void> {
+    const goals = await this.getGoals();
+    const filtered = goals.filter((g) => g.id !== goalId);
+    await this.safeWrite(STORAGE_KEYS.GOALS, filtered);
+  }
+
+  static async getAchievements(): Promise<Achievement[]> {
+    const data = await this.safeRead<Achievement[]>(
+      STORAGE_KEYS.ACHIEVEMENTS,
+      (data: any): data is Achievement[] => Array.isArray(data) && data.every(isValidAchievement),
+      []
+    );
+    return data;
+  }
+
+  static async saveAchievement(achievement: Achievement): Promise<void> {
+    if (!isValidAchievement(achievement)) {
+      throw new Error('Invalid achievement data');
+    }
+
+    const achievements = await this.getAchievements();
+    const existing = achievements.find((a) => a.id === achievement.id);
+
+    if (existing) {
+      return;
+    }
+    achievements.push(achievement);
+    await this.safeWrite(STORAGE_KEYS.ACHIEVEMENTS, achievements);
+  }
+
+  static async updateAchievement(achievementId: string, updates: Partial<Achievement>): Promise<void> {
+    const achievements = await this.getAchievements();
+    const index = achievements.findIndex((a) => a.id === achievementId);
+
+    if (index === -1) {
+      throw new Error('Achievement not found');
+    }
+
+    achievements[index] = { ...achievements[index], ...updates };
+    await this.safeWrite(STORAGE_KEYS.ACHIEVEMENTS, achievements);
   }
 }
 

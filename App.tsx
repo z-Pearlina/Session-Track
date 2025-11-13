@@ -4,9 +4,11 @@ import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AppNavigator from './src/navigation/AppNavigator';
 import { StorageService } from './src/services/StorageService';
+import { NotificationService } from './src/services/NotificationService';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { logger } from './src/services/logger';
 import { theme } from './src/theme/theme';
+import { useAchievementStore } from './src/stores/useAchievementStore';
 
 export default function App() {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -16,6 +18,17 @@ export default function App() {
     const initializeApp = async () => {
       try {
         await StorageService.initialize();
+        logger.success('Storage initialized');
+
+        await NotificationService.initialize();
+        logger.success('Notifications initialized');
+
+        const achievements = await StorageService.getAchievements();
+        if (achievements.length === 0) {
+          logger.info('Initializing default achievements');
+          await useAchievementStore.getState().initializeDefaultAchievements();
+        }
+
         logger.success('App initialized successfully');
         setIsInitialized(true);
       } catch (error) {
@@ -23,13 +36,12 @@ export default function App() {
         setInitError(
           'Failed to initialize the app. Please restart the application.'
         );
-      }
+        }
     };
 
     initializeApp();
   }, []);
 
-  // Show loading screen while initializing
   if (!isInitialized && !initError) {
     return (
       <View style={styles.loadingContainer}>
@@ -39,7 +51,6 @@ export default function App() {
     );
   }
 
-  // Show error screen if initialization failed
   if (initError) {
     return (
       <View style={styles.errorContainer}>
