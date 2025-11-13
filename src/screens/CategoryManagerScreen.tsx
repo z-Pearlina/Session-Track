@@ -20,6 +20,8 @@ import { theme } from '../theme/theme';
 import { useCategoryStore } from '../stores/useCategoryStore';
 import { GlassCard } from '../components/GlassCard';
 import { Category } from '../types';
+import { validation } from '../services/validation';
+import { SUCCESS_MESSAGES, ERROR_MESSAGES } from '../config/constants';
 
 /**
  * ✨ OPTIMIZED CATEGORY MANAGER SCREEN
@@ -188,8 +190,28 @@ export default function CategoryManagerScreen() {
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (!name.trim()) {
-      Alert.alert('Error', 'Please enter a category name');
+    // Validate category name
+    const nameError = validation.validateCategoryName(
+      name,
+      categories,
+      editingCategory?.id
+    );
+    if (nameError) {
+      Alert.alert('Validation Error', nameError);
+      return;
+    }
+
+    // Validate icon
+    const iconError = validation.validateIconName(selectedIcon);
+    if (iconError) {
+      Alert.alert('Validation Error', iconError);
+      return;
+    }
+
+    // Validate color
+    const colorError = validation.validateColorHex(selectedColor);
+    if (colorError) {
+      Alert.alert('Validation Error', colorError);
       return;
     }
 
@@ -198,8 +220,12 @@ export default function CategoryManagerScreen() {
 
     try {
       if (editingCategory) {
-        await updateCategory(editingCategory.id, { name: name.trim(), icon: selectedIcon, color: selectedColor });
-        Alert.alert('Success', 'Category updated successfully');
+        await updateCategory(editingCategory.id, {
+          name: name.trim(),
+          icon: selectedIcon,
+          color: selectedColor
+        });
+        Alert.alert('Success', SUCCESS_MESSAGES.CATEGORY_SAVED);
       } else {
         const newCategory: Category = {
           id: `category_${Date.now()}`,
@@ -210,15 +236,18 @@ export default function CategoryManagerScreen() {
           isDefault: false,
         };
         await addCategory(newCategory);
-        Alert.alert('Success', 'Category created successfully');
+        Alert.alert('Success', SUCCESS_MESSAGES.CATEGORY_SAVED);
       }
       handleCloseModal();
     } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to save category');
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : ERROR_MESSAGES.CATEGORY_SAVE_FAILED
+      );
     } finally {
       setIsSaving(false);
     }
-  }, [name, selectedIcon, selectedColor, editingCategory, updateCategory, addCategory, handleCloseModal]);
+  }, [name, selectedIcon, selectedColor, editingCategory, categories, updateCategory, addCategory, handleCloseModal]);
 
   const handleDelete = useCallback((category: Category) => {
     Alert.alert(
@@ -232,9 +261,12 @@ export default function CategoryManagerScreen() {
           onPress: async () => {
             try {
               await deleteCategory(category.id);
-              Alert.alert('Success', 'Category deleted successfully');
+              Alert.alert('Success', SUCCESS_MESSAGES.CATEGORY_DELETED);
             } catch (error) {
-              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to delete category');
+              Alert.alert(
+                'Error',
+                error instanceof Error ? error.message : ERROR_MESSAGES.CATEGORY_DELETE_FAILED
+              );
             }
           },
         },
