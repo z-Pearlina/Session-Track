@@ -1,530 +1,479 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Session, Category, DashboardPreferences, Goal, Achievement } from '../types';
+import { Session, Category, Goal, Achievement, DashboardPreferences, NotificationPreferences } from '../types';
 import { logger } from './logger';
-import {
-  APP_CONFIG,
-  STORAGE_KEYS,
-  ERROR_MESSAGES,
-  SUCCESS_MESSAGES
-} from '../config/constants';
-
-const CURRENT_VERSION = APP_CONFIG.STORAGE_VERSION;
-
-const isValidSession = (data: any): data is Session => {
-  return (
-    typeof data === 'object' &&
-    typeof data.id === 'string' &&
-    typeof data.title === 'string' &&
-    typeof data.categoryId === 'string' &&
-    typeof data.startedAt === 'string' &&
-    typeof data.durationMs === 'number' &&
-    data.durationMs >= 0
-  );
-};
-
-const isValidCategory = (data: any): data is Category => {
-  return (
-    typeof data === 'object' &&
-    typeof data.id === 'string' &&
-    typeof data.name === 'string' &&
-    typeof data.icon === 'string' &&
-    typeof data.color === 'string' &&
-    typeof data.createdAt === 'string' &&
-    typeof data.isDefault === 'boolean'
-  );
-};
-
-const isValidPreferences = (data: any): data is DashboardPreferences => {
-  return (
-    typeof data === 'object' &&
-    Array.isArray(data.visibleCategoryIds) &&
-    data.visibleCategoryIds.every((id: any) => typeof id === 'string')
-  );
-};
-
-const isValidGoal = (data: any): data is Goal => {
-  return (
-    typeof data === 'object' &&
-    typeof data.id === 'string' &&
-    typeof data.title === 'string' &&
-    typeof data.targetMinutes === 'number' &&
-    typeof data.period === 'string' &&
-    typeof data.status === 'string'
-  );
-};
-
-const isValidAchievement = (data: any): data is Achievement => {
-  return (
-    typeof data === 'object' &&
-    typeof data.id === 'string' &&
-    typeof data.title === 'string' &&
-    typeof data.category === 'string' &&
-    typeof data.tier === 'string'
-  );
-};
+import { STORAGE_KEYS } from '../config/constants';
 
 export class StorageService {
   static async initialize(): Promise<void> {
     try {
-      await this.checkAndMigrate();
-      logger.success('Storage initialized successfully');
+      logger.info('Initializing StorageService...');
+      
+      await AsyncStorage.getItem(STORAGE_KEYS.STORAGE_VERSION);
+      
+      logger.success('StorageService initialized successfully');
     } catch (error) {
-      logger.error('Storage initialization failed', error);
-      throw new Error(ERROR_MESSAGES.STORAGE_INIT_FAILED);
+      logger.error('Failed to initialize StorageService', error);
+      throw error;
     }
-  }
-
-  private static async checkAndMigrate(): Promise<void> {
-    try {
-      const versionStr = await AsyncStorage.getItem(STORAGE_KEYS.STORAGE_VERSION);
-      const currentVersion = versionStr ? parseInt(versionStr, 10) : 0;
-
-      if (currentVersion < CURRENT_VERSION) {
-        logger.info(`Migrating storage from version ${currentVersion} to ${CURRENT_VERSION}`);
-        await this.migrate(currentVersion, CURRENT_VERSION);
-        await AsyncStorage.setItem(STORAGE_KEYS.STORAGE_VERSION, CURRENT_VERSION.toString());
-      }
-    } catch (error) {
-      logger.error('Storage migration failed', error);
-    }
-  }
-
-  private static async migrate(fromVersion: number, toVersion: number): Promise<void> {
-    logger.info(`Migration from version ${fromVersion} to ${toVersion} complete`);
-  }
-
-  private static async createBackup(key: string, data: any): Promise<void> {
-    try {
-      const backupKey = `${STORAGE_KEYS.BACKUP_PREFIX}${key}_${Date.now()}`;
-      await AsyncStorage.setItem(backupKey, JSON.stringify(data));
-
-      const allKeys = await AsyncStorage.getAllKeys();
-      const backupKeys = allKeys
-        .filter(k => k.startsWith(`${STORAGE_KEYS.BACKUP_PREFIX}${key}`))
-        .sort()
-        .reverse();
-
-      if (backupKeys.length > APP_CONFIG.STORAGE_BACKUP_COUNT) {
-        await AsyncStorage.multiRemove(backupKeys.slice(APP_CONFIG.STORAGE_BACKUP_COUNT));
-      }
-    } catch (error) {
-      logger.warn('Backup creation failed', { error });
-    }
-  }
-
-  private static async safeRead<T>(
-    key: string,
-    validator: (data: any) => data is T,
-    defaultValue: T
-  ): Promise<T> {
-    try {
-      const raw = await AsyncStorage.getItem(key);
-
-      if (!raw) {
-        return defaultValue;
-      }
-
-      const parsed = JSON.parse(raw);
-
-      if (Array.isArray(defaultValue)) {
-        if (!Array.isArray(parsed)) {
-          logger.error(`Invalid data type for ${key}: expected array`);
-          return defaultValue;
-        }
-
-        const validItems = parsed.filter(item => {
-          const isValid = validator(item);
-          if (!isValid) {
-            logger.warn(`Invalid item in ${key}`, { item });
-          }
-          return isValid;
-        });
-
-        return validItems as T;
-      } else {
-        if (!validator(parsed)) {
-          logger.error(`Invalid data structure for ${key}`);
-          return defaultValue;
-        }
-        return parsed;
-      }
-    } catch (error) {
-      logger.error(`Failed to read ${key}`, error);
-      return defaultValue;
-    }
-  }
-
-  private static async safeWrite(key: string, data: any): Promise<void> {
-    try {
-      const existing = await AsyncStorage.getItem(key);
-      if (existing) {
-        await this.createBackup(key, JSON.parse(existing));
-      }
-    } catch (error) {
-      logger.warn(`Failed to create backup for ${key}`, { error });
-    }
-
-    let lastError: Error | null = null;
-    const maxAttempts = APP_CONFIG.STORAGE_RETRY_ATTEMPTS;
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        await AsyncStorage.setItem(key, JSON.stringify(data));
-
-        if (attempt > 1) {
-          logger.info(`Successfully wrote ${key} on attempt ${attempt}`);
-        }
-
-        return;
-      } catch (error) {
-        lastError = error as Error;
-        logger.warn(`Write attempt ${attempt}/${maxAttempts} failed for ${key}`, { error });
-
-        if (attempt < maxAttempts) {
-          const delayMs =
-            APP_CONFIG.STORAGE_RETRY_DELAY_BASE_MS *
-            Math.pow(APP_CONFIG.STORAGE_RETRY_MULTIPLIER, attempt - 1);
-
-          logger.debug(`Retrying write for ${key} in ${delayMs}ms`);
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-        }
-      }
-    }
-
-    logger.error(`Failed to write ${key} after ${maxAttempts} attempts`, lastError);
-    throw new Error(ERROR_MESSAGES.STORAGE_SAVE_FAILED);
   }
 
   static async getSessions(): Promise<Session[]> {
-    const data = await this.safeRead<Session[]>(
-      STORAGE_KEYS.SESSIONS,
-      (data: any): data is Session[] => Array.isArray(data) && data.every(isValidSession),
-      []
-    );
-    return data;
+    try {
+      const data = await AsyncStorage.getItem(STORAGE_KEYS.SESSIONS);
+      const sessions = data ? JSON.parse(data) : [];
+      logger.info(`Loaded ${sessions.length} sessions`);
+      return sessions;
+    } catch (error) {
+      logger.error('Failed to get sessions', error);
+      return [];
+    }
   }
 
   static async saveSession(session: Session): Promise<void> {
-    if (!isValidSession(session)) {
-      throw new Error('Invalid session data');
+    try {
+      const sessions = await this.getSessions();
+      sessions.push(session);
+      await AsyncStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
+      logger.success(`Session saved: ${session.id}`);
+    } catch (error) {
+      logger.error('Failed to save session', error);
+      throw error;
     }
-
-    const sessions = await this.getSessions();
-    
-    if (sessions.some(s => s.id === session.id)) {
-      throw new Error('Session with this ID already exists');
-    }
-
-    sessions.push(session);
-    await this.safeWrite(STORAGE_KEYS.SESSIONS, sessions);
   }
 
   static async updateSession(sessionId: string, updates: Partial<Session>): Promise<void> {
-    const sessions = await this.getSessions();
-    const index = sessions.findIndex(s => s.id === sessionId);
+    try {
+      const sessions = await this.getSessions();
+      const index = sessions.findIndex(s => s.id === sessionId);
+      
+      if (index === -1) {
+        throw new Error(`Session not found: ${sessionId}`);
+      }
 
-    if (index === -1) {
-      throw new Error('Session not found');
+      sessions[index] = {
+        ...sessions[index],
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await AsyncStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
+      logger.success(`Session updated: ${sessionId}`);
+    } catch (error) {
+      logger.error('Failed to update session', error);
+      throw error;
     }
-
-    const updatedSession = {
-      ...sessions[index],
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    };
-
-    if (!isValidSession(updatedSession)) {
-      throw new Error('Invalid session data after update');
-    }
-
-    sessions[index] = updatedSession;
-    await this.safeWrite(STORAGE_KEYS.SESSIONS, sessions);
   }
 
   static async deleteSession(sessionId: string): Promise<void> {
-    const sessions = await this.getSessions();
-    const filtered = sessions.filter(s => s.id !== sessionId);
-
-    if (filtered.length === sessions.length) {
-      throw new Error('Session not found');
+    try {
+      const sessions = await this.getSessions();
+      const filtered = sessions.filter(s => s.id !== sessionId);
+      await AsyncStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(filtered));
+      logger.success(`Session deleted: ${sessionId}`);
+    } catch (error) {
+      logger.error('Failed to delete session', error);
+      throw error;
     }
-
-    await this.safeWrite(STORAGE_KEYS.SESSIONS, filtered);
   }
 
-  static async bulkDeleteSessions(sessionIds: string[]): Promise<void> {
-    const sessions = await this.getSessions();
-    const idSet = new Set(sessionIds);
-    const filtered = sessions.filter(s => !idSet.has(s.id));
-    await this.safeWrite(STORAGE_KEYS.SESSIONS, filtered);
+  static async clearAllSessions(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEYS.SESSIONS);
+      logger.warn('All sessions cleared');
+    } catch (error) {
+      logger.error('Failed to clear sessions', error);
+      throw error;
+    }
   }
 
   static async getCategories(): Promise<Category[]> {
-    const data = await this.safeRead<Category[]>(
-      STORAGE_KEYS.CATEGORIES,
-      (data: any): data is Category[] => Array.isArray(data) && data.every(isValidCategory),
-      []
-    );
-    return data;
+    try {
+      const data = await AsyncStorage.getItem(STORAGE_KEYS.CATEGORIES);
+      const categories = data ? JSON.parse(data) : [];
+      logger.info(`Loaded ${categories.length} categories`);
+      return categories;
+    } catch (error) {
+      logger.error('Failed to get categories', error);
+      return [];
+    }
   }
 
   static async saveCategory(category: Category): Promise<void> {
-    if (!isValidCategory(category)) {
-      throw new Error('Invalid category data');
+    try {
+      const categories = await this.getCategories();
+      categories.push(category);
+      await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
+      logger.success(`Category saved: ${category.name}`);
+    } catch (error) {
+      logger.error('Failed to save category', error);
+      throw error;
     }
-
-    const categories = await this.getCategories();
-    
-    if (categories.some(c => c.id === category.id)) {
-      throw new Error('Category with this ID already exists');
-    }
-
-    categories.push(category);
-    await this.safeWrite(STORAGE_KEYS.CATEGORIES, categories);
   }
 
   static async updateCategory(categoryId: string, updates: Partial<Category>): Promise<void> {
-    const categories = await this.getCategories();
-    const index = categories.findIndex(c => c.id === categoryId);
+    try {
+      const categories = await this.getCategories();
+      const index = categories.findIndex(c => c.id === categoryId);
+      
+      if (index === -1) {
+        throw new Error(`Category not found: ${categoryId}`);
+      }
 
-    if (index === -1) {
-      throw new Error('Category not found');
+      categories[index] = { ...categories[index], ...updates };
+      await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
+      logger.success(`Category updated: ${categoryId}`);
+    } catch (error) {
+      logger.error('Failed to update category', error);
+      throw error;
     }
-
-    const updatedCategory = {
-      ...categories[index],
-      ...updates,
-    };
-
-    if (!isValidCategory(updatedCategory)) {
-      throw new Error('Invalid category data after update');
-    }
-
-    categories[index] = updatedCategory;
-    await this.safeWrite(STORAGE_KEYS.CATEGORIES, categories);
   }
 
   static async deleteCategory(categoryId: string): Promise<void> {
-    const categories = await this.getCategories();
-    const category = categories.find(c => c.id === categoryId);
-
-    if (!category) {
-      throw new Error('Category not found');
-    }
-
-    if (category.isDefault) {
-      throw new Error('Cannot delete default category');
-    }
-
-    const sessions = await this.getSessions();
-    const isInUse = sessions.some(s => s.categoryId === categoryId);
-    
-    if (isInUse) {
-      throw new Error('Cannot delete category that is in use by sessions');
-    }
-
-    const filtered = categories.filter(c => c.id !== categoryId);
-    await this.safeWrite(STORAGE_KEYS.CATEGORIES, filtered);
-  }
-
-  static async getPreferences(): Promise<DashboardPreferences> {
-    return this.safeRead<DashboardPreferences>(
-      STORAGE_KEYS.DASHBOARD_PREFERENCES,
-      isValidPreferences,
-      { visibleCategoryIds: [] }
-    );
-  }
-
-  static async savePreferences(preferences: DashboardPreferences): Promise<void> {
-    if (!isValidPreferences(preferences)) {
-      throw new Error('Invalid preferences data');
-    }
-
-    await this.safeWrite(STORAGE_KEYS.DASHBOARD_PREFERENCES, preferences);
-  }
-
-  static async updatePreferences(updates: Partial<DashboardPreferences>): Promise<void> {
-    const current = await this.getPreferences();
-    const updated = { ...current, ...updates };
-
-    if (!isValidPreferences(updated)) {
-      throw new Error('Invalid preferences data after update');
-    }
-
-    await this.safeWrite(STORAGE_KEYS.DASHBOARD_PREFERENCES, updated);
-  }
-
-  static async getStorageStats(): Promise<{
-    sessionCount: number;
-    categoryCount: number;
-    estimatedSizeKB: number;
-  }> {
     try {
-      const [sessions, categories] = await Promise.all([
-        this.getSessions(),
-        this.getCategories(),
-      ]);
+      const categories = await this.getCategories();
+      const filtered = categories.filter(c => c.id !== categoryId);
+      
+      if (filtered.length === 0) {
+        throw new Error('Cannot delete the last category');
+      }
 
-      const data = JSON.stringify({ sessions, categories });
-      const estimatedSizeKB = Math.round(new Blob([data]).size / 1024);
+      await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(filtered));
+      logger.success(`Category deleted: ${categoryId}`);
+    } catch (error) {
+      logger.error('Failed to delete category', error);
+      throw error;
+    }
+  }
 
-      return {
-        sessionCount: sessions.length,
-        categoryCount: categories.length,
-        estimatedSizeKB,
+  static async getGoals(): Promise<Goal[]> {
+    try {
+      const data = await AsyncStorage.getItem(STORAGE_KEYS.GOALS);
+      const goals = data ? JSON.parse(data) : [];
+      logger.info(`Loaded ${goals.length} goals`);
+      return goals;
+    } catch (error) {
+      logger.error('Failed to get goals', error);
+      return [];
+    }
+  }
+
+  static async saveGoal(goal: Goal): Promise<void> {
+    try {
+      const goals = await this.getGoals();
+      goals.push(goal);
+      await AsyncStorage.setItem(STORAGE_KEYS.GOALS, JSON.stringify(goals));
+      logger.success(`Goal saved: ${goal.title}`);
+    } catch (error) {
+      logger.error('Failed to save goal', error);
+      throw error;
+    }
+  }
+
+  static async updateGoal(goalId: string, updates: Partial<Goal>): Promise<void> {
+    try {
+      const goals = await this.getGoals();
+      const index = goals.findIndex(g => g.id === goalId);
+      
+      if (index === -1) {
+        throw new Error(`Goal not found: ${goalId}`);
+      }
+
+      goals[index] = {
+        ...goals[index],
+        ...updates,
+        updatedAt: new Date().toISOString(),
       };
+
+      await AsyncStorage.setItem(STORAGE_KEYS.GOALS, JSON.stringify(goals));
+      logger.success(`Goal updated: ${goalId}`);
     } catch (error) {
-      logger.error('Failed to get storage stats', error);
-      return { sessionCount: 0, categoryCount: 0, estimatedSizeKB: 0 };
+      logger.error('Failed to update goal', error);
+      throw error;
     }
   }
 
-  static async clearAll(): Promise<void> {
+  static async deleteGoal(goalId: string): Promise<void> {
     try {
-      await AsyncStorage.multiRemove([
-        STORAGE_KEYS.SESSIONS,
-        STORAGE_KEYS.CATEGORIES,
-        STORAGE_KEYS.DASHBOARD_PREFERENCES,
-      ]);
-      logger.success('All data cleared');
+      const goals = await this.getGoals();
+      const filtered = goals.filter(g => g.id !== goalId);
+      await AsyncStorage.setItem(STORAGE_KEYS.GOALS, JSON.stringify(filtered));
+      logger.success(`Goal deleted: ${goalId}`);
     } catch (error) {
-      logger.error('Failed to clear data', error);
-      throw new Error('Failed to clear storage');
+      logger.error('Failed to delete goal', error);
+      throw error;
+    }
+  }
+
+  static async getAchievements(): Promise<Achievement[]> {
+    try {
+      const data = await AsyncStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS);
+      const achievements = data ? JSON.parse(data) : [];
+      logger.info(`Loaded ${achievements.length} achievements`);
+      return achievements;
+    } catch (error) {
+      logger.error('Failed to get achievements', error);
+      return [];
+    }
+  }
+
+  static async saveAchievement(achievement: Achievement): Promise<void> {
+    try {
+      const achievements = await this.getAchievements();
+      
+      const existingIndex = achievements.findIndex(a => a.id === achievement.id);
+      
+      if (existingIndex >= 0) {
+        achievements[existingIndex] = achievement;
+      } else {
+        achievements.push(achievement);
+      }
+      
+      await AsyncStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(achievements));
+      logger.success(`Achievement saved: ${achievement.title}`);
+    } catch (error) {
+      logger.error('Failed to save achievement', error);
+      throw error;
+    }
+  }
+
+  static async updateAchievement(achievementId: string, updates: Partial<Achievement>): Promise<void> {
+    try {
+      const achievements = await this.getAchievements();
+      const index = achievements.findIndex(a => a.id === achievementId);
+      
+      if (index === -1) {
+        throw new Error(`Achievement not found: ${achievementId}`);
+      }
+
+      achievements[index] = { ...achievements[index], ...updates };
+      await AsyncStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(achievements));
+      logger.success(`Achievement updated: ${achievementId}`);
+    } catch (error) {
+      logger.error('Failed to update achievement', error);
+      throw error;
+    }
+  }
+
+  static async deleteAchievement(achievementId: string): Promise<void> {
+    try {
+      const achievements = await this.getAchievements();
+      const filtered = achievements.filter(a => a.id !== achievementId);
+      await AsyncStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(filtered));
+      logger.success(`Achievement deleted: ${achievementId}`);
+    } catch (error) {
+      logger.error('Failed to delete achievement', error);
+      throw error;
+    }
+  }
+
+  static async getDashboardPreferences(): Promise<DashboardPreferences> {
+    try {
+      const data = await AsyncStorage.getItem(STORAGE_KEYS.DASHBOARD_PREFERENCES);
+      const preferences = data ? JSON.parse(data) : { visibleCategoryIds: [] };
+      logger.info('Loaded dashboard preferences');
+      return preferences;
+    } catch (error) {
+      logger.error('Failed to get dashboard preferences', error);
+      return { visibleCategoryIds: [] };
+    }
+  }
+
+  static async saveDashboardPreferences(preferences: DashboardPreferences): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.DASHBOARD_PREFERENCES, JSON.stringify(preferences));
+      logger.success('Dashboard preferences saved');
+    } catch (error) {
+      logger.error('Failed to save dashboard preferences', error);
+      throw error;
+    }
+  }
+
+  static async getNotificationPreferences(): Promise<NotificationPreferences | null> {
+    try {
+      const data = await AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATION_PREFERENCES);
+      if (!data) return null;
+      
+      const preferences = JSON.parse(data);
+      logger.info('Loaded notification preferences');
+      return preferences;
+    } catch (error) {
+      logger.error('Failed to get notification preferences', error);
+      return null;
+    }
+  }
+
+  static async saveNotificationPreferences(preferences: NotificationPreferences): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.NOTIFICATION_PREFERENCES, JSON.stringify(preferences));
+      logger.success('Notification preferences saved');
+    } catch (error) {
+      logger.error('Failed to save notification preferences', error);
+      throw error;
     }
   }
 
   static async getAllData(): Promise<{
     sessions: Session[];
     categories: Category[];
+    goals: Goal[];
+    achievements: Achievement[];
     preferences: DashboardPreferences;
-    version: number;
+    notificationPreferences: NotificationPreferences | null;
+    version: string;
   }> {
-    const [sessions, categories, preferences] = await Promise.all([
-      this.getSessions(),
-      this.getCategories(),
-      this.getPreferences(),
-    ]);
+    try {
+      const [
+        sessions,
+        categories,
+        goals,
+        achievements,
+        preferences,
+        notificationPreferences,
+      ] = await Promise.all([
+        this.getSessions(),
+        this.getCategories(),
+        this.getGoals(),
+        this.getAchievements(),
+        this.getDashboardPreferences(),
+        this.getNotificationPreferences(),
+      ]);
 
-    return {
-      sessions,
-      categories,
-      preferences,
-      version: CURRENT_VERSION,
-    };
+      logger.info('Loaded all data for export');
+
+      return {
+        sessions,
+        categories,
+        goals,
+        achievements,
+        preferences,
+        notificationPreferences,
+        version: '1.0.0',
+      };
+    } catch (error) {
+      logger.error('Failed to get all data', error);
+      throw error;
+    }
   }
 
   static async restoreAllData(data: {
-    sessions: Session[];
-    categories: Category[];
-    preferences: DashboardPreferences;
+    sessions?: Session[];
+    categories?: Category[];
+    goals?: Goal[];
+    achievements?: Achievement[];
+    preferences?: DashboardPreferences;
+    notificationPreferences?: NotificationPreferences;
   }): Promise<void> {
-    const validSessions = data.sessions.filter(isValidSession);
-    const validCategories = data.categories.filter(isValidCategory);
-    
-    if (!isValidPreferences(data.preferences)) {
-      throw new Error('Invalid preferences data');
+    try {
+      logger.info('Starting data restore...');
+
+      const backup = await this.getAllData();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      await AsyncStorage.setItem(
+        `${STORAGE_KEYS.BACKUP_PREFIX}${timestamp}`,
+        JSON.stringify(backup)
+      );
+      logger.info('Backup created before restore');
+
+      const restorePromises: Promise<void>[] = [];
+
+      if (data.sessions) {
+        restorePromises.push(
+          AsyncStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(data.sessions))
+        );
+      }
+
+      if (data.categories) {
+        restorePromises.push(
+          AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(data.categories))
+        );
+      }
+
+      if (data.goals) {
+        restorePromises.push(
+          AsyncStorage.setItem(STORAGE_KEYS.GOALS, JSON.stringify(data.goals))
+        );
+      }
+
+      if (data.achievements) {
+        restorePromises.push(
+          AsyncStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(data.achievements))
+        );
+      }
+
+      if (data.preferences) {
+        restorePromises.push(
+          AsyncStorage.setItem(STORAGE_KEYS.DASHBOARD_PREFERENCES, JSON.stringify(data.preferences))
+        );
+      }
+
+      if (data.notificationPreferences) {
+        restorePromises.push(
+          AsyncStorage.setItem(
+            STORAGE_KEYS.NOTIFICATION_PREFERENCES,
+            JSON.stringify(data.notificationPreferences)
+          )
+        );
+      }
+
+      await Promise.all(restorePromises);
+      logger.success('Data restored successfully');
+    } catch (error) {
+      logger.error('Failed to restore data', error);
+      throw error;
     }
-
-    const currentData = await this.getAllData();
-    await this.createBackup('full_backup', currentData);
-
-    await Promise.all([
-      this.safeWrite(STORAGE_KEYS.SESSIONS, validSessions),
-      this.safeWrite(STORAGE_KEYS.CATEGORIES, validCategories),
-      this.safeWrite(STORAGE_KEYS.DASHBOARD_PREFERENCES, data.preferences),
-    ]);
-
-    logger.success(`Restored ${validSessions.length} sessions and ${validCategories.length} categories`);
   }
 
-  static async healthCheck(): Promise<{ healthy: boolean; error?: string }> {
+  static async clearAllData(): Promise<void> {
     try {
+      logger.warn('Clearing all app data...');
+
       await Promise.all([
-        this.getSessions(),
-        this.getCategories(),
-        this.getPreferences(),
+        AsyncStorage.removeItem(STORAGE_KEYS.SESSIONS),
+        AsyncStorage.removeItem(STORAGE_KEYS.CATEGORIES),
+        AsyncStorage.removeItem(STORAGE_KEYS.GOALS),
+        AsyncStorage.removeItem(STORAGE_KEYS.ACHIEVEMENTS),
+        AsyncStorage.removeItem(STORAGE_KEYS.DASHBOARD_PREFERENCES),
+        AsyncStorage.removeItem(STORAGE_KEYS.NOTIFICATION_PREFERENCES),
       ]);
 
-      return { healthy: true };
+      logger.success('All data cleared');
     } catch (error) {
+      logger.error('Failed to clear all data', error);
+      throw error;
+    }
+  }
+
+  static async getStorageSize(): Promise<{ keys: number; estimatedSizeKB: number }> {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const appKeys = keys.filter(key => key.startsWith('@session_track:') || key.startsWith('@trackora:'));
+      
+      let totalSize = 0;
+      for (const key of appKeys) {
+        const value = await AsyncStorage.getItem(key);
+        if (value) {
+          totalSize += value.length;
+        }
+      }
+
       return {
-        healthy: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        keys: appKeys.length,
+        estimatedSizeKB: Math.round(totalSize / 1024),
       };
+    } catch (error) {
+      logger.error('Failed to get storage size', error);
+      return { keys: 0, estimatedSizeKB: 0 };
     }
   }
 
-  static async getGoals(): Promise<Goal[]> {
-    const data = await this.safeRead<Goal[]>(
-      STORAGE_KEYS.GOALS,
-      (data: any): data is Goal[] => Array.isArray(data) && data.every(isValidGoal),
-      []
-    );
-    return data;
-  }
-
-  static async saveGoal(goal: Goal): Promise<void> {
-    if (!isValidGoal(goal)) {
-      throw new Error('Invalid goal data');
+  static async isEmpty(): Promise<boolean> {
+    try {
+      const sessions = await this.getSessions();
+      return sessions.length === 0;
+    } catch (error) {
+      logger.error('Failed to check if storage is empty', error);
+      return true;
     }
-
-    const goals = await this.getGoals();
-    goals.push(goal);
-    await this.safeWrite(STORAGE_KEYS.GOALS, goals);
-  }
-
-  static async updateGoal(goalId: string, updates: Partial<Goal>): Promise<void> {
-    const goals = await this.getGoals();
-    const index = goals.findIndex((g) => g.id === goalId);
-
-    if (index === -1) {
-      throw new Error('Goal not found');
-    }
-
-    goals[index] = { ...goals[index], ...updates, updatedAt: new Date().toISOString() };
-    await this.safeWrite(STORAGE_KEYS.GOALS, goals);
-  }
-
-  static async deleteGoal(goalId: string): Promise<void> {
-    const goals = await this.getGoals();
-    const filtered = goals.filter((g) => g.id !== goalId);
-    await this.safeWrite(STORAGE_KEYS.GOALS, filtered);
-  }
-
-  static async getAchievements(): Promise<Achievement[]> {
-    const data = await this.safeRead<Achievement[]>(
-      STORAGE_KEYS.ACHIEVEMENTS,
-      (data: any): data is Achievement[] => Array.isArray(data) && data.every(isValidAchievement),
-      []
-    );
-    return data;
-  }
-
-  static async saveAchievement(achievement: Achievement): Promise<void> {
-    if (!isValidAchievement(achievement)) {
-      throw new Error('Invalid achievement data');
-    }
-
-    const achievements = await this.getAchievements();
-    const existing = achievements.find((a) => a.id === achievement.id);
-
-    if (existing) {
-      return;
-    }
-    achievements.push(achievement);
-    await this.safeWrite(STORAGE_KEYS.ACHIEVEMENTS, achievements);
-  }
-
-  static async updateAchievement(achievementId: string, updates: Partial<Achievement>): Promise<void> {
-    const achievements = await this.getAchievements();
-    const index = achievements.findIndex((a) => a.id === achievementId);
-
-    if (index === -1) {
-      throw new Error('Achievement not found');
-    }
-
-    achievements[index] = { ...achievements[index], ...updates };
-    await this.safeWrite(STORAGE_KEYS.ACHIEVEMENTS, achievements);
   }
 }
 
