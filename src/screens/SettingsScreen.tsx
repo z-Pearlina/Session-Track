@@ -23,7 +23,6 @@ export default function SettingsScreen() {
     try {
       setIsExporting(true);
 
-      // Prepare export data
       const exportData = {
         exportDate: new Date().toISOString(),
         version: '1.0.0',
@@ -36,26 +35,20 @@ export default function SettingsScreen() {
         }
       };
 
-      // Convert to JSON
       const jsonString = JSON.stringify(exportData, null, 2);
 
-      // Create filename with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const fileName = `session-track-export-${timestamp}.json`;
 
-      // Use the new File API
       const fileUri = `${FileSystem.documentDirectory}${fileName}`;
       
-      // Write file using the new API
       await FileSystem.writeAsStringAsync(fileUri, jsonString, {
         encoding: FileSystem.EncodingType.UTF8,
       });
 
-      // Check if sharing is available
       const isAvailable = await Sharing.isAvailableAsync();
       
       if (isAvailable) {
-        // Share the file
         await Sharing.shareAsync(fileUri, {
           mimeType: 'application/json',
           dialogTitle: 'Export Session Track Data',
@@ -88,32 +81,46 @@ export default function SettingsScreen() {
 
   const settingsOptions = [
     {
+      icon: 'trophy',
+      title: 'Goals',
+      subtitle: 'Set and track your time goals',
+      onPress: () => navigation.navigate('Goals'),
+      color: theme.colors.primary.cyan,
+    },
+    {
+      icon: 'medal',
+      title: 'Achievements',
+      subtitle: 'View your unlocked badges',
+      onPress: () => navigation.navigate('Achievements'),
+      color: '#FFD700',
+    },
+    {
+      icon: 'notifications',
+      title: 'Notifications',
+      subtitle: 'Configure reminders and alerts',
+      onPress: () => navigation.navigate('NotificationSettings'),
+      color: theme.colors.primary.aqua,
+    },
+    {
       icon: 'grid',
       title: 'Customize Dashboard',
       subtitle: 'Choose which category cards to display',
       onPress: () => navigation.navigate('CustomizeDashboard'),
-      color: theme.colors.primary.cyan,
+      color: theme.colors.primary.mint,
     },
     {
       icon: 'apps',
       title: 'Manage Categories',
       subtitle: 'Add, edit, or delete categories',
       onPress: () => navigation.navigate('CategoryManager'),
-      color: theme.colors.primary.mint,
-    },
-    {
-      icon: 'notifications',
-      title: 'Notifications',
-      subtitle: 'Coming soon',
-      onPress: () => {},
-      color: theme.colors.primary.aqua,
+      color: theme.colors.primary.cyan,
     },
     {
       icon: 'download',
       title: 'Export Data',
       subtitle: isExporting ? 'Exporting...' : `Export ${sessions.length} sessions to JSON`,
       onPress: exportData,
-      color: theme.colors.primary.cyan,
+      color: theme.colors.primary.aqua,
       disabled: isExporting,
     },
     {
@@ -128,13 +135,12 @@ export default function SettingsScreen() {
       title: 'About',
       subtitle: 'Version 1.0.0',
       onPress: () => {},
-      color: theme.colors.primary.aqua,
+      color: theme.colors.primary.cyan,
     },
   ];
 
   return (
     <View style={styles.root}>
-      {/* Animated background gradient - same as HomeScreen */}
       <LinearGradient
         colors={theme.gradients.backgroundAnimated}
         style={styles.gradient}
@@ -145,13 +151,11 @@ export default function SettingsScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header Section */}
           <View style={styles.headerSection}>
             <Text style={styles.header}>Settings</Text>
             <Text style={styles.subtitle}>Customize your experience</Text>
           </View>
 
-          {/* Settings Options */}
           {settingsOptions.map((option, index) => (
             <GlassCard key={index} style={styles.optionCard}>
               <TouchableOpacity
@@ -180,7 +184,6 @@ export default function SettingsScreen() {
             </GlassCard>
           ))}
 
-          {/* App Info Section */}
           <GlassCard style={styles.infoCard}>
             <View style={styles.infoContent}>
               <View style={styles.logoContainer}>

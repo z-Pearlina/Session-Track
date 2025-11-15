@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import { Achievement, AchievementTier } from '../types';
 import { COLORS } from '../theme/theme';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 60) / 2;
+const CARD_WIDTH = (width - 60) / 2; 
 
 export default function AchievementsScreen() {
   const navigation = useNavigation();
@@ -26,19 +26,24 @@ export default function AchievementsScreen() {
   
   const [refreshing, setRefreshing] = useState(false);
   const [filterCategory, setFilterCategory] = useState<'all' | 'milestone' | 'streak' | 'dedication'>('all');
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
     const initialize = async () => {
-      await loadAchievements();
-      
-      if (achievements.length === 0) {
-        await initializeDefaultAchievements();
+      if (!hasInitialized.current) {
+        hasInitialized.current = true;
         await loadAchievements();
+        
+        // Initialize default achievements if empty
+        if (achievements.length === 0) {
+          await initializeDefaultAchievements();
+          await loadAchievements();
+        }
       }
     };
     
     initialize();
-  }, []);
+  }, [loadAchievements, initializeDefaultAchievements, achievements.length]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -64,11 +69,13 @@ export default function AchievementsScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Gradient Background */}
       <LinearGradient
         colors={[COLORS.background.primary, COLORS.background.secondary]}
         style={StyleSheet.absoluteFillObject}
       />
 
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -80,6 +87,7 @@ export default function AchievementsScreen() {
         <View style={styles.backButton} />
       </View>
 
+      {/* Stats Card */}
       <BlurView intensity={30} tint="dark" style={styles.statsCard}>
         <View style={styles.statsContent}>
           <View style={styles.statItem}>
@@ -99,6 +107,7 @@ export default function AchievementsScreen() {
         </View>
       </BlurView>
 
+      {/* Filter Chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -124,6 +133,7 @@ export default function AchievementsScreen() {
         ))}
       </ScrollView>
 
+      {/* Achievements Grid */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
@@ -135,6 +145,7 @@ export default function AchievementsScreen() {
           />
         }
       >
+        {/* Unlocked Achievements */}
         {unlockedAchievements.length > 0 && (
           <>
             <Text style={styles.sectionTitle}>Unlocked 🎉</Text>
@@ -149,6 +160,7 @@ export default function AchievementsScreen() {
           </>
         )}
 
+        {/* Locked Achievements */}
         {lockedAchievements.length > 0 && (
           <>
             <Text style={[styles.sectionTitle, unlockedAchievements.length > 0 && styles.sectionTitleSpacing]}>
@@ -165,6 +177,7 @@ export default function AchievementsScreen() {
           </>
         )}
 
+        {/* Empty State */}
         {filteredAchievements.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="trophy-outline" size={64} color={COLORS.text.tertiary} />
@@ -178,6 +191,7 @@ export default function AchievementsScreen() {
     </View>
   );
 }
+
 
 interface AchievementBadgeProps {
   achievement: Achievement;
@@ -208,6 +222,7 @@ function AchievementBadge({ achievement }: AchievementBadgeProps) {
         tint="dark"
         style={[styles.badge, !isUnlocked && styles.badgeLocked]}
       >
+        {/* Icon Container */}
         <View style={styles.badgeIconContainer}>
           <LinearGradient
             colors={isUnlocked ? getTierColor(achievement.tier) : ['#333333', '#1a1a1a']}
@@ -221,6 +236,7 @@ function AchievementBadge({ achievement }: AchievementBadgeProps) {
           </LinearGradient>
         </View>
 
+        {/* Title */}
         <Text
           style={[styles.badgeTitle, !isUnlocked && styles.badgeTitleLocked]}
           numberOfLines={2}
@@ -228,6 +244,7 @@ function AchievementBadge({ achievement }: AchievementBadgeProps) {
           {achievement.title}
         </Text>
 
+        {/* Description */}
         <Text
           style={[styles.badgeDescription, !isUnlocked && styles.badgeDescriptionLocked]}
           numberOfLines={2}
@@ -235,6 +252,7 @@ function AchievementBadge({ achievement }: AchievementBadgeProps) {
           {achievement.description}
         </Text>
 
+        {/* Progress Bar (for locked achievements) */}
         {!isUnlocked && achievement.progress > 0 && (
           <View style={styles.badgeProgressContainer}>
             <View style={styles.badgeProgressBackground}>
@@ -251,10 +269,12 @@ function AchievementBadge({ achievement }: AchievementBadgeProps) {
           </View>
         )}
 
+        {/* Tier Badge */}
         <View style={styles.tierBadge}>
           <Text style={styles.tierText}>{achievement.tier.toUpperCase()}</Text>
         </View>
 
+        {/* Lock Icon Overlay */}
         {!isUnlocked && (
           <View style={styles.lockOverlay}>
             <Ionicons name="lock-closed" size={24} color={COLORS.text.quaternary} />

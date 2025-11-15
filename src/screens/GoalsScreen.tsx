@@ -17,6 +17,7 @@ import { Goal } from '../types';
 import { COLORS } from '../theme/theme';
 import { RootStackNavigationProp } from '../types';
 
+
 export default function GoalsScreen() {
   const navigation = useNavigation<RootStackNavigationProp>();
   const goals = useGoals();
@@ -27,7 +28,7 @@ export default function GoalsScreen() {
 
   useEffect(() => {
     loadGoals();
-  }, []);
+  }, [loadGoals]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -66,11 +67,13 @@ export default function GoalsScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Gradient Background */}
       <LinearGradient
         colors={[COLORS.background.primary, COLORS.background.secondary]}
         style={StyleSheet.absoluteFillObject}
       />
 
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -87,6 +90,7 @@ export default function GoalsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Filter Chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -112,6 +116,7 @@ export default function GoalsScreen() {
         ))}
       </ScrollView>
 
+      {/* Goals List */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
@@ -123,6 +128,7 @@ export default function GoalsScreen() {
           />
         }
       >
+        {/* Active Goals */}
         {activeGoals.length > 0 && (
           <>
             <Text style={styles.sectionTitle}>Active Goals</Text>
@@ -137,6 +143,7 @@ export default function GoalsScreen() {
           </>
         )}
 
+        {/* Completed Goals */}
         {completedGoals.length > 0 && (
           <>
             <Text style={[styles.sectionTitle, styles.sectionTitleSpacing]}>
@@ -153,6 +160,7 @@ export default function GoalsScreen() {
           </>
         )}
 
+        {/* Empty State */}
         {filteredGoals.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="trophy-outline" size={64} color={COLORS.text.tertiary} />
@@ -219,6 +227,7 @@ function GoalCard({ goal, onPress, onDelete }: GoalCardProps) {
     <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
       <BlurView intensity={30} tint="dark" style={styles.goalCard}>
         <View style={styles.goalCardContent}>
+          {/* Header */}
           <View style={styles.goalCardHeader}>
             <View style={styles.goalCardTitleRow}>
               <Ionicons
@@ -238,12 +247,14 @@ function GoalCard({ goal, onPress, onDelete }: GoalCardProps) {
             </TouchableOpacity>
           </View>
 
+          {/* Description */}
           {goal.description && (
             <Text style={styles.goalCardDescription} numberOfLines={2}>
               {goal.description}
             </Text>
           )}
 
+          {/* Progress */}
           <View style={styles.goalCardProgress}>
             <Text style={styles.goalCardProgressText}>
               {formatMinutes(goal.currentProgress)} / {formatMinutes(goal.targetMinutes)}
@@ -253,6 +264,7 @@ function GoalCard({ goal, onPress, onDelete }: GoalCardProps) {
             </Text>
           </View>
 
+          {/* Progress Bar */}
           <View style={styles.progressBarContainer}>
             <View style={styles.progressBarBackground}>
               <LinearGradient
@@ -268,6 +280,7 @@ function GoalCard({ goal, onPress, onDelete }: GoalCardProps) {
             </View>
           </View>
 
+          {/* Footer */}
           <View style={styles.goalCardFooter}>
             <View style={styles.goalCardPeriodBadge}>
               <Text style={styles.goalCardPeriodText}>
@@ -291,6 +304,7 @@ function GoalCard({ goal, onPress, onDelete }: GoalCardProps) {
     </TouchableOpacity>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
