@@ -1,33 +1,44 @@
+import { NavigationProp, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 
-export type GoalPeriod = 'daily' | 'weekly' | 'monthly';
-export type GoalStatus = 'active' | 'completed' | 'failed' | 'archived';
+export interface Session {
+  id: string;
+  title: string;
+  categoryId: string;
+  durationMs: number;
+  startedAt: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  order?: number;
+  createdAt: string;
+}
 
 export interface Goal {
   id: string;
   title: string;
   description?: string;
-  categoryId?: string;
   targetMinutes: number;
+  currentProgress: number;
   period: GoalPeriod;
+  categoryId?: string;
+  status: GoalStatus;
   startDate: string;
   endDate: string;
-  currentProgress: number;
-  status: GoalStatus;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
   completedAt?: string;
 }
 
-export type AchievementCategory = 
-  | 'milestone' 
-  | 'streak' 
-  | 'consistency' 
-  | 'speed' 
-  | 'variety' 
-  | 'dedication';
-
-export type AchievementTier = 'bronze' | 'silver' | 'gold' | 'platinum';
+export type GoalPeriod = 'daily' | 'weekly' | 'monthly' | 'custom';
+export type GoalStatus = 'active' | 'completed' | 'archived' | 'failed';
 
 export interface Achievement {
   id: string;
@@ -36,21 +47,28 @@ export interface Achievement {
   category: AchievementCategory;
   tier: AchievementTier;
   icon: string;
-  requirement: {
-    type: 'totalHours' | 'streak' | 'sessionCount' | 'categoryCount' | 'custom';
-    value: number;
-  };
-  unlockedAt?: string;
+  requirement: AchievementRequirement;
   isUnlocked: boolean;
+  unlockedAt?: string;
   progress: number;
+}
+
+export type AchievementCategory = 'milestone' | 'streak' | 'dedication' | 'variety' | 'speed';
+export type AchievementTier = 'bronze' | 'silver' | 'gold' | 'platinum';
+
+export interface AchievementRequirement {
+  type: 'totalHours' | 'streak' | 'sessionCount' | 'categoryCount' | 'longestSession';
+  value: number;
 }
 
 export interface UserAchievementProgress {
   achievementId: string;
-  progress: number;
-  isUnlocked: boolean;
-  unlockedAt?: string;
-  notificationShown: boolean;
+  currentValue: number;
+  lastUpdated: string;
+}
+
+export interface DashboardPreferences {
+  visibleCategoryIds: string[];
 }
 
 export interface NotificationPreferences {
@@ -64,60 +82,14 @@ export interface NotificationPreferences {
   vibrationEnabled: boolean;
 }
 
-export interface Session {
-  id: string;
-  title: string;
-  categoryId: string;
-  durationMs: number;
-  notes?: string;
-  startedAt: string;
-  endedAt: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Category {
-  id: string;
-  name: string;
-  color: string;
-  icon: string;
-  createdAt: string;
-  isDefault?: boolean;
-}
-
-export interface UserProfile {
-  uid: string;
-  email: string;
-  displayName?: string;
-  emailVerified: boolean;
-  createdAt: string;
-}
-
-export interface DashboardPreferences {
-  visibleCategoryIds: string[];
-}
-
 export interface SessionFilter {
-  categoryId?: string | null;
-  dateRange?: DateRange | null;
+  categoryId?: string;
+  dateRange?: {
+    start: string;
+    end: string;
+  };
   searchQuery?: string;
 }
-
-export interface DateRange {
-  start: string;
-  end: string;
-}
-
-export type DateRangePreset = 'today' | 'week' | 'month' | 'custom';
-
-export type RootStackParamList = {
-  MainTabs: undefined;
-  EditSession: { sessionId: string };
-  SessionDetails: { sessionId: string };
-  Calendar: undefined;
-  CategoryManager: undefined;
-  CustomizeDashboard: undefined;
-};
 
 export type MainTabParamList = {
   Home: undefined;
@@ -126,4 +98,97 @@ export type MainTabParamList = {
   Settings: undefined;
 };
 
+export type RootStackParamList = {
+  MainTabs: undefined;
+  EditSession: { sessionId: string };
+  SessionDetails: { sessionId: string };
+  Calendar: undefined;
+  CategoryManager: undefined;
+  CustomizeDashboard: undefined;
+  Goals: undefined;
+  GoalDetails: { goalId: string };
+  CreateGoal: undefined;
+  Achievements: undefined;
+  NotificationSettings: undefined;
+};
+
 export type RootStackNavigationProp = StackNavigationProp<RootStackParamList>;
+export type MainTabNavigationProp = NavigationProp<MainTabParamList>;
+
+export type EditSessionRouteProp = RouteProp<RootStackParamList, 'EditSession'>;
+export type SessionDetailsRouteProp = RouteProp<RootStackParamList, 'SessionDetails'>;
+export type GoalDetailsRouteProp = RouteProp<RootStackParamList, 'GoalDetails'>;
+
+export type TimeRange = 'week' | 'month' | 'year' | 'all';
+
+export interface ChartDataPoint {
+  label: string;
+  value: number;
+  color?: string;
+  date?: Date;
+}
+
+export interface StatisticsSummary {
+  totalSessions: number;
+  totalDurationMs: number;
+  totalHours: number;
+  averageSessionMinutes: number;
+  longestSessionMs: number;
+  currentStreak: number;
+  activeDays: number;
+}
+
+export interface ExportData {
+  appName: string;
+  exportDate: string;
+  version: string;
+  data: {
+    sessions: Session[];
+    categories: Category[];
+    goals?: Goal[];
+    achievements?: Achievement[];
+    preferences?: DashboardPreferences;
+    notificationPreferences?: NotificationPreferences;
+  };
+  stats: {
+    totalSessions: number;
+    totalCategories: number;
+    totalDurationMs: number;
+    totalGoals?: number;
+    unlockedAchievements?: number;
+  };
+}
+
+export interface SessionFormData {
+  title: string;
+  categoryId: string;
+  durationMs: number;
+  notes?: string;
+}
+
+export interface CategoryFormData {
+  name: string;
+  color: string;
+  icon: string;
+}
+
+export interface GoalFormData {
+  title: string;
+  description?: string;
+  targetMinutes: number;
+  period: GoalPeriod;
+  categoryId?: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface AppError {
+  code: string;
+  message: string;
+  details?: any;
+}
+
+export interface ValidationError {
+  field: string;
+  message: string;
+}
