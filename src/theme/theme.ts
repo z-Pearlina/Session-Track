@@ -10,6 +10,8 @@ export const theme = {
       mint: '#34D399',     // Success, achievements
       light: '#A5F3FC',    // Lighter variant
       dark: '#0891B2',     // Darker variant
+      sage: '#6EE7B7',     // Additional accent
+      teal: '#14B8A6',     // Additional accent
     },
 
     // Background layers
@@ -210,3 +212,5 @@ export const theme = {
 } as const;
 
 export type Theme = typeof theme;
+
+export const COLORS = theme.colors;
