@@ -1,32 +1,14 @@
 import { create } from 'zustand';
 import { Session, SessionFilter } from '../types';
-import { StorageService } from '../services/storage';
-
-/**
- * ✅ OPTIMIZED: Session Store with Selective Selectors
- * 
- * CHANGES:
- * 1. Split into selective exports to prevent over-subscription
- * 2. Memoized computed values with proper invalidation
- * 3. Batch state updates where possible
- * 4. Proper async/await error handling
- * 5. Reduced unnecessary applyFilter calls
- * 
- * PERFORMANCE IMPACT:
- * - Components only re-render when their subscribed data changes
- * - Reduced cascading re-renders by ~80%
- * - Better TypeScript inference
- */
+import { StorageService } from '../services/StorageService';
 
 interface SessionState {
-  // State
   sessions: Session[];
   filteredSessions: Session[];
   isLoading: boolean;
   error: string | null;
   filter: SessionFilter;
 
-  // Actions
   loadSessions: () => Promise<void>;
   addSession: (session: Session) => Promise<void>;
   updateSession: (sessionId: string, updates: Partial<Session>) => Promise<void>;
@@ -37,26 +19,21 @@ interface SessionState {
   clearError: () => void;
 }
 
-// ✅ Main store (internal use)
 const useSessionStoreBase = create<SessionState>((set, get) => ({
-  // Initial state
   sessions: [],
   filteredSessions: [],
   isLoading: false,
   error: null,
   filter: {},
 
-  // ✅ OPTIMIZATION: Batch state updates with single set() call
   loadSessions: async () => {
     set({ isLoading: true, error: null });
     try {
       const sessions = await StorageService.getSessions();
       
-      // Apply filter immediately with loaded sessions
       const { filter } = get();
       const filteredSessions = applyFilterToSessions(sessions, filter);
       
-      // ✅ Single state update instead of two
       set({ 
         sessions, 
         filteredSessions,
@@ -79,7 +56,6 @@ const useSessionStoreBase = create<SessionState>((set, get) => ({
       const newSessions = [...state.sessions, session];
       const filteredSessions = applyFilterToSessions(newSessions, state.filter);
       
-      // ✅ Single state update
       set({ 
         sessions: newSessions,
         filteredSessions,
@@ -107,7 +83,6 @@ const useSessionStoreBase = create<SessionState>((set, get) => ({
       );
       const filteredSessions = applyFilterToSessions(newSessions, state.filter);
       
-      // ✅ Single state update
       set({
         sessions: newSessions,
         filteredSessions,
@@ -131,7 +106,6 @@ const useSessionStoreBase = create<SessionState>((set, get) => ({
       const newSessions = state.sessions.filter(s => s.id !== sessionId);
       const filteredSessions = applyFilterToSessions(newSessions, state.filter);
       
-      // ✅ Single state update
       set({
         sessions: newSessions,
         filteredSessions,
@@ -150,14 +124,12 @@ const useSessionStoreBase = create<SessionState>((set, get) => ({
     const { sessions } = get();
     const filteredSessions = applyFilterToSessions(sessions, filter);
     
-    // ✅ Single state update
     set({ filter, filteredSessions });
   },
 
   clearFilter: () => {
     const { sessions } = get();
     
-    // ✅ Single state update
     set({ 
       filter: {}, 
       filteredSessions: [...sessions] 
@@ -173,16 +145,13 @@ const useSessionStoreBase = create<SessionState>((set, get) => ({
   clearError: () => set({ error: null }),
 }));
 
-// ✅ OPTIMIZATION: Pure filter function (no side effects, easy to test)
 function applyFilterToSessions(sessions: Session[], filter: SessionFilter): Session[] {
   let filtered = [...sessions];
 
-  // Filter by category
   if (filter.categoryId) {
     filtered = filtered.filter(s => s.categoryId === filter.categoryId);
   }
 
-  // Filter by date range
   if (filter.dateRange) {
     const startDate = new Date(filter.dateRange.start);
     const endDate = new Date(filter.dateRange.end);
@@ -192,7 +161,6 @@ function applyFilterToSessions(sessions: Session[], filter: SessionFilter): Sess
     });
   }
 
-  // Filter by search query
   if (filter.searchQuery && filter.searchQuery.trim()) {
     const query = filter.searchQuery.toLowerCase();
     filtered = filtered.filter(s => 
@@ -204,44 +172,16 @@ function applyFilterToSessions(sessions: Session[], filter: SessionFilter): Sess
   return filtered;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ✅ SELECTIVE EXPORTS - Use these in components to prevent over-subscription
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Get all sessions (read-only)
- * Components using this will ONLY re-render when sessions array changes
- */
 export const useSessions = () => useSessionStoreBase((state) => state.sessions);
 
-/**
- * Get filtered sessions (read-only)
- * Components using this will ONLY re-render when filteredSessions changes
- */
 export const useFilteredSessions = () => useSessionStoreBase((state) => state.filteredSessions);
 
-/**
- * Get loading state (read-only)
- * Components using this will ONLY re-render when isLoading changes
- */
 export const useSessionsLoading = () => useSessionStoreBase((state) => state.isLoading);
 
-/**
- * Get error state (read-only)
- * Components using this will ONLY re-render when error changes
- */
 export const useSessionsError = () => useSessionStoreBase((state) => state.error);
 
-/**
- * Get current filter (read-only)
- * Components using this will ONLY re-render when filter changes
- */
 export const useSessionFilter = () => useSessionStoreBase((state) => state.filter);
 
-/**
- * Get all session actions (stable reference - won't cause re-renders)
- * Use this for components that need to trigger actions but don't need data
- */
 export const useSessionActions = () => useSessionStoreBase((state) => ({
   loadSessions: state.loadSessions,
   addSession: state.addSession,
@@ -252,8 +192,4 @@ export const useSessionActions = () => useSessionStoreBase((state) => ({
   clearError: state.clearError,
 }));
 
-/**
- * ⚠️ LEGACY: Keep for backward compatibility
- * Use selective exports above in new code for better performance
- */
 export const useSessionStore = useSessionStoreBase;
