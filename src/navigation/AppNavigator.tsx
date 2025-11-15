@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
 import { MainTabParamList, RootStackParamList } from '../types';
 
+
 import HomeScreen from '../screens/HomeScreen';
 import StartSessionScreen from '../screens/StartSessionScreen';
 import StatsScreen from '../screens/StatsScreen';
@@ -17,12 +18,17 @@ import CalendarScreen from '../screens/CalendarScreen';
 import CategoryManagerScreen from '../screens/CategoryManagerScreen';
 import CustomizeDashboardScreen from '../screens/CustomizeDashboardScreen';
 
+
+import GoalsScreen from '../screens/GoalsScreen';
+import CreateGoalScreen from '../screens/CreateGoalScreen';
+import GoalDetailsScreen from '../screens/GoalDetailsScreen';
+import AchievementsScreen from '../screens/AchievementsScreen';
+import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
+
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-/**
- * ✨ BEAUTIFUL TAB BAR
- */
+
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -112,11 +118,7 @@ function MainTabs() {
   );
 }
 
-/**
- * ✨ CUSTOM TRANSITIONS
- */
 
-// Standard iOS slide
 const smoothIOSSlide = {
   gestureEnabled: true,
   gestureDirection: 'horizontal' as const,
@@ -147,7 +149,7 @@ const smoothIOSSlide = {
   cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
 };
 
-// 🎨 SPECIAL: Customize Dashboard / Category Manager Modal (Swipe down to dismiss)
+
 const modalSwipeDown = {
   gestureEnabled: true,
   gestureDirection: 'vertical' as const,
@@ -216,7 +218,7 @@ const modalSwipeDown = {
   },
 };
 
-// 🎨 SPECIAL: Calendar Screen (Zoom + Rotate reveal)
+
 const calendarReveal = {
   gestureEnabled: true,
   gestureDirection: 'horizontal' as const,
@@ -282,7 +284,7 @@ const calendarReveal = {
   },
 };
 
-// 🎨 SPECIAL: Settings Features (Elegant lift and fade)
+
 const settingsFeatureLift = {
   gestureEnabled: true,
   gestureDirection: 'horizontal' as const,
@@ -348,9 +350,7 @@ const settingsFeatureLift = {
   },
 };
 
-/**
- * ✨ MAIN NAVIGATOR
- */
+
 export default function AppNavigator() {
   return (
     <NavigationContainer>
@@ -362,7 +362,7 @@ export default function AppNavigator() {
           detachInactiveScreens: true,
         }}
       >
-        {/* Main Tabs */}
+        
         <Stack.Screen 
           name="MainTabs" 
           component={MainTabs}
@@ -377,7 +377,7 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* Edit Session - Modal from bottom */}
+        
         <Stack.Screen
           name="EditSession"
           component={EditSessionScreen}
@@ -388,7 +388,7 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* Session Details - Standard iOS slide */}
+        
         <Stack.Screen
           name="SessionDetails"
           component={SessionDetailsScreen}
@@ -398,7 +398,7 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* 🎨 SPECIAL: Calendar - Zoom + Rotate reveal */}
+        
         <Stack.Screen
           name="Calendar"
           component={CalendarScreen}
@@ -409,7 +409,7 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* 🎨 SPECIAL: Category Manager - Modal swipe down (like Customize Dashboard) */}
+        
         <Stack.Screen
           name="CategoryManager"
           component={CategoryManagerScreen}
@@ -420,13 +420,69 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* 🎨 SPECIAL: Customize Dashboard - Modal swipe down */}
+        
         <Stack.Screen
           name="CustomizeDashboard"
           component={CustomizeDashboardScreen}
           options={{
             ...modalSwipeDown,
             cardStyle: { backgroundColor: 'transparent' },
+            cardOverlayEnabled: true,
+          }}
+        />
+
+        
+
+        
+        <Stack.Screen
+          name="Goals"
+          component={GoalsScreen}
+          options={{
+            ...settingsFeatureLift,
+            presentation: 'card',
+            cardOverlayEnabled: true,
+          }}
+        />
+
+        
+        <Stack.Screen
+          name="CreateGoal"
+          component={CreateGoalScreen}
+          options={{
+            ...modalSwipeDown,
+            cardStyle: { backgroundColor: 'transparent' },
+            cardOverlayEnabled: true,
+          }}
+        />
+
+        
+        <Stack.Screen
+          name="GoalDetails"
+          component={GoalDetailsScreen}
+          options={{
+            ...smoothIOSSlide,
+            presentation: 'card',
+          }}
+        />
+
+        
+        <Stack.Screen
+          name="Achievements"
+          component={AchievementsScreen}
+          options={{
+            ...settingsFeatureLift,
+            presentation: 'card',
+            cardOverlayEnabled: true,
+          }}
+        />
+
+        
+        <Stack.Screen
+          name="NotificationSettings"
+          component={NotificationSettingsScreen}
+          options={{
+            ...settingsFeatureLift,
+            presentation: 'card',
             cardOverlayEnabled: true,
           }}
         />
