@@ -1,46 +1,60 @@
 {
   "expo": {
-    "name": "session-track",
-    "slug": "session-track",
+    "name": "FlowTrix",
+    "slug": "flowtrix",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0F1419"
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.flowtrix.app",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0F1419"
       },
+      "package": "com.flowtrix.app",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "NOTIFICATIONS"
+        "NOTIFICATIONS",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED"
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
       [
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#38BDF8",
-          "sounds": ["./assets/notification-sound.wav"]
+          "color": "#00D9FF",
+          "sounds": [
+            "./assets/notification-sound.wav"
+          ]
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "81d1862d-79c7-4a61-b2e2-3a16a80f20c5"
+      }
+    }
   }
 }

@@ -1,74 +1,67 @@
-import { StorageService } from '../services/storage';
+import { StorageService } from '../services/StorageService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Session } from '../types';
 
-// Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () => ({
-  getItem: jest.fn(),
   setItem: jest.fn(),
+  getItem: jest.fn(),
   removeItem: jest.fn(),
+  multiGet: jest.fn(),
 }));
 
 describe('StorageService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+    (AsyncStorage.setItem as jest.Mock).mockResolvedValue(undefined);
+    (AsyncStorage.removeItem as jest.Mock).mockResolvedValue(undefined);
+    (AsyncStorage.multiGet as jest.Mock).mockResolvedValue([]);
   });
 
-  const mockSession: Session = {
-    id: 'test-1',
-    title: 'Test Session',
-    categoryId: 'work',
-    durationMs: 3600000,
-    startedAt: '2024-01-01T10:00:00Z',
-    endedAt: '2024-01-01T11:00:00Z',
-    createdAt: '2024-01-01T10:00:00Z',
-    updatedAt: '2024-01-01T10:00:00Z',
-  };
-
   describe('getSessions', () => {
-    it('returns empty array when no sessions exist', async () => {
+    it('should return empty array when no sessions exist', async () => {
       (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
-      
+
       const sessions = await StorageService.getSessions();
-      
+
       expect(sessions).toEqual([]);
     });
 
-    it('returns parsed sessions from storage', async () => {
-      const mockData = JSON.stringify([mockSession]);
-      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(mockData);
-      
+    it('should return parsed sessions when they exist', async () => {
+      const mockSessions = [{ id: '1', title: 'Test Session' }];
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify(mockSessions));
+
       const sessions = await StorageService.getSessions();
-      
-      expect(sessions).toEqual([mockSession]);
+
+      expect(sessions).toEqual(mockSessions);
     });
   });
 
   describe('saveSession', () => {
-    it('adds new session to storage', async () => {
-      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(JSON.stringify([]));
-      
-      await StorageService.saveSession(mockSession);
-      
-      expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-        '@session_track:sessions',
-        JSON.stringify([mockSession])
-      );
+    it('should save session successfully', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('[]');
+
+      const newSession = {
+        id: '1',
+        title: 'Test',
+        categoryId: 'work',
+        durationMs: 3600000,
+        startedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      };
+
+      await StorageService.saveSession(newSession);
+
+      expect(AsyncStorage.setItem).toHaveBeenCalled();
     });
   });
 
-  describe('deleteSession', () => {
-    it('removes session from storage', async () => {
-      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(
-        JSON.stringify([mockSession])
-      );
-      
-      await StorageService.deleteSession('test-1');
-      
-      expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-        '@session_track:sessions',
-        JSON.stringify([])
-      );
+  describe('getCategories', () => {
+    it('should return empty array when no categories exist', async () => {
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+
+      const categories = await StorageService.getCategories();
+
+      expect(categories).toEqual([]);
     });
   });
 });

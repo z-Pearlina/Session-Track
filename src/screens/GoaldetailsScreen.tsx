@@ -171,7 +171,7 @@ export default function GoalDetailsScreen() {
             {goal.description && (
               <Text style={styles.goalDescription}>{goal.description}</Text>
             )}
-            
+
             {/* Stats */}
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
