@@ -8,20 +8,16 @@ interface AchievementState {
   userProgress: UserAchievementProgress[];
   isLoading: boolean;
   error: string | null;
-}
 
-interface AchievementActions {
   loadAchievements: () => Promise<void>;
   initializeDefaultAchievements: () => Promise<void>;
   checkAndUnlockAchievements: (totalHours: number, streak: number, sessionCount: number) => Promise<Achievement[]>;
   unlockAchievement: (achievementId: string) => Promise<void>;
-  getUnlockedAchievements: () => Achievement[];
-  getLockedAchievements: () => Achievement[];
-  updateProgress: (achievementId: string, progress: number) => void;
+  updateProgress: (achievementId: string, progress: number) => Promise<void>;
+  clearError: () => void;
 }
-type AchievementStore = AchievementState & AchievementActions;
 
-const useAchievementStoreBase = create<AchievementStore>((set, get) => ({
+const useAchievementStoreBase = create<AchievementState>((set, get) => ({
   achievements: [],
   userProgress: [],
   isLoading: false,
@@ -32,12 +28,18 @@ const useAchievementStoreBase = create<AchievementStore>((set, get) => ({
     try {
       const achievements = await StorageService.getAchievements();
       set({ achievements, isLoading: false });
+      logger.info(`Loaded ${achievements.length} achievements`);
     } catch (error) {
       logger.error('Failed to load achievements', error);
-      set({ error: 'Failed to load achievements', isLoading: false });
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to load achievements',
+        isLoading: false 
+      });
     }
   },
-initializeDefaultAchievements: async () => {
+
+  initializeDefaultAchievements: async () => {
+    set({ isLoading: true, error: null });
     const defaultAchievements: Achievement[] = [
       {
         id: 'achievement_first_session',
@@ -122,9 +124,14 @@ initializeDefaultAchievements: async () => {
       for (const achievement of defaultAchievements) {
         await StorageService.saveAchievement(achievement);
       }
-      set({ achievements: defaultAchievements });
+      set({ achievements: defaultAchievements, isLoading: false });
+      logger.success('Default achievements initialized');
     } catch (error) {
       logger.error('Failed to initialize achievements', error);
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to initialize achievements',
+        isLoading: false 
+      });
     }
   },
 
@@ -140,7 +147,7 @@ initializeDefaultAchievements: async () => {
 
       switch (achievement.requirement.type) {
         case 'totalHours':
-            progress = Math.min((totalHours / achievement.requirement.value) * 100, 100);
+          progress = Math.min((totalHours / achievement.requirement.value) * 100, 100);
           shouldUnlock = totalHours >= achievement.requirement.value;
           break;
         case 'streak':
@@ -153,13 +160,13 @@ initializeDefaultAchievements: async () => {
           break;
       }
 
-      get().updateProgress(achievement.id, progress);
+      await get().updateProgress(achievement.id, progress);
 
       if (shouldUnlock) {
         await get().unlockAchievement(achievement.id);
         unlockedAchievements.push(achievement);
       }
-      }
+    }
 
     return unlockedAchievements;
   },
@@ -179,37 +186,45 @@ initializeDefaultAchievements: async () => {
             ? { ...a, isUnlocked: true, unlockedAt: now, progress: 100 }
             : a
         ),
-        }));
+      }));
+      
+      logger.success(`Achievement unlocked: ${achievementId}`);
     } catch (error) {
       logger.error('Failed to unlock achievement', error);
       throw error;
     }
   },
 
-  getUnlockedAchievements: () => {
-    return get().achievements.filter((a) => a.isUnlocked);
+  updateProgress: async (achievementId: string, progress: number) => {
+    try {
+      await StorageService.updateAchievement(achievementId, { progress });
+      
+      set((state) => ({
+        achievements: state.achievements.map((a) =>
+          a.id === achievementId ? { ...a, progress } : a
+        ),
+      }));
+    } catch (error) {
+      logger.error('Failed to update achievement progress', error);
+    }
   },
 
-  getLockedAchievements: () => {
-    return get().achievements.filter((a) => !a.isUnlocked);
-  },
-  updateProgress: (achievementId: string, progress: number) => {
-    set((state) => ({
-      achievements: state.achievements.map((a) =>
-        a.id === achievementId ? { ...a, progress } : a
-      ),
-    }));
-  },
+  clearError: () => set({ error: null }),
 }));
 
+// ✅ FIXED: Simple selectors only
 export const useAchievements = () => useAchievementStoreBase((state) => state.achievements);
-export const useUnlockedAchievements = () => useAchievementStoreBase((state) => state.getUnlockedAchievements());
-export const useAchievementActions = () =>
-  useAchievementStoreBase((state) => ({
-    loadAchievements: state.loadAchievements,
-    initializeDefaultAchievements: state.initializeDefaultAchievements,
-    checkAndUnlockAchievements: state.checkAndUnlockAchievements,
-    unlockAchievement: state.unlockAchievement,
-  }));
+export const useAchievementsLoading = () => useAchievementStoreBase((state) => state.isLoading);
+export const useAchievementsError = () => useAchievementStoreBase((state) => state.error);
+export const useAchievementById = (achievementId: string) =>
+  useAchievementStoreBase((state) => state.achievements.find((a) => a.id === achievementId));
+
+// ✅ FIXED: Return individual functions, not objects
+export const useLoadAchievements = () => useAchievementStoreBase((state) => state.loadAchievements);
+export const useInitializeDefaultAchievements = () => useAchievementStoreBase((state) => state.initializeDefaultAchievements);
+export const useCheckAndUnlockAchievements = () => useAchievementStoreBase((state) => state.checkAndUnlockAchievements);
+export const useUnlockAchievement = () => useAchievementStoreBase((state) => state.unlockAchievement);
+export const useUpdateAchievementProgress = () => useAchievementStoreBase((state) => state.updateProgress);
+export const useClearAchievementError = () => useAchievementStoreBase((state) => state.clearError);
 
 export const useAchievementStore = useAchievementStoreBase;
