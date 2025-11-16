@@ -2,16 +2,17 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
-import { useCategoryStore } from '../stores/useCategoryStore';
-import { useSessionStore } from '../stores/useSessionStore';
+import { useCategories } from '../stores/useCategoryStore';
+import { useSessionFilter, useSetFilter, useClearFilter } from '../stores/useSessionStore';
 
 export function FilterChips() {
-  const { categories } = useCategoryStore();
-  const { filter, setFilter, clearFilter } = useSessionStore();
+  const categories = useCategories();
+  const filter = useSessionFilter();
+  const setFilter = useSetFilter();
+  const clearFilter = useClearFilter();
 
   const handleCategoryPress = (categoryId: string) => {
     if (filter.categoryId === categoryId) {
-      // Deselect if already selected
       setFilter({ ...filter, categoryId: undefined });
     } else {
       setFilter({ ...filter, categoryId });
@@ -27,7 +28,6 @@ export function FilterChips() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Clear all filters */}
         {hasActiveFilters && (
           <TouchableOpacity
             style={[styles.chip, styles.clearChip]}
@@ -38,7 +38,6 @@ export function FilterChips() {
           </TouchableOpacity>
         )}
 
-        {/* All (show all categories) */}
         <TouchableOpacity
           style={[styles.chip, !filter.categoryId && styles.chipActive]}
           onPress={() => setFilter({ ...filter, categoryId: undefined })}
@@ -53,7 +52,6 @@ export function FilterChips() {
           </Text>
         </TouchableOpacity>
 
-        {/* Category chips */}
         {categories.map((category) => (
           <TouchableOpacity
             key={category.id}
