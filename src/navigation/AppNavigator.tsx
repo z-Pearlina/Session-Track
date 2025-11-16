@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
 import { MainTabParamList, RootStackParamList } from '../types';
 
-
 import HomeScreen from '../screens/HomeScreen';
 import StartSessionScreen from '../screens/StartSessionScreen';
 import StatsScreen from '../screens/StatsScreen';
@@ -17,7 +16,6 @@ import SessionDetailsScreen from '../screens/SessionDetailsScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import CategoryManagerScreen from '../screens/CategoryManagerScreen';
 import CustomizeDashboardScreen from '../screens/CustomizeDashboardScreen';
-
 
 import GoalsScreen from '../screens/GoalsScreen';
 import CreateGoalScreen from '../screens/CreateGoalScreen';
@@ -118,13 +116,17 @@ function MainTabs() {
   );
 }
 
+/**
+ * ✨ CUSTOM TRANSITIONS
+ */
 
+// Standard iOS slide
 const smoothIOSSlide = {
   gestureEnabled: true,
   gestureDirection: 'horizontal' as const,
   transitionSpec: {
     open: {
-      animation: 'spring',
+      animation: 'spring' as const,
       config: {
         stiffness: 1000,
         damping: 500,
@@ -135,7 +137,7 @@ const smoothIOSSlide = {
       },
     },
     close: {
-      animation: 'spring',
+      animation: 'spring' as const,
       config: {
         stiffness: 1000,
         damping: 500,
@@ -149,14 +151,14 @@ const smoothIOSSlide = {
   cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
 };
 
-
+// 🎨 SPECIAL: Modal (Swipe down to dismiss)
 const modalSwipeDown = {
   gestureEnabled: true,
   gestureDirection: 'vertical' as const,
   presentation: 'modal' as const,
   transitionSpec: {
     open: {
-      animation: 'spring',
+      animation: 'spring' as const,
       config: {
         stiffness: 800,
         damping: 500,
@@ -167,7 +169,7 @@ const modalSwipeDown = {
       },
     },
     close: {
-      animation: 'spring',
+      animation: 'spring' as const,
       config: {
         stiffness: 1000,
         damping: 500,
@@ -218,13 +220,13 @@ const modalSwipeDown = {
   },
 };
 
-
+// 🎨 SPECIAL: Calendar Screen (Zoom + Rotate reveal)
 const calendarReveal = {
   gestureEnabled: true,
   gestureDirection: 'horizontal' as const,
   transitionSpec: {
     open: {
-      animation: 'spring',
+      animation: 'spring' as const,
       config: {
         stiffness: 900,
         damping: 500,
@@ -235,7 +237,7 @@ const calendarReveal = {
       },
     },
     close: {
-      animation: 'spring',
+      animation: 'spring' as const,
       config: {
         stiffness: 900,
         damping: 500,
@@ -284,7 +286,7 @@ const calendarReveal = {
   },
 };
 
-
+// 🎨 SPECIAL: Settings Features (Elegant lift and fade)
 const settingsFeatureLift = {
   gestureEnabled: true,
   gestureDirection: 'horizontal' as const,
@@ -350,19 +352,21 @@ const settingsFeatureLift = {
   },
 };
 
-
+/**
+ * ✨ MAIN NAVIGATOR
+ */
 export default function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator
+        detachInactiveScreens={true}
         screenOptions={{
           headerShown: false,
           ...smoothIOSSlide,
           cardOverlayEnabled: true,
-          detachInactiveScreens: true,
         }}
       >
-        
+        {/* Main Tabs */}
         <Stack.Screen 
           name="MainTabs" 
           component={MainTabs}
@@ -377,7 +381,7 @@ export default function AppNavigator() {
           }}
         />
 
-        
+        {/* Edit Session - Modal from bottom */}
         <Stack.Screen
           name="EditSession"
           component={EditSessionScreen}
@@ -388,7 +392,7 @@ export default function AppNavigator() {
           }}
         />
 
-        
+        {/* Session Details - Standard iOS slide */}
         <Stack.Screen
           name="SessionDetails"
           component={SessionDetailsScreen}
@@ -398,7 +402,7 @@ export default function AppNavigator() {
           }}
         />
 
-        
+        {/* 🎨 SPECIAL: Calendar - Zoom + Rotate reveal */}
         <Stack.Screen
           name="Calendar"
           component={CalendarScreen}
@@ -409,7 +413,7 @@ export default function AppNavigator() {
           }}
         />
 
-        
+        {/* 🎨 SPECIAL: Category Manager - Modal swipe down */}
         <Stack.Screen
           name="CategoryManager"
           component={CategoryManagerScreen}
@@ -420,7 +424,7 @@ export default function AppNavigator() {
           }}
         />
 
-        
+        {/* 🎨 SPECIAL: Customize Dashboard - Modal swipe down */}
         <Stack.Screen
           name="CustomizeDashboard"
           component={CustomizeDashboardScreen}
@@ -431,9 +435,11 @@ export default function AppNavigator() {
           }}
         />
 
-        
+        {/* ========================================
+            ✅ NEW: GOALS, ACHIEVEMENTS, NOTIFICATIONS
+            ======================================== */}
 
-        
+        {/* Goals Screen - Settings feature lift */}
         <Stack.Screen
           name="Goals"
           component={GoalsScreen}
@@ -444,7 +450,7 @@ export default function AppNavigator() {
           }}
         />
 
-        
+        {/* Create Goal - Modal from bottom */}
         <Stack.Screen
           name="CreateGoal"
           component={CreateGoalScreen}
@@ -455,7 +461,7 @@ export default function AppNavigator() {
           }}
         />
 
-        
+        {/* Goal Details - Standard iOS slide */}
         <Stack.Screen
           name="GoalDetails"
           component={GoalDetailsScreen}
@@ -465,7 +471,7 @@ export default function AppNavigator() {
           }}
         />
 
-        
+        {/* Achievements Screen - Settings feature lift */}
         <Stack.Screen
           name="Achievements"
           component={AchievementsScreen}
@@ -476,7 +482,7 @@ export default function AppNavigator() {
           }}
         />
 
-        
+        {/* Notification Settings - Settings feature lift */}
         <Stack.Screen
           name="NotificationSettings"
           component={NotificationSettingsScreen}

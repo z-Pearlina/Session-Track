@@ -73,6 +73,11 @@ export default function GoalsScreen() {
     [filteredGoals]
   );
 
+  const archivedGoals = useMemo(() => 
+    filteredGoals.filter(g => g.status === 'archived'), 
+    [filteredGoals]
+  );
+
   const stats = useMemo(() => ({
     total: goals.length,
     active: goals.filter(g => g.status === 'active').length,
@@ -258,6 +263,65 @@ export default function GoalsScreen() {
             </>
           )}
 
+          {/* Archived Goals */}
+          {archivedGoals.length > 0 && (
+            <>
+              <Text style={[styles.sectionTitle, (activeGoals.length > 0 || completedGoals.length > 0) && styles.sectionTitleSpacing]}>
+                Archived Goals 📦
+              </Text>
+              {archivedGoals.map((goal) => (
+                <TouchableOpacity
+                  key={goal.id}
+                  onPress={() => navigation.navigate('GoalDetails', { goalId: goal.id })}
+                  activeOpacity={0.7}
+                >
+                  <GlassCard style={[styles.goalCard, styles.goalCardArchived]}>
+                    <View style={styles.goalHeader}>
+                      <View style={styles.goalInfo}>
+                        <Ionicons name="archive" size={24} color={theme.colors.text.tertiary} />
+                        <Text style={[styles.goalTitle, styles.archivedGoalTitle]}>{goal.title}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteGoal(goal.id, goal.title)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.goalStats}>
+                      <Text style={styles.goalProgress}>
+                        {formatMinutes(goal.currentProgress)} / {formatMinutes(goal.targetMinutes)}
+                      </Text>
+                      <Text style={styles.goalPercentage}>
+                        {Math.round(getProgressPercentage(goal))}%
+                      </Text>
+                    </View>
+
+                    <View style={styles.progressBarBackground}>
+                      <LinearGradient
+                        colors={[theme.colors.text.tertiary, theme.colors.text.quaternary]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[
+                          styles.progressBarFill,
+                          { width: `${getProgressPercentage(goal)}%` },
+                        ]}
+                      />
+                    </View>
+
+                    <View style={styles.goalFooter}>
+                      <View style={styles.periodBadge}>
+                        <Text style={styles.periodText}>{goal.period.toUpperCase()}</Text>
+                      </View>
+                      <Text style={styles.archivedText}>Archived</Text>
+                    </View>
+                  </GlassCard>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+
           {/* Empty State */}
           {filteredGoals.length === 0 && (
             <View style={styles.emptyState}>
@@ -403,6 +467,9 @@ const styles = StyleSheet.create({
   goalCardCompleted: {
     opacity: 0.7,
   },
+  goalCardArchived: {
+    opacity: 0.6,
+  },
   goalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -420,6 +487,9 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.primary,
     flex: 1,
+  },
+  archivedGoalTitle: {
+    color: theme.colors.text.tertiary,
   },
   goalStats: {
     flexDirection: 'row',
@@ -473,6 +543,12 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.sm,
     color: theme.colors.success,
     fontWeight: theme.fontWeight.semibold,
+  },
+  archivedText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text.tertiary,
+    fontWeight: theme.fontWeight.semibold,
+    fontStyle: 'italic',
   },
   emptyState: {
     flex: 1,
