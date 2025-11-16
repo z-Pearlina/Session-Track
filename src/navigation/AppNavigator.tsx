@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, TransitionPresets, CardStyleInterpolators, StackCardInterpolationProps } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../theme/theme';
 import { MainTabParamList, RootStackParamList } from '../types';
 
@@ -28,13 +29,15 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 
 function MainTabs() {
+  const insets = useSafeAreaInsets();
+  
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
           position: 'absolute',
-          bottom: 16,
+          bottom: insets.bottom + 16,
           left: 16,
           right: 16,
           height: 70,
@@ -116,9 +119,6 @@ function MainTabs() {
   );
 }
 
-/**
- * ✨ CUSTOM TRANSITIONS
- */
 
 // Standard iOS slide
 const smoothIOSSlide = {

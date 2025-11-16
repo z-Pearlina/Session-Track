@@ -25,16 +25,7 @@ import { useCategories, useLoadCategories } from '../stores/useCategoryStore';
 import { useUpdateGoalProgress } from '../stores/useGoalStore';
 import { Session } from '../types';
 import { RootStackNavigationProp, StartSessionRouteProp } from '../types';
-
-/**
- * 🎨 UPGRADED START SESSION SCREEN
- * 
- * Features:
- * - ✅ Glowing circular timer with pulsating animation
- * - ✅ Fixed Pause/Resume button logic
- * - ✅ Modern glassmorphism design
- * - ✅ Smooth animations
- */
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // 1. Import: useSafeAreaInsets
 
 export default function StartSessionScreen() {
   const navigation = useNavigation<RootStackNavigationProp>();
@@ -63,6 +54,10 @@ export default function StartSessionScreen() {
   const categories = useCategories();
   const loadCategories = useLoadCategories();
   const updateGoalProgress = useUpdateGoalProgress();
+
+  const insets = useSafeAreaInsets(); // 2. Calculate padding:
+  const scrollBottomPadding = 102 + insets.bottom; // 2. Calculate padding:
+
 
   // Load categories when screen mounts
   useEffect(() => {
@@ -226,7 +221,7 @@ export default function StartSessionScreen() {
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <ScrollView
               style={styles.scrollView}
-              contentContainerStyle={styles.scrollContent}
+              contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]} // 3. Apply to ScrollView:
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
@@ -252,7 +247,7 @@ export default function StartSessionScreen() {
                 <BlurView intensity={30} tint="dark" style={styles.timerCircle}>
                   <View style={styles.timerInner}>
                     <Text style={styles.timerText}>{formatTime(elapsedMs)}</Text>
-                    
+
                     {/* Status Badge */}
                     {isPaused && (
                       <View style={styles.statusBadge}>
@@ -351,8 +346,8 @@ export default function StartSessionScreen() {
                 {/* Running State: Show Pause and Stop */}
                 {isRunning && !isPaused && (
                   <View style={styles.activeControls}>
-                    <TouchableOpacity 
-                      style={[styles.secondaryButton, styles.flexButton]} 
+                    <TouchableOpacity
+                      style={[styles.secondaryButton, styles.flexButton]}
                       onPress={handlePause}
                     >
                       <Ionicons name="pause" size={24} color={theme.colors.warning} />
@@ -360,8 +355,8 @@ export default function StartSessionScreen() {
                         Pause
                       </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.primaryButton, styles.flexButton]} 
+                    <TouchableOpacity
+                      style={[styles.primaryButton, styles.flexButton]}
                       onPress={handleStop}
                     >
                       <LinearGradient
@@ -378,8 +373,8 @@ export default function StartSessionScreen() {
                 {/* Paused State: Show Reset, Resume, and Stop */}
                 {isPaused && (
                   <View style={styles.pausedControls}>
-                    <TouchableOpacity 
-                      style={styles.dangerButton} 
+                    <TouchableOpacity
+                      style={styles.dangerButton}
                       onPress={handleReset}
                     >
                       <Ionicons name="refresh" size={20} color={theme.colors.danger} />
@@ -387,17 +382,17 @@ export default function StartSessionScreen() {
                         Reset
                       </Text>
                     </TouchableOpacity>
-                    
+
                     <View style={styles.pausedMainButtons}>
-                      <TouchableOpacity 
-                        style={[styles.secondaryButton, styles.flexButton]} 
+                      <TouchableOpacity
+                        style={[styles.secondaryButton, styles.flexButton]}
                         onPress={handleResume}
                       >
                         <Ionicons name="play" size={24} color={theme.colors.primary.cyan} />
                         <Text style={styles.secondaryButtonText}>Resume</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.primaryButton, styles.flexButton]} 
+                      <TouchableOpacity
+                        style={[styles.primaryButton, styles.flexButton]}
                         onPress={handleStop}
                       >
                         <LinearGradient
@@ -466,9 +461,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: theme.spacing[4],
-    paddingBottom: theme.spacing[8],
+    paddingBottom: theme.spacing[8], // This will be overridden by the inline style
   },
-  
+
   // ✨ NEW: Glowing Circular Timer Styles
   timerContainer: {
     alignItems: 'center',
@@ -532,7 +527,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: theme.colors.danger,
   },
-  
+
   formContainer: {
     gap: theme.spacing[5],
   },
@@ -603,7 +598,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     fontWeight: theme.fontWeight.bold,
   },
-  
+
   // ✅ FIXED: Button Controls
   controlsContainer: {
     marginTop: theme.spacing[6],
@@ -666,7 +661,7 @@ const styles = StyleSheet.create({
   flexButton: {
     flex: 1,
   },
-  
+
   tipContainer: {
     flexDirection: 'row',
     alignItems: 'center',

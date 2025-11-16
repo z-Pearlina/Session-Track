@@ -8,9 +8,11 @@ import {
   Keyboard,
   InteractionManager,
   ListRenderItemInfo,
+  TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../theme/theme';
 import {
   useSessions,
@@ -29,12 +31,12 @@ import { EnergyRingCard } from '../components/EnergyRingCard';
 import { MiniStatCard } from '../components/MiniStatCard';
 import { CategoryProgressCard } from '../components/CategoryProgressCard';
 import { GlassCard } from '../components/GlassCard';
-import { FABButton } from '../components/FABButton';
 import { SwipeableSessionCard } from '../components/SwipeableSessionCard';
 import { FilterChips } from '../components/FilterChips';
 import { SearchBar } from '../components/SearchBar';
 import { Ionicons } from '@expo/vector-icons';
 import { Session } from '../types';
+
 
 const getTodayDateString = () => new Date().toDateString();
 const getYesterdayDateString = () => {
@@ -49,6 +51,9 @@ const getSessionDateString = (session: Session) => {
 
 export default function HomeScreen() {
   const navigation = useNavigation();
+  
+  // ✅ Get safe area insets for proper spacing
+  const insets = useSafeAreaInsets();
 
   const sessions = useSessions();
   const filteredSessions = useFilteredSessions();
@@ -196,6 +201,11 @@ export default function HomeScreen() {
     return !!(filter.categoryId || filter.dateRange || searchQuery);
   }, [filter.categoryId, filter.dateRange, searchQuery]);
 
+  // ✅ NEW: Determine if FAB should be visible (only when no sessions)
+  const showFAB = useMemo(() => {
+    return sessions.length === 0;
+  }, [sessions.length]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([
@@ -317,6 +327,7 @@ export default function HomeScreen() {
   const ListEmptyComponent = useCallback(() => (
     <GlassCard style={styles.emptyStateCard}>
       <View style={styles.emptyState}>
+        <Ionicons name="analytics-outline" size={64} color={theme.colors.text.quaternary} />
         <Text style={styles.emptyText}>
           {hasActiveFilters
             ? 'No sessions found'
@@ -331,9 +342,28 @@ export default function HomeScreen() {
             : 'Tap "Start Session" below to begin tracking'
           }
         </Text>
+        
+        
+        {!hasActiveFilters && sessions.length === 0 && (
+          <TouchableOpacity
+            style={styles.emptyStateButton}
+            onPress={handleStartSession}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={[theme.colors.primary.cyan, theme.colors.primary.aqua]}
+              style={styles.emptyStateButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons name="play-circle" size={24} color="#FFFFFF" />
+              <Text style={styles.emptyStateButtonText}>Start Session</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
       </View>
     </GlassCard>
-  ), [hasActiveFilters, searchQuery]);
+  ), [hasActiveFilters, searchQuery, sessions.length, handleStartSession]);
 
   return (
     <View style={styles.root}>
@@ -367,10 +397,8 @@ export default function HomeScreen() {
         updateCellsBatchingPeriod={50}
         initialNumToRender={10}
         windowSize={5}
-        ListFooterComponent={<View style={{ height: 200 }} />}
+        ListFooterComponent={<View style={{ height: 120 + insets.bottom }} />}
       />
-
-      <FABButton onPress={handleStartSession} />
     </View>
   );
 }
@@ -458,18 +486,50 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing[4],
   },
   emptyState: {
-    padding: theme.spacing[6],
+    padding: theme.spacing[8],
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.semibold,
+    fontSize: theme.fontSize.xl,
+    fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing[1],
+    marginTop: theme.spacing[4],
+    marginBottom: theme.spacing[2],
   },
   emptySubtext: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.text.tertiary,
+    fontSize: theme.fontSize.base,
+    color: theme.colors.text.secondary,
     textAlign: 'center',
+    marginBottom: theme.spacing[6],
+    lineHeight: 22,
+  },
+  // ✅ NEW: Empty state button styles
+  emptyStateButton: {
+    borderRadius: theme.borderRadius['2xl'],
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: theme.colors.primary.cyan,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  emptyStateButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing[4],
+    paddingHorizontal: theme.spacing[6],
+    gap: theme.spacing[2],
+  },
+  emptyStateButtonText: {
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.bold,
+    color: '#FFFFFF',
+  },
+
+  fabContainer: {
+    position: 'absolute',
+    right: 16,
+    zIndex: 100,
   },
 });

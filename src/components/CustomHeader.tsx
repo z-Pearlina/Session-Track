@@ -20,7 +20,7 @@ export function CustomHeader() {
         </TouchableOpacity>
 
         {/* Title */}
-        <Text style={styles.title}>SESSION TRACK</Text>
+        <Text style={styles.title}>FlowTrix</Text>
 
         {/* Profile Picture */}
         <TouchableOpacity style={styles.profileButton}>
@@ -62,8 +62,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.light,
+    fontSize: theme.fontSize.xl,
+    fontWeight: theme.fontWeight.semibold,
     letterSpacing: 3.2,
     color: theme.colors.text.secondary,
   },

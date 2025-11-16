@@ -198,7 +198,7 @@ export default function SettingsScreen() {
                   <Ionicons name="timer" size={32} color={theme.colors.text.inverse} />
                 </LinearGradient>
               </View>
-              <Text style={styles.appName}>Session Track</Text>
+              <Text style={styles.appName}>FlowTrix</Text>
               <Text style={styles.appVersion}>Version 1.0.0</Text>
               <Text style={styles.appDescription}>
                 Track your focus time and build productive habits

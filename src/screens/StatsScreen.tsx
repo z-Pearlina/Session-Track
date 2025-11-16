@@ -103,8 +103,13 @@ export default function StatsScreen() {
       const firstHalfHours = firstHalf.reduce((sum, s) => sum + s.durationMs, 0) / (1000 * 60 * 60);
       const secondHalfHours = secondHalf.reduce((sum, s) => sum + s.durationMs, 0) / (1000 * 60 * 60);
 
-      if (firstHalfHours > 0) {
-        growthPercent = ((secondHalfHours - firstHalfHours) / firstHalfHours) * 100;
+    
+      const MIN_HOURS = 0.1; // 6 minutes minimum
+      if (firstHalfHours >= MIN_HOURS) {
+        const raw = ((secondHalfHours - firstHalfHours) / firstHalfHours) * 100;
+        growthPercent = Math.max(-100, Math.min(999, raw)); // Cap: -100% to +999%
+      } else if (secondHalfHours > 0) {
+        growthPercent = 999; 
       }
     }
 
