@@ -8,6 +8,7 @@ interface GoalState {
   isLoading: boolean;
   error: string | null;
 
+  getGoalById: (goalId: string) => Goal | undefined;
   loadGoals: () => Promise<void>;
   addGoal: (goal: Goal) => Promise<void>;
   updateGoal: (goalId: string, updates: Partial<Goal>) => Promise<void>;
@@ -23,6 +24,10 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
   isLoading: false,
   error: null,
 
+  getGoalById: (goalId: string) => {
+    return get().goals.find((goal) => goal.id === goalId);
+  },
+
   loadGoals: async () => {
     set({ isLoading: true, error: null });
     try {
@@ -31,9 +36,9 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
       logger.info(`Loaded ${goals.length} goals`);
     } catch (error) {
       logger.error("Failed to load goals", error);
-      set({ 
+      set({
         error: error instanceof Error ? error.message : "Failed to load goals",
-        isLoading: false 
+        isLoading: false
       });
     }
   },
@@ -42,16 +47,16 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await StorageService.saveGoal(goal);
-      set((state) => ({ 
+      set((state) => ({
         goals: [...state.goals, goal],
-        isLoading: false 
+        isLoading: false
       }));
       logger.success(`Goal added: ${goal.title}`);
     } catch (error) {
       logger.error("Failed to add goal", error);
-      set({ 
+      set({
         error: error instanceof Error ? error.message : "Failed to add goal",
-        isLoading: false 
+        isLoading: false
       });
       throw error;
     }
@@ -72,9 +77,9 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
       logger.success(`Goal updated: ${goalId}`);
     } catch (error) {
       logger.error("Failed to update goal", error);
-      set({ 
+      set({
         error: error instanceof Error ? error.message : "Failed to update goal",
-        isLoading: false 
+        isLoading: false
       });
       throw error;
     }
@@ -91,9 +96,9 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
       logger.success(`Goal deleted: ${goalId}`);
     } catch (error) {
       logger.error("Failed to delete goal", error);
-      set({ 
+      set({
         error: error instanceof Error ? error.message : "Failed to delete goal",
-        isLoading: false 
+        isLoading: false
       });
       throw error;
     }
@@ -130,13 +135,13 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
         ),
         isLoading: false,
       }));
-      
+
       logger.success(`Goal progress updated: ${goalId}`);
     } catch (error) {
       logger.error("Failed to update goal progress", error);
-      set({ 
+      set({
         error: error instanceof Error ? error.message : "Failed to update goal progress",
-        isLoading: false 
+        isLoading: false
       });
       throw error;
     }
@@ -163,13 +168,13 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
         ),
         isLoading: false,
       }));
-      
+
       logger.success(`Goal completed: ${goalId}`);
     } catch (error) {
       logger.error("Failed to complete goal", error);
-      set({ 
+      set({
         error: error instanceof Error ? error.message : "Failed to complete goal",
-        isLoading: false 
+        isLoading: false
       });
       throw error;
     }
@@ -178,30 +183,30 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
   archiveGoal: async (goalId: string) => {
     set({ isLoading: true, error: null });
     try {
-      await StorageService.updateGoal(goalId, { 
+      await StorageService.updateGoal(goalId, {
         status: "archived",
         updatedAt: new Date().toISOString(),
       });
-      
+
       set((state) => ({
         goals: state.goals.map((goal) =>
-          goal.id === goalId 
-            ? { 
-                ...goal, 
+          goal.id === goalId
+            ? {
+                ...goal,
                 status: "archived",
                 updatedAt: new Date().toISOString(),
-              } 
+              }
             : goal
         ),
         isLoading: false,
       }));
-      
+
       logger.success(`Goal archived: ${goalId}`);
     } catch (error) {
       logger.error("Failed to archive goal", error);
-      set({ 
+      set({
         error: error instanceof Error ? error.message : "Failed to archive goal",
-        isLoading: false 
+        isLoading: false
       });
       throw error;
     }
@@ -210,14 +215,13 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
   clearError: () => set({ error: null }),
 }));
 
-// ✅ FIXED: Simple selectors only
 export const useGoals = () => useGoalStoreBase((state) => state.goals);
 export const useGoalsLoading = () => useGoalStoreBase((state) => state.isLoading);
 export const useGoalsError = () => useGoalStoreBase((state) => state.error);
 export const useGoalById = (goalId: string) =>
   useGoalStoreBase((state) => state.goals.find((goal) => goal.id === goalId));
 
-// ✅ FIXED: Return individual functions, not objects
+export const useGetGoalById = () => useGoalStoreBase((state) => state.getGoalById);
 export const useLoadGoals = () => useGoalStoreBase((state) => state.loadGoals);
 export const useAddGoal = () => useGoalStoreBase((state) => state.addGoal);
 export const useUpdateGoal = () => useGoalStoreBase((state) => state.updateGoal);
