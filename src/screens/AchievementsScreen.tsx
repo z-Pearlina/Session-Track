@@ -20,6 +20,14 @@ import { GlassCard } from '../components/GlassCard';
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - (theme.spacing[4] * 3)) / 2;
 
+/**
+ * 🏆 ACHIEVEMENTS SCREEN - UI FIXED
+ * 
+ * ✅ Fixed gap issue - stats and filters outside ScrollView
+ * ✅ Proper spacing with theme.spacing
+ * ✅ Clean layout structure
+ */
+
 export default function AchievementsScreen() {
   const navigation = useNavigation();
   const achievements = useAchievements();
@@ -95,8 +103,8 @@ export default function AchievementsScreen() {
           <View style={styles.backButton} />
         </View>
 
-        {/* Stats Card */}
-        <View style={styles.statsContainer}>
+        {/* Stats Card - OUTSIDE ScrollView */}
+        <View style={styles.statsWrapper}>
           <GlassCard style={styles.statsCard}>
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
@@ -117,36 +125,38 @@ export default function AchievementsScreen() {
           </GlassCard>
         </View>
 
-        {/* Filter Chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersContainer}
-        >
-          {(['all', 'milestone', 'streak', 'dedication'] as const).map((category) => (
-            <TouchableOpacity
-              key={category}
-              onPress={() => setFilterCategory(category)}
-              activeOpacity={0.7}
-            >
-              <GlassCard style={[
-                styles.filterChip,
-                filterCategory === category && styles.filterChipActive
-              ]}>
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    filterCategory === category && styles.filterChipTextActive,
-                  ]}
-                >
-                  {category.charAt(0).toUpperCase() + category.slice(1)}
-                </Text>
-              </GlassCard>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {/* Filter Chips - OUTSIDE ScrollView */}
+        <View style={styles.filtersWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtersContainer}
+          >
+            {(['all', 'milestone', 'streak', 'dedication'] as const).map((category) => (
+              <TouchableOpacity
+                key={category}
+                onPress={() => setFilterCategory(category)}
+                activeOpacity={0.7}
+              >
+                <GlassCard style={[
+                  styles.filterChip,
+                  filterCategory === category && styles.filterChipActive
+                ]}>
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      filterCategory === category && styles.filterChipTextActive,
+                    ]}
+                  >
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </Text>
+                </GlassCard>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
 
-        {/* Achievements Grid */}
+        {/* Achievements Grid - ONLY THIS SCROLLS */}
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.contentContainer}
@@ -206,7 +216,6 @@ export default function AchievementsScreen() {
     </View>
   );
 }
-
 
 interface AchievementBadgeProps {
   achievement: Achievement;
@@ -316,7 +325,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[4],
+    paddingVertical: theme.spacing[3],
   },
   backButton: {
     width: 40,
@@ -331,9 +340,9 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     letterSpacing: 0.5,
   },
-  statsContainer: {
+  statsWrapper: {
     paddingHorizontal: theme.spacing[4],
-    marginBottom: theme.spacing[4],
+    marginBottom: theme.spacing[3],
   },
   statsCard: {
     padding: theme.spacing[4],
@@ -364,9 +373,11 @@ const styles = StyleSheet.create({
     height: 40,
     backgroundColor: theme.colors.glass.border,
   },
+  filtersWrapper: {
+    marginBottom: theme.spacing[3],
+  },
   filtersContainer: {
     paddingHorizontal: theme.spacing[4],
-    paddingBottom: theme.spacing[4],
     gap: theme.spacing[2],
   },
   filterChip: {
@@ -391,6 +402,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: theme.spacing[4],
+    paddingTop: 0,
     paddingBottom: theme.spacing[8],
   },
   sectionTitle: {

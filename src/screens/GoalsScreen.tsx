@@ -18,7 +18,6 @@ import { theme } from '../theme/theme';
 import { GlassCard } from '../components/GlassCard';
 import { RootStackNavigationProp } from '../types';
 
-
 export default function GoalsScreen() {
   const navigation = useNavigation<RootStackNavigationProp>();
   const goals = useGoals();
@@ -80,6 +79,17 @@ export default function GoalsScreen() {
     completed: goals.filter(g => g.status === 'completed').length,
   }), [goals]);
 
+  const formatMinutes = (minutes: number) => {
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  };
+
+  const getProgressPercentage = (goal: Goal) => {
+    return Math.min((goal.currentProgress / goal.targetMinutes) * 100, 100);
+  };
+
   return (
     <View style={styles.root}>
       <LinearGradient
@@ -101,57 +111,56 @@ export default function GoalsScreen() {
             onPress={() => navigation.navigate('CreateGoal')}
             style={styles.addButton}
           >
-            <View style={styles.addButtonGlow} />
             <Ionicons name="add" size={28} color={theme.colors.primary.cyan} />
           </TouchableOpacity>
         </View>
 
-        {/* Stats Cards */}
-        <View style={styles.statsRow}>
+        {/* Stats Cards - NO SCROLLVIEW HERE */}
+        <View style={styles.statsContainer}>
           <GlassCard style={styles.statCard}>
             <Text style={styles.statValue}>{stats.total}</Text>
-            <Text style={styles.statLabel}>Total</Text>
+            <Text style={styles.statLabel}>TOTAL</Text>
           </GlassCard>
           <GlassCard style={styles.statCard}>
             <Text style={styles.statValue}>{stats.active}</Text>
-            <Text style={styles.statLabel}>Active</Text>
+            <Text style={styles.statLabel}>ACTIVE</Text>
           </GlassCard>
           <GlassCard style={styles.statCard}>
             <Text style={styles.statValue}>{stats.completed}</Text>
-            <Text style={styles.statLabel}>Completed</Text>
+            <Text style={styles.statLabel}>COMPLETED</Text>
           </GlassCard>
         </View>
 
-        {/* Filter Chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersContainer}
-        >
-          {(['all', 'daily', 'weekly', 'monthly'] as const).map((period) => (
-            <TouchableOpacity
-              key={period}
-              onPress={() => setFilterPeriod(period)}
-              activeOpacity={0.7}
-            >
-              <GlassCard style={[
-                styles.filterChip,
-                filterPeriod === period && styles.filterChipActive
-              ]}>
-                <Text
-                  style={[
+        {/* Filter Chips - NO SCROLLVIEW HERE */}
+        <View style={styles.filtersWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtersContainer}
+          >
+            {(['all', 'daily', 'weekly', 'monthly'] as const).map((period) => (
+              <TouchableOpacity
+                key={period}
+                onPress={() => setFilterPeriod(period)}
+                activeOpacity={0.7}
+              >
+                <GlassCard style={[
+                  styles.filterChip,
+                  filterPeriod === period && styles.filterChipActive
+                ]}>
+                  <Text style={[
                     styles.filterChipText,
                     filterPeriod === period && styles.filterChipTextActive,
-                  ]}
-                >
-                  {period.charAt(0).toUpperCase() + period.slice(1)}
-                </Text>
-              </GlassCard>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+                  ]}>
+                    {period.charAt(0).toUpperCase() + period.slice(1)}
+                  </Text>
+                </GlassCard>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
 
-        {/* Goals List */}
+        {/* Goals List - ONLY THIS SCROLLS */}
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.contentContainer}
@@ -169,12 +178,56 @@ export default function GoalsScreen() {
             <>
               <Text style={styles.sectionTitle}>Active Goals</Text>
               {activeGoals.map((goal) => (
-                <GoalCard
+                <TouchableOpacity
                   key={goal.id}
-                  goal={goal}
                   onPress={() => navigation.navigate('GoalDetails', { goalId: goal.id })}
-                  onDelete={() => handleDeleteGoal(goal.id, goal.title)}
-                />
+                  activeOpacity={0.7}
+                >
+                  <GlassCard style={styles.goalCard}>
+                    <View style={styles.goalHeader}>
+                      <View style={styles.goalInfo}>
+                        <Ionicons name="trophy" size={24} color={theme.colors.primary.cyan} />
+                        <Text style={styles.goalTitle}>{goal.title}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteGoal(goal.id, goal.title)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.goalStats}>
+                      <Text style={styles.goalProgress}>
+                        {formatMinutes(goal.currentProgress)} / {formatMinutes(goal.targetMinutes)}
+                      </Text>
+                      <Text style={styles.goalPercentage}>
+                        {Math.round(getProgressPercentage(goal))}%
+                      </Text>
+                    </View>
+
+                    <View style={styles.progressBarBackground}>
+                      <LinearGradient
+                        colors={[theme.colors.primary.cyan, theme.colors.primary.aqua]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[
+                          styles.progressBarFill,
+                          { width: `${getProgressPercentage(goal)}%` },
+                        ]}
+                      />
+                    </View>
+
+                    <View style={styles.goalFooter}>
+                      <View style={styles.periodBadge}>
+                        <Text style={styles.periodText}>{goal.period.toUpperCase()}</Text>
+                      </View>
+                      <Text style={styles.goalDates}>
+                        {new Date(goal.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} → {new Date(goal.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </Text>
+                    </View>
+                  </GlassCard>
+                </TouchableOpacity>
               ))}
             </>
           )}
@@ -183,15 +236,24 @@ export default function GoalsScreen() {
           {completedGoals.length > 0 && (
             <>
               <Text style={[styles.sectionTitle, activeGoals.length > 0 && styles.sectionTitleSpacing]}>
-                Completed 🎉
+                Completed Goals ✓
               </Text>
               {completedGoals.map((goal) => (
-                <GoalCard
+                <TouchableOpacity
                   key={goal.id}
-                  goal={goal}
                   onPress={() => navigation.navigate('GoalDetails', { goalId: goal.id })}
-                  onDelete={() => handleDeleteGoal(goal.id, goal.title)}
-                />
+                  activeOpacity={0.7}
+                >
+                  <GlassCard style={[styles.goalCard, styles.goalCardCompleted]}>
+                    <View style={styles.goalHeader}>
+                      <View style={styles.goalInfo}>
+                        <Ionicons name="checkmark-circle" size={24} color={theme.colors.success} />
+                        <Text style={styles.goalTitle}>{goal.title}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.completedText}>Goal Completed! 🎉</Text>
+                  </GlassCard>
+                </TouchableOpacity>
               ))}
             </>
           )}
@@ -199,25 +261,26 @@ export default function GoalsScreen() {
           {/* Empty State */}
           {filteredGoals.length === 0 && (
             <View style={styles.emptyState}>
-              <View style={styles.emptyIconContainer}>
-                <Ionicons name="trophy-outline" size={64} color={theme.colors.text.tertiary} />
-              </View>
+              <Ionicons name="trophy-outline" size={64} color={theme.colors.text.tertiary} />
               <Text style={styles.emptyStateTitle}>No Goals Yet</Text>
               <Text style={styles.emptyStateText}>
                 Create your first goal to start tracking your progress!
               </Text>
+              
+              {/* Create Goal Button */}
               <TouchableOpacity
                 onPress={() => navigation.navigate('CreateGoal')}
-                style={styles.createButton}
+                style={styles.createGoalButton}
+                activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={theme.gradients.primary}
+                  colors={[theme.colors.primary.cyan, theme.colors.primary.aqua]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={styles.createButtonGradient}
+                  style={styles.createGoalGradient}
                 >
-                  <Ionicons name="add" size={20} color={theme.colors.text.inverse} />
-                  <Text style={styles.createButtonText}>Create Goal</Text>
+                  <Ionicons name="add-circle" size={24} color="#FFFFFF" />
+                  <Text style={styles.createGoalText}>Create Your First Goal</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -227,126 +290,6 @@ export default function GoalsScreen() {
     </View>
   );
 }
-
-interface GoalCardProps {
-  goal: Goal;
-  onPress: () => void;
-  onDelete: () => void;
-}
-
-function GoalCard({ goal, onPress, onDelete }: GoalCardProps) {
-  const progressPercentage = Math.min(
-    (goal.currentProgress / goal.targetMinutes) * 100,
-    100
-  );
-
-  const getPeriodIcon = (period: string) => {
-    switch (period) {
-      case 'daily': return 'today';
-      case 'weekly': return 'calendar';
-      case 'monthly': return 'calendar-outline';
-      default: return 'time';
-    }
-  };
-
-  const formatMinutes = (minutes: number) => {
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-  };
-
-  const isCompleted = goal.status === 'completed';
-
-  return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.goalCardWrapper}>
-      <GlassCard style={styles.goalCard}>
-        {/* Header */}
-        <View style={styles.goalCardHeader}>
-          <View style={styles.goalCardTitleRow}>
-            <View style={[
-              styles.iconCircle,
-              { backgroundColor: isCompleted ? theme.colors.success + '20' : theme.colors.primary.cyan + '20' }
-            ]}>
-              <Ionicons
-                name={getPeriodIcon(goal.period)}
-                size={20}
-                color={isCompleted ? theme.colors.success : theme.colors.primary.cyan}
-              />
-            </View>
-            <Text style={styles.goalCardTitle} numberOfLines={1}>
-              {goal.title}
-            </Text>
-            {isCompleted && (
-              <Ionicons name="checkmark-circle" size={20} color={theme.colors.success} />
-            )}
-          </View>
-          <TouchableOpacity 
-            onPress={onDelete} 
-            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-            style={styles.deleteButton}
-          >
-            <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Description */}
-        {goal.description && (
-          <Text style={styles.goalCardDescription} numberOfLines={2}>
-            {goal.description}
-          </Text>
-        )}
-
-        {/* Progress */}
-        <View style={styles.goalCardProgress}>
-          <Text style={styles.goalCardProgressText}>
-            {formatMinutes(goal.currentProgress)} / {formatMinutes(goal.targetMinutes)}
-          </Text>
-          <Text style={styles.goalCardProgressPercentage}>
-            {Math.round(progressPercentage)}%
-          </Text>
-        </View>
-
-        {/* Progress Bar */}
-        <View style={styles.progressBarContainer}>
-          <View style={styles.progressBarBackground}>
-            <LinearGradient
-              colors={
-                isCompleted
-                  ? [theme.colors.success, theme.colors.success]
-                  : theme.gradients.primary
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[styles.progressBarFill, { width: `${progressPercentage}%` }]}
-            />
-          </View>
-        </View>
-
-        {/* Footer */}
-        <View style={styles.goalCardFooter}>
-          <View style={styles.periodBadge}>
-            <Text style={styles.periodBadgeText}>
-              {goal.period.toUpperCase()}
-            </Text>
-          </View>
-          <Text style={styles.goalCardDates}>
-            {new Date(goal.startDate).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-            })}
-            {' → '}
-            {new Date(goal.endDate).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-            })}
-          </Text>
-        </View>
-      </GlassCard>
-    </TouchableOpacity>
-  );
-}
-
 
 const styles = StyleSheet.create({
   root: {
@@ -367,9 +310,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[4],
+    paddingVertical: theme.spacing[3],
   },
   backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: theme.borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButton: {
     width: 40,
     height: 40,
     borderRadius: theme.borderRadius.full,
@@ -380,34 +330,16 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize['3xl'],
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.primary,
-    letterSpacing: 0.5,
   },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: theme.borderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  addButtonGlow: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: 1,
-    borderColor: theme.colors.primary.cyan,
-    ...theme.shadows.glowCyan,
-  },
-  statsRow: {
+  statsContainer: {
     flexDirection: 'row',
-    gap: theme.spacing[3],
     paddingHorizontal: theme.spacing[4],
-    marginBottom: theme.spacing[4],
+    gap: theme.spacing[3],
+    marginBottom: theme.spacing[3],
   },
   statCard: {
     flex: 1,
-    paddingVertical: theme.spacing[4],
+    padding: theme.spacing[4],
     alignItems: 'center',
   },
   statValue: {
@@ -418,14 +350,15 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.semibold,
     color: theme.colors.text.secondary,
-    textTransform: 'uppercase',
+    fontWeight: theme.fontWeight.semibold,
     letterSpacing: 0.5,
+  },
+  filtersWrapper: {
+    marginBottom: theme.spacing[3],
   },
   filtersContainer: {
     paddingHorizontal: theme.spacing[4],
-    paddingBottom: theme.spacing[4],
     gap: theme.spacing[2],
   },
   filterChip: {
@@ -450,6 +383,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: theme.spacing[4],
+    paddingTop: 0,
     paddingBottom: theme.spacing[8],
   },
   sectionTitle: {
@@ -462,98 +396,83 @@ const styles = StyleSheet.create({
   sectionTitleSpacing: {
     marginTop: theme.spacing[6],
   },
-  goalCardWrapper: {
-    marginBottom: theme.spacing[3],
-  },
   goalCard: {
     padding: theme.spacing[4],
+    marginBottom: theme.spacing[3],
   },
-  goalCardHeader: {
+  goalCardCompleted: {
+    opacity: 0.7,
+  },
+  goalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: theme.spacing[2],
+    marginBottom: theme.spacing[3],
   },
-  goalCardTitleRow: {
+  goalInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
     gap: theme.spacing[2],
+    flex: 1,
   },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: theme.borderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  goalCardTitle: {
+  goalTitle: {
     fontSize: theme.fontSize.base,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.primary,
     flex: 1,
   },
-  deleteButton: {
-    padding: theme.spacing[2],
-  },
-  goalCardDescription: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing[3],
-    lineHeight: 20,
-  },
-  goalCardProgress: {
+  goalStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: theme.spacing[2],
   },
-  goalCardProgressText: {
+  goalProgress: {
     fontSize: theme.fontSize.sm,
+    color: theme.colors.text.secondary,
     fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.text.primary,
   },
-  goalCardProgressPercentage: {
+  goalPercentage: {
     fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.bold,
     color: theme.colors.primary.cyan,
-  },
-  progressBarContainer: {
-    marginBottom: theme.spacing[3],
+    fontWeight: theme.fontWeight.bold,
   },
   progressBarBackground: {
-    height: 8,
+    height: 6,
     backgroundColor: theme.colors.glass.border,
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.borderRadius.full,
     overflow: 'hidden',
+    marginBottom: theme.spacing[3],
   },
   progressBarFill: {
     height: '100%',
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.borderRadius.full,
   },
-  goalCardFooter: {
+  goalFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   periodBadge: {
     paddingHorizontal: theme.spacing[2],
     paddingVertical: theme.spacing[1],
-    backgroundColor: theme.colors.primary.cyan + '20',
+    backgroundColor: theme.colors.glass.border,
     borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.primary.cyan + '40',
   },
-  periodBadgeText: {
+  periodText: {
     fontSize: theme.fontSize.xs,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.primary.cyan,
     letterSpacing: 0.5,
   },
-  goalCardDates: {
+  goalDates: {
     fontSize: theme.fontSize.xs,
     color: theme.colors.text.tertiary,
-    fontWeight: theme.fontWeight.medium,
+    fontWeight: theme.fontWeight.semibold,
+  },
+  completedText: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.success,
+    fontWeight: theme.fontWeight.semibold,
   },
   emptyState: {
     flex: 1,
@@ -561,38 +480,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: theme.spacing[16],
   },
-  emptyIconContainer: {
-    marginBottom: theme.spacing[4],
-  },
   emptyStateTitle: {
     fontSize: theme.fontSize['2xl'],
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.primary,
+    marginTop: theme.spacing[4],
     marginBottom: theme.spacing[2],
   },
   emptyStateText: {
     fontSize: theme.fontSize.base,
     color: theme.colors.text.secondary,
     textAlign: 'center',
-    marginBottom: theme.spacing[6],
     paddingHorizontal: theme.spacing[8],
-    lineHeight: 24,
+    marginBottom: theme.spacing[6],
   },
-  createButton: {
+  createGoalButton: {
     borderRadius: theme.borderRadius['2xl'],
     overflow: 'hidden',
-    ...theme.shadows.glowCyan,
+    elevation: 4,
+    shadowColor: theme.colors.primary.cyan,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
-  createButtonGradient: {
+  createGoalGradient: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing[4],
     paddingHorizontal: theme.spacing[6],
-    paddingVertical: theme.spacing[3],
     gap: theme.spacing[2],
   },
-  createButtonText: {
+  createGoalText: {
     fontSize: theme.fontSize.base,
     fontWeight: theme.fontWeight.bold,
-    color: theme.colors.text.inverse,
+    color: '#FFFFFF',
   },
 });
