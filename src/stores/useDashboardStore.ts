@@ -8,14 +8,13 @@ const MAX_VISIBLE_CATEGORIES = 4;
 interface DashboardState {
   preferences: DashboardPreferences;
   isLoading: boolean;
+  error: string | null;
   maxVisibleCategories: number;
   
   loadPreferences: () => Promise<void>;
   setVisibleCategories: (categoryIds: string[]) => Promise<void>;
   toggleCategoryVisibility: (categoryId: string) => Promise<boolean>;
-  isCategoryVisible: (categoryId: string) => boolean;
-  canAddMoreCategories: () => boolean;
-  getRemainingSlots: () => number;
+  clearError: () => void;
 }
 
 const DEFAULT_PREFERENCES: DashboardPreferences = {
@@ -25,10 +24,11 @@ const DEFAULT_PREFERENCES: DashboardPreferences = {
 const useDashboardStoreBase = create<DashboardState>((set, get) => ({
   preferences: DEFAULT_PREFERENCES,
   isLoading: false,
+  error: null,
   maxVisibleCategories: MAX_VISIBLE_CATEGORIES,
 
   loadPreferences: async () => {
-    set({ isLoading: true });
+    set({ isLoading: true, error: null });
     try {
       const preferences = await StorageService.getDashboardPreferences();
       
@@ -42,11 +42,16 @@ const useDashboardStoreBase = create<DashboardState>((set, get) => ({
       }
     } catch (error) {
       logger.error('Failed to load dashboard preferences', error);
-      set({ preferences: DEFAULT_PREFERENCES, isLoading: false });
+      set({ 
+        preferences: DEFAULT_PREFERENCES,
+        error: error instanceof Error ? error.message : 'Failed to load dashboard preferences',
+        isLoading: false 
+      });
     }
   },
 
   setVisibleCategories: async (categoryIds: string[]) => {
+    set({ isLoading: true, error: null });
     const limitedIds = categoryIds.slice(0, MAX_VISIBLE_CATEGORIES);
     const preferences: DashboardPreferences = {
       visibleCategoryIds: limitedIds,
@@ -54,10 +59,14 @@ const useDashboardStoreBase = create<DashboardState>((set, get) => ({
     
     try {
       await StorageService.saveDashboardPreferences(preferences);
-      set({ preferences });
+      set({ preferences, isLoading: false });
       logger.success('Dashboard preferences saved');
     } catch (error) {
       logger.error('Failed to save dashboard preferences', error);
+      set({ 
+        error: error instanceof Error ? error.message : 'Failed to save dashboard preferences',
+        isLoading: false 
+      });
     }
   },
 
@@ -83,52 +92,20 @@ const useDashboardStoreBase = create<DashboardState>((set, get) => ({
     }
   },
 
-  isCategoryVisible: (categoryId: string) => {
-    const { preferences } = get();
-    return preferences.visibleCategoryIds.includes(categoryId);
-  },
-
-  canAddMoreCategories: () => {
-    const { preferences, maxVisibleCategories } = get();
-    return preferences.visibleCategoryIds.length < maxVisibleCategories;
-  },
-
-  getRemainingSlots: () => {
-    const { preferences, maxVisibleCategories } = get();
-    return maxVisibleCategories - preferences.visibleCategoryIds.length;
-  },
+  clearError: () => set({ error: null }),
 }));
 
-export const useDashboardPreferences = () => 
-  useDashboardStoreBase((state) => state.preferences);
+// ✅ FIXED: Simple selectors only
+export const useDashboardPreferences = () => useDashboardStoreBase((state) => state.preferences);
+export const useVisibleCategoryIds = () => useDashboardStoreBase((state) => state.preferences.visibleCategoryIds);
+export const useDashboardLoading = () => useDashboardStoreBase((state) => state.isLoading);
+export const useDashboardError = () => useDashboardStoreBase((state) => state.error);
+export const useMaxVisibleCategories = () => useDashboardStoreBase((state) => state.maxVisibleCategories);
 
-export const useVisibleCategoryIds = () => 
-  useDashboardStoreBase((state) => state.preferences.visibleCategoryIds);
-
-export const useIsCategoryVisible = (categoryId: string) => 
-  useDashboardStoreBase((state) => state.preferences.visibleCategoryIds.includes(categoryId));
-
-export const useDashboardLoading = () => 
-  useDashboardStoreBase((state) => state.isLoading);
-
-export const useMaxVisibleCategories = () => 
-  useDashboardStoreBase((state) => state.maxVisibleCategories);
-
-export const useDashboardStats = () => 
-  useDashboardStoreBase((state) => ({
-    visibleCount: state.preferences.visibleCategoryIds.length,
-    remainingSlots: state.maxVisibleCategories - state.preferences.visibleCategoryIds.length,
-    canAddMore: state.preferences.visibleCategoryIds.length < state.maxVisibleCategories,
-  }));
-
-export const useDashboardActions = () => 
-  useDashboardStoreBase((state) => ({
-    loadPreferences: state.loadPreferences,
-    setVisibleCategories: state.setVisibleCategories,
-    toggleCategoryVisibility: state.toggleCategoryVisibility,
-    isCategoryVisible: state.isCategoryVisible,
-    canAddMoreCategories: state.canAddMoreCategories,
-    getRemainingSlots: state.getRemainingSlots,
-  }));
+// ✅ FIXED: Return individual functions, not objects
+export const useLoadDashboardPreferences = () => useDashboardStoreBase((state) => state.loadPreferences);
+export const useSetVisibleCategories = () => useDashboardStoreBase((state) => state.setVisibleCategories);
+export const useToggleCategoryVisibility = () => useDashboardStoreBase((state) => state.toggleCategoryVisibility);
+export const useClearDashboardError = () => useDashboardStoreBase((state) => state.clearError);
 
 export const useDashboardStore = useDashboardStoreBase;
