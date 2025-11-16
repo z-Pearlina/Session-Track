@@ -172,24 +172,20 @@ function applyFilterToSessions(sessions: Session[], filter: SessionFilter): Sess
   return filtered;
 }
 
+// ✅ FIXED: Simple selectors only
 export const useSessions = () => useSessionStoreBase((state) => state.sessions);
-
 export const useFilteredSessions = () => useSessionStoreBase((state) => state.filteredSessions);
-
 export const useSessionsLoading = () => useSessionStoreBase((state) => state.isLoading);
-
 export const useSessionsError = () => useSessionStoreBase((state) => state.error);
-
 export const useSessionFilter = () => useSessionStoreBase((state) => state.filter);
 
-export const useSessionActions = () => useSessionStoreBase((state) => ({
-  loadSessions: state.loadSessions,
-  addSession: state.addSession,
-  updateSession: state.updateSession,
-  deleteSession: state.deleteSession,
-  setFilter: state.setFilter,
-  clearFilter: state.clearFilter,
-  clearError: state.clearError,
-}));
+// ✅ FIXED: Return individual functions, not objects
+export const useLoadSessions = () => useSessionStoreBase((state) => state.loadSessions);
+export const useAddSession = () => useSessionStoreBase((state) => state.addSession);
+export const useUpdateSession = () => useSessionStoreBase((state) => state.updateSession);
+export const useDeleteSession = () => useSessionStoreBase((state) => state.deleteSession);
+export const useSetFilter = () => useSessionStoreBase((state) => state.setFilter);
+export const useClearFilter = () => useSessionStoreBase((state) => state.clearFilter);
+export const useClearSessionError = () => useSessionStoreBase((state) => state.clearError);
 
 export const useSessionStore = useSessionStoreBase;
