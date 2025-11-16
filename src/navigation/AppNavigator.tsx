@@ -439,13 +439,13 @@ export default function AppNavigator() {
             ✅ NEW: GOALS, ACHIEVEMENTS, NOTIFICATIONS
             ======================================== */}
 
-        {/* Goals Screen - Settings feature lift */}
+        {/* Goals Screen - Modal swipe down */}
         <Stack.Screen
           name="Goals"
           component={GoalsScreen}
           options={{
-            ...settingsFeatureLift,
-            presentation: 'card',
+            ...modalSwipeDown,
+            cardStyle: { backgroundColor: 'transparent' },
             cardOverlayEnabled: true,
           }}
         />
@@ -471,24 +471,24 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* Achievements Screen - Settings feature lift */}
+        {/* Achievements Screen - Modal swipe down */}
         <Stack.Screen
           name="Achievements"
           component={AchievementsScreen}
           options={{
-            ...settingsFeatureLift,
-            presentation: 'card',
+            ...modalSwipeDown,
+            cardStyle: { backgroundColor: 'transparent' },
             cardOverlayEnabled: true,
           }}
         />
 
-        {/* Notification Settings - Settings feature lift */}
+        {/* Notification Settings - Modal swipe down */}
         <Stack.Screen
           name="NotificationSettings"
           component={NotificationSettingsScreen}
           options={{
-            ...settingsFeatureLift,
-            presentation: 'card',
+            ...modalSwipeDown,
+            cardStyle: { backgroundColor: 'transparent' },
             cardOverlayEnabled: true,
           }}
         />

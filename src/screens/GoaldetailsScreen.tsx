@@ -15,15 +15,15 @@ import { BlurView } from 'expo-blur';
 import { useGoalStore } from '../stores/useGoalStore';
 import { useCategoryById } from '../stores/useCategoryStore';
 import { theme } from '../theme/theme';
-import { GoalDetailsRouteProp } from '../types';
+import { GoalDetailsRouteProp, RootStackNavigationProp } from '../types';
 
 
 export default function GoalDetailsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<RootStackNavigationProp>();
   const route = useRoute<GoalDetailsRouteProp>();
   const { goalId } = route.params;
 
-  const { getGoalById, completeGoal, archiveGoal, deleteGoal } = useGoalStore();
+  const { getGoalById, completeGoal, archiveGoal, unarchiveGoal, deleteGoal } = useGoalStore();
   const goal = getGoalById(goalId);
   const category = useCategoryById(goal?.categoryId || '');
 
@@ -83,6 +83,23 @@ export default function GoalDetailsScreen() {
     );
   };
 
+  const handleUnarchive = () => {
+    Alert.alert(
+      'Unarchive Goal',
+      'Restore this goal to active status?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Unarchive',
+          onPress: async () => {
+            await unarchiveGoal(goalId);
+            navigation.goBack();
+          },
+        },
+      ]
+    );
+  };
+
   const handleDelete = () => {
     Alert.alert(
       'Delete Goal',
@@ -99,6 +116,16 @@ export default function GoalDetailsScreen() {
         },
       ]
     );
+  };
+
+  const handleStartSession = () => {
+    navigation.navigate('MainTabs', {
+      screen: 'StartSession',
+      params: {
+        goalId: goalId,
+        categoryId: goal.categoryId,
+      },
+    });
   };
 
   const isCompleted = goal.status === 'completed';
@@ -212,14 +239,21 @@ export default function GoalDetailsScreen() {
           {/* Actions */}
           {!isCompleted && !isArchived && (
             <View style={styles.actionsContainer}>
-              <TouchableOpacity onPress={handleComplete} style={styles.actionButton}>
+              <TouchableOpacity onPress={handleStartSession} style={styles.actionButton}>
                 <LinearGradient
-                  colors={[theme.colors.success, '#27AE60']}
+                  colors={[theme.colors.primary.cyan, theme.colors.primary.aqua]}
                   style={styles.actionGradient}
                 >
-                  <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                  <Text style={styles.actionText}>Mark Complete</Text>
+                  <Ionicons name="play-circle" size={22} color="#FFFFFF" />
+                  <Text style={styles.actionText}>Start Session</Text>
                 </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={handleComplete} style={styles.actionButton}>
+                <BlurView intensity={30} tint="dark" style={styles.actionBlur}>
+                  <Ionicons name="checkmark-circle" size={20} color={theme.colors.success} />
+                  <Text style={styles.actionTextSecondary}>Mark Complete</Text>
+                </BlurView>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={handleArchive} style={styles.actionButton}>
@@ -227,6 +261,21 @@ export default function GoalDetailsScreen() {
                   <Ionicons name="archive" size={20} color={theme.colors.text.secondary} />
                   <Text style={styles.actionTextSecondary}>Archive</Text>
                 </BlurView>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Unarchive Action */}
+          {isArchived && (
+            <View style={styles.actionsContainer}>
+              <TouchableOpacity onPress={handleUnarchive} style={styles.actionButton}>
+                <LinearGradient
+                  colors={[theme.colors.primary.cyan, theme.colors.primary.aqua]}
+                  style={styles.actionGradient}
+                >
+                  <Ionicons name="arrow-undo" size={20} color="#FFFFFF" />
+                  <Text style={styles.actionText}>Unarchive Goal</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           )}

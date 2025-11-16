@@ -394,13 +394,6 @@ export default function StatsScreen() {
         return (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {ChartSvg}
-            <View style={[styles.chartLabelsScrollable, { width: chartData.width }]}>
-              {chartData.data.filter((_, i) => i % 7 === 0).map((point, index) => (
-                <Text key={index} style={[styles.chartLabel, { position: 'absolute', left: point.x - 20 }]}>
-                  {point.shortLabel}
-                </Text>
-              ))}
-            </View>
           </ScrollView>
         );
       }
@@ -775,7 +768,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginTop: 8,
+    marginTop: 1,
   },
   chartLabelsScrollable: {
     height: 20,

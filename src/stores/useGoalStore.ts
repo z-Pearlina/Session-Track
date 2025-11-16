@@ -16,6 +16,7 @@ interface GoalState {
   updateGoalProgress: (goalId: string, progressMinutes: number) => Promise<void>;
   completeGoal: (goalId: string) => Promise<void>;
   archiveGoal: (goalId: string) => Promise<void>;
+  unarchiveGoal: (goalId: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -212,6 +213,38 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
     }
   },
 
+  unarchiveGoal: async (goalId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await StorageService.updateGoal(goalId, {
+        status: "active",
+        updatedAt: new Date().toISOString(),
+      });
+
+      set((state) => ({
+        goals: state.goals.map((goal) =>
+          goal.id === goalId
+            ? {
+                ...goal,
+                status: "active",
+                updatedAt: new Date().toISOString(),
+              }
+            : goal
+        ),
+        isLoading: false,
+      }));
+
+      logger.success(`Goal unarchived: ${goalId}`);
+    } catch (error) {
+      logger.error("Failed to unarchive goal", error);
+      set({
+        error: error instanceof Error ? error.message : "Failed to unarchive goal",
+        isLoading: false
+      });
+      throw error;
+    }
+  },
+
   clearError: () => set({ error: null }),
 }));
 
@@ -229,6 +262,7 @@ export const useDeleteGoal = () => useGoalStoreBase((state) => state.deleteGoal)
 export const useUpdateGoalProgress = () => useGoalStoreBase((state) => state.updateGoalProgress);
 export const useCompleteGoal = () => useGoalStoreBase((state) => state.completeGoal);
 export const useArchiveGoal = () => useGoalStoreBase((state) => state.archiveGoal);
+export const useUnarchiveGoal = () => useGoalStoreBase((state) => state.unarchiveGoal);
 export const useClearGoalError = () => useGoalStoreBase((state) => state.clearError);
 
 export const useGoalStore = useGoalStoreBase;

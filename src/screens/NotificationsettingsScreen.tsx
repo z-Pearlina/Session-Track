@@ -9,15 +9,16 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { StorageService } from '../services/StorageService';
 import { NotificationPreferences } from '../types';
-import { COLORS } from '../theme/theme';
+import { theme } from '../theme/theme';
 import { logger } from '../services/logger';
+import { GlassCard } from '../components/GlassCard';
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
   enabled: true,
@@ -72,12 +73,12 @@ export default function NotificationSettingsScreen() {
 
   const handleTimeChange = async (event: any, selectedDate?: Date) => {
     setShowTimePicker(Platform.OS === 'ios');
-    
+
     if (selectedDate) {
       const hours = selectedDate.getHours().toString().padStart(2, '0');
       const minutes = selectedDate.getMinutes().toString().padStart(2, '0');
       const timeString = `${hours}:${minutes}`;
-      
+
       const newPreferences = {
         ...preferences,
         dailyReminderTime: timeString,
@@ -104,32 +105,33 @@ export default function NotificationSettingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.root}>
       <LinearGradient
-        colors={[COLORS.background.primary, COLORS.background.secondary]}
-        style={StyleSheet.absoluteFillObject}
+        colors={theme.gradients.backgroundAnimated}
+        style={styles.gradient}
       />
 
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={24} color={COLORS.text.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
-        <View style={styles.backButton} />
-      </View>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Notifications</Text>
+          <View style={styles.backButton} />
+        </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
-      >
-        <BlurView intensity={30} tint="dark" style={styles.card}>
-          <View style={styles.cardContent}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          <GlassCard style={styles.card}>
             <View style={styles.settingRow}>
               <View style={styles.settingInfo}>
-                <Ionicons name="notifications" size={24} color={COLORS.primary.cyan} />
+                <Ionicons name="notifications" size={24} color={theme.colors.primary.cyan} />
                 <View style={styles.settingText}>
                   <Text style={styles.settingTitle}>Enable Notifications</Text>
                   <Text style={styles.settingDescription}>
@@ -140,20 +142,18 @@ export default function NotificationSettingsScreen() {
               <Switch
                 value={preferences.enabled}
                 onValueChange={(value) => handleToggle('enabled', value)}
-                trackColor={{ false: COLORS.glass.border, true: COLORS.primary.cyan }}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
                 thumbColor="#FFFFFF"
-                ios_backgroundColor={COLORS.glass.border}
+                ios_backgroundColor={theme.colors.glass.border}
               />
             </View>
-          </View>
-        </BlurView>
+          </GlassCard>
 
-        <Text style={styles.sectionTitle}>Daily Reminders</Text>
-        <BlurView intensity={30} tint="dark" style={styles.card}>
-          <View style={styles.cardContent}>
+          <Text style={styles.sectionTitle}>Daily Reminders</Text>
+          <GlassCard style={styles.card}>
             <View style={styles.settingRow}>
               <View style={styles.settingInfo}>
-                <Ionicons name="calendar-outline" size={24} color={COLORS.primary.aqua} />
+                <Ionicons name="calendar-outline" size={24} color={theme.colors.primary.aqua} />
                 <View style={styles.settingText}>
                   <Text style={styles.settingTitle}>Daily Reminder</Text>
                   <Text style={styles.settingDescription}>
@@ -164,9 +164,9 @@ export default function NotificationSettingsScreen() {
               <Switch
                 value={preferences.dailyReminderEnabled}
                 onValueChange={(value) => handleToggle('dailyReminderEnabled', value)}
-                trackColor={{ false: COLORS.glass.border, true: COLORS.primary.cyan }}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
                 thumbColor="#FFFFFF"
-                ios_backgroundColor={COLORS.glass.border}
+                ios_backgroundColor={theme.colors.glass.border}
                 disabled={!preferences.enabled}
               />
             </View>
@@ -178,9 +178,10 @@ export default function NotificationSettingsScreen() {
                   style={styles.settingRow}
                   onPress={() => setShowTimePicker(true)}
                   disabled={!preferences.enabled}
+                  activeOpacity={0.7}
                 >
                   <View style={styles.settingInfo}>
-                    <Ionicons name="time-outline" size={24} color={COLORS.primary.mint} />
+                    <Ionicons name="time-outline" size={24} color={theme.colors.primary.mint} />
                     <View style={styles.settingText}>
                       <Text style={styles.settingTitle}>Reminder Time</Text>
                       <Text style={styles.settingValue}>
@@ -188,16 +189,14 @@ export default function NotificationSettingsScreen() {
                       </Text>
                     </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={20} color={COLORS.text.tertiary} />
+                  <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
                 </TouchableOpacity>
               </>
             )}
-          </View>
-        </BlurView>
+          </GlassCard>
 
-        <Text style={styles.sectionTitle}>Activity Reminders</Text>
-        <BlurView intensity={30} tint="dark" style={styles.card}>
-          <View style={styles.cardContent}>
+          <Text style={styles.sectionTitle}>Activity Reminders</Text>
+          <GlassCard style={styles.card}>
             <View style={styles.settingRow}>
               <View style={styles.settingInfo}>
                 <Ionicons name="flame" size={24} color="#FF6B35" />
@@ -211,9 +210,9 @@ export default function NotificationSettingsScreen() {
               <Switch
                 value={preferences.streakReminderEnabled}
                 onValueChange={(value) => handleToggle('streakReminderEnabled', value)}
-                trackColor={{ false: COLORS.glass.border, true: COLORS.primary.cyan }}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
                 thumbColor="#FFFFFF"
-                ios_backgroundColor={COLORS.glass.border}
+                ios_backgroundColor={theme.colors.glass.border}
                 disabled={!preferences.enabled}
               />
             </View>
@@ -233,9 +232,9 @@ export default function NotificationSettingsScreen() {
               <Switch
                 value={preferences.goalReminderEnabled}
                 onValueChange={(value) => handleToggle('goalReminderEnabled', value)}
-                trackColor={{ false: COLORS.glass.border, true: COLORS.primary.cyan }}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
                 thumbColor="#FFFFFF"
-                ios_backgroundColor={COLORS.glass.border}
+                ios_backgroundColor={theme.colors.glass.border}
                 disabled={!preferences.enabled}
               />
             </View>
@@ -255,21 +254,19 @@ export default function NotificationSettingsScreen() {
               <Switch
                 value={preferences.achievementNotificationsEnabled}
                 onValueChange={(value) => handleToggle('achievementNotificationsEnabled', value)}
-                trackColor={{ false: COLORS.glass.border, true: COLORS.primary.cyan }}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
                 thumbColor="#FFFFFF"
-                ios_backgroundColor={COLORS.glass.border}
+                ios_backgroundColor={theme.colors.glass.border}
                 disabled={!preferences.enabled}
               />
             </View>
-          </View>
-        </BlurView>
+          </GlassCard>
 
-        <Text style={styles.sectionTitle}>Sound & Haptics</Text>
-        <BlurView intensity={30} tint="dark" style={styles.card}>
-          <View style={styles.cardContent}>
+          <Text style={styles.sectionTitle}>Sound & Haptics</Text>
+          <GlassCard style={styles.card}>
             <View style={styles.settingRow}>
               <View style={styles.settingInfo}>
-                <Ionicons name="volume-high" size={24} color={COLORS.primary.sage} />
+                <Ionicons name="volume-high" size={24} color={theme.colors.primary.sage} />
                 <View style={styles.settingText}>
                   <Text style={styles.settingTitle}>Sound</Text>
                   <Text style={styles.settingDescription}>
@@ -280,9 +277,9 @@ export default function NotificationSettingsScreen() {
               <Switch
                 value={preferences.soundEnabled}
                 onValueChange={(value) => handleToggle('soundEnabled', value)}
-                trackColor={{ false: COLORS.glass.border, true: COLORS.primary.cyan }}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
                 thumbColor="#FFFFFF"
-                ios_backgroundColor={COLORS.glass.border}
+                ios_backgroundColor={theme.colors.glass.border}
                 disabled={!preferences.enabled}
               />
             </View>
@@ -291,7 +288,7 @@ export default function NotificationSettingsScreen() {
 
             <View style={styles.settingRow}>
               <View style={styles.settingInfo}>
-                <Ionicons name="phone-portrait-outline" size={24} color={COLORS.primary.teal} />
+                <Ionicons name="phone-portrait-outline" size={24} color={theme.colors.primary.teal} />
                 <View style={styles.settingText}>
                   <Text style={styles.settingTitle}>Vibration</Text>
                   <Text style={styles.settingDescription}>
@@ -302,37 +299,49 @@ export default function NotificationSettingsScreen() {
               <Switch
                 value={preferences.vibrationEnabled}
                 onValueChange={(value) => handleToggle('vibrationEnabled', value)}
-                trackColor={{ false: COLORS.glass.border, true: COLORS.primary.cyan }}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
                 thumbColor="#FFFFFF"
-                ios_backgroundColor={COLORS.glass.border}
+                ios_backgroundColor={theme.colors.glass.border}
                 disabled={!preferences.enabled}
               />
             </View>
-          </View>
-        </BlurView>
+          </GlassCard>
 
-        <View style={styles.infoNote}>
-          <Ionicons name="information-circle-outline" size={20} color={COLORS.text.tertiary} />
-          <Text style={styles.infoNoteText}>
-            Changes are saved automatically. Make sure notifications are enabled in your device settings.
-          </Text>
-        </View>
-      </ScrollView>
+          <GlassCard style={styles.infoCard}>
+            <View style={styles.infoContent}>
+              <Ionicons name="information-circle-outline" size={20} color={theme.colors.primary.cyan} />
+              <Text style={styles.infoNoteText}>
+                Changes are saved automatically. Make sure notifications are enabled in your device settings.
+              </Text>
+            </View>
+          </GlassCard>
+        </ScrollView>
 
-      {showTimePicker && (
-        <DateTimePicker
-          value={parseTime(preferences.dailyReminderTime)}
-          mode="time"
-          is24Hour={false}
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={handleTimeChange}
-        />
-      )}
+        {showTimePicker && (
+          <DateTimePicker
+            value={parseTime(preferences.dailyReminderTime)}
+            mode="time"
+            is24Hour={false}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleTimeChange}
+          />
+        )}
+      </SafeAreaView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  gradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
   container: {
     flex: 1,
   },
@@ -340,96 +349,91 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[3],
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: theme.borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: COLORS.text.primary,
+    fontSize: theme.fontSize['3xl'],
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text.primary,
   },
   scrollView: {
     flex: 1,
   },
   contentContainer: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: theme.spacing[4],
+    paddingBottom: theme.spacing[8],
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.text.secondary,
-    marginTop: 24,
-    marginBottom: 12,
-    marginLeft: 4,
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing[6],
+    marginBottom: theme.spacing[3],
+    marginLeft: theme.spacing[1],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   card: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.glass.border,
-    marginBottom: 12,
-  },
-  cardContent: {
-    padding: 16,
+    padding: theme.spacing[4],
+    marginBottom: theme.spacing[3],
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    paddingVertical: theme.spacing[1],
   },
   settingInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 12,
+    gap: theme.spacing[3],
   },
   settingText: {
     flex: 1,
   },
   settingTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text.primary,
-    marginBottom: 2,
+    fontSize: theme.fontSize.base,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing[0.5],
   },
   settingDescription: {
-    fontSize: 13,
-    color: COLORS.text.secondary,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text.secondary,
     lineHeight: 18,
   },
   settingValue: {
-    fontSize: 15,
-    color: COLORS.primary.cyan,
-    fontWeight: '600',
+    fontSize: theme.fontSize.base,
+    color: theme.colors.primary.cyan,
+    fontWeight: theme.fontWeight.semibold,
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.glass.border,
-    marginVertical: 12,
+    backgroundColor: theme.colors.glass.border,
+    marginVertical: theme.spacing[3],
   },
-  infoNote: {
+  infoCard: {
+    marginTop: theme.spacing[6],
+  },
+  infoContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
-    marginTop: 24,
-    paddingHorizontal: 4,
+    gap: theme.spacing[3],
+    padding: theme.spacing[4],
   },
   infoNoteText: {
     flex: 1,
-    fontSize: 13,
-    color: COLORS.text.tertiary,
-    lineHeight: 18,
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text.secondary,
+    lineHeight: 20,
   },
 });

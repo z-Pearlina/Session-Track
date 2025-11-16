@@ -392,11 +392,10 @@ const styles = StyleSheet.create({
   },
   miniStatsWrapper: {
     marginBottom: theme.spacing[6],
-    alignItems: 'center',
   },
   miniStatsScroll: {
     flexDirection: 'row',
-    paddingHorizontal: theme.spacing[4],
+    paddingHorizontal: theme.spacing[5],
     gap: theme.spacing[3],
   },
   categoriesGrid: {

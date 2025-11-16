@@ -9,6 +9,7 @@ export interface Session {
   startedAt: string;
   endedAt?: string;
   notes?: string;
+  goalId?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -95,7 +96,7 @@ export interface SessionFilter {
 
 export type MainTabParamList = {
   Home: undefined;
-  StartSession: undefined;
+  StartSession: { goalId?: string; categoryId?: string } | undefined;
   Stats: undefined;
   Settings: undefined;
 };
@@ -120,6 +121,7 @@ export type MainTabNavigationProp = NavigationProp<MainTabParamList>;
 export type EditSessionRouteProp = RouteProp<RootStackParamList, 'EditSession'>;
 export type SessionDetailsRouteProp = RouteProp<RootStackParamList, 'SessionDetails'>;
 export type GoalDetailsRouteProp = RouteProp<RootStackParamList, 'GoalDetails'>;
+export type StartSessionRouteProp = RouteProp<MainTabParamList, 'StartSession'>;
 
 export type TimeRange = 'week' | 'month' | 'year' | 'all';
 
@@ -141,24 +143,11 @@ export interface StatisticsSummary {
 }
 
 export interface ExportData {
-  appName: string;
-  exportDate: string;
+  sessions: Session[];
+  categories: Category[];
+  goals: Goal[];
+  exportedAt: string;
   version: string;
-  data: {
-    sessions: Session[];
-    categories: Category[];
-    goals?: Goal[];
-    achievements?: Achievement[];
-    preferences?: DashboardPreferences;
-    notificationPreferences?: NotificationPreferences;
-  };
-  stats: {
-    totalSessions: number;
-    totalCategories: number;
-    totalDurationMs: number;
-    totalGoals?: number;
-    unlockedAchievements?: number;
-  };
 }
 
 export interface SessionFormData {
@@ -166,31 +155,6 @@ export interface SessionFormData {
   categoryId: string;
   durationMs: number;
   notes?: string;
-}
-
-export interface CategoryFormData {
-  name: string;
-  color: string;
-  icon: string;
-}
-
-export interface GoalFormData {
-  title: string;
-  description?: string;
-  targetMinutes: number;
-  period: GoalPeriod;
-  categoryId?: string;
-  startDate: string;
-  endDate: string;
-}
-
-export interface AppError {
-  code: string;
-  message: string;
-  details?: any;
-}
-
-export interface ValidationError {
-  field: string;
-  message: string;
+  startedAt: string;
+  endedAt: string;
 }
