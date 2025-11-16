@@ -131,29 +131,19 @@ const useCategoryStoreBase = create<CategoryState>((set, get) => ({
   clearError: () => set({ error: null }),
 }));
 
+// ✅ FIXED: Simple selectors only
 export const useCategories = () => useCategoryStoreBase((state) => state.categories);
-
 export const useCategoryById = (categoryId: string) => 
   useCategoryStoreBase((state) => state.categories.find(c => c.id === categoryId));
-
-export const useCategoryMap = () => 
-  useCategoryStoreBase((state) => {
-    const map = new Map<string, Category>();
-    state.categories.forEach(cat => map.set(cat.id, cat));
-    return map;
-  });
-
 export const useCategoriesLoading = () => useCategoryStoreBase((state) => state.isLoading);
-
 export const useCategoriesError = () => useCategoryStoreBase((state) => state.error);
 
-export const useCategoryActions = () => useCategoryStoreBase((state) => ({
-  loadCategories: state.loadCategories,
-  addCategory: state.addCategory,
-  updateCategory: state.updateCategory,
-  deleteCategory: state.deleteCategory,
-  getCategoryById: state.getCategoryById,
-  clearError: state.clearError,
-}));
+// ✅ FIXED: Return individual functions, not objects
+export const useLoadCategories = () => useCategoryStoreBase((state) => state.loadCategories);
+export const useAddCategory = () => useCategoryStoreBase((state) => state.addCategory);
+export const useUpdateCategory = () => useCategoryStoreBase((state) => state.updateCategory);
+export const useDeleteCategory = () => useCategoryStoreBase((state) => state.deleteCategory);
+export const useGetCategoryById = () => useCategoryStoreBase((state) => state.getCategoryById);
+export const useClearCategoryError = () => useCategoryStoreBase((state) => state.clearError);
 
 export const useCategoryStore = useCategoryStoreBase;
