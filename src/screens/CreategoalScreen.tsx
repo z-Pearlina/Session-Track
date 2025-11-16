@@ -8,21 +8,23 @@ import {
   TextInput,
   Alert,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useGoalActions } from '../stores/useGoalStore';
+import { useAddGoal } from '../stores/useGoalStore';
 import { useCategories } from '../stores/useCategoryStore';
 import { Goal, GoalPeriod } from '../types';
-import { COLORS } from '../theme/theme';
+import { theme } from '../theme/theme';
+import { GlassCard } from '../components/GlassCard';
 import { RootStackNavigationProp } from '../types';
 
 export default function CreateGoalScreen() {
   const navigation = useNavigation<RootStackNavigationProp>();
-  const { addGoal } = useGoalActions();
+  const addGoal = useAddGoal();
   const categories = useCategories();
 
   const [title, setTitle] = useState('');
@@ -128,251 +130,265 @@ export default function CreateGoalScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.root}>
       <LinearGradient
-        colors={[COLORS.background.primary, COLORS.background.secondary]}
-        style={StyleSheet.absoluteFillObject}
+        colors={theme.gradients.backgroundAnimated}
+        style={styles.gradient}
       />
 
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Ionicons name="close" size={28} color={COLORS.text.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Goal</Text>
-        <View style={styles.backButton} />
-      </View>
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text style={styles.label}>Goal Title *</Text>
-        <BlurView intensity={30} tint="dark" style={styles.inputCard}>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g., Practice guitar daily"
-            placeholderTextColor={COLORS.text.quaternary}
-            value={title}
-            onChangeText={setTitle}
-            maxLength={50}
-          />
-        </BlurView>
-
-        <Text style={styles.label}>Description (Optional)</Text>
-        <BlurView intensity={30} tint="dark" style={styles.inputCard}>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="What do you want to achieve?"
-            placeholderTextColor={COLORS.text.quaternary}
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={3}
-            maxLength={200}
-          />
-        </BlurView>
-
-        <Text style={styles.label}>Target Time *</Text>
-        <View style={styles.timeInputRow}>
-          <BlurView intensity={30} tint="dark" style={styles.timeInputCard}>
-            <TextInput
-              style={styles.timeInput}
-              placeholder="0"
-              placeholderTextColor={COLORS.text.quaternary}
-              value={targetHours}
-              onChangeText={setTargetHours}
-              keyboardType="number-pad"
-              maxLength={3}
-            />
-            <Text style={styles.timeLabel}>hours</Text>
-          </BlurView>
-
-          <BlurView intensity={30} tint="dark" style={styles.timeInputCard}>
-            <TextInput
-              style={styles.timeInput}
-              placeholder="0"
-              placeholderTextColor={COLORS.text.quaternary}
-              value={targetMinutes}
-              onChangeText={setTargetMinutes}
-              keyboardType="number-pad"
-              maxLength={2}
-            />
-            <Text style={styles.timeLabel}>minutes</Text>
-          </BlurView>
-        </View>
-
-        <Text style={styles.label}>Period *</Text>
-        <View style={styles.periodGrid}>
-          {(['daily', 'weekly', 'monthly', 'custom'] as GoalPeriod[]).map((p) => (
-            <TouchableOpacity
-              key={p}
-              onPress={() => handlePeriodChange(p)}
-              style={styles.periodButton}
-            >
-              <BlurView
-                intensity={30}
-                tint="dark"
-                style={[
-                  styles.periodCard,
-                  period === p && styles.periodCardActive,
-                ]}
-              >
-                <Ionicons
-                  name={
-                    p === 'daily'
-                      ? 'today'
-                      : p === 'weekly'
-                      ? 'calendar'
-                      : p === 'monthly'
-                      ? 'calendar-outline'
-                      : 'time'
-                  }
-                  size={24}
-                  color={period === p ? COLORS.primary.cyan : COLORS.text.secondary}
-                />
-                <Text
-                  style={[
-                    styles.periodText,
-                    period === p && styles.periodTextActive,
-                  ]}
-                >
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
-                </Text>
-              </BlurView>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.label}>Category (Optional)</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryScroll}
-        >
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        {/* Header */}
+        <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => setSelectedCategoryId(undefined)}
-            style={styles.categoryButton}
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
           >
-            <BlurView
-              intensity={30}
-              tint="dark"
-              style={[
-                styles.categoryCard,
-                !selectedCategoryId && styles.categoryCardActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.categoryText,
-                  !selectedCategoryId && styles.categoryTextActive,
-                ]}
-              >
-                All Categories
-              </Text>
-            </BlurView>
+            <Ionicons name="close" size={28} color={theme.colors.text.primary} />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>Create Goal</Text>
+          <View style={styles.backButton} />
+        </View>
 
-          {categories.map((category) => (
-            <TouchableOpacity
-              key={category.id}
-              onPress={() => setSelectedCategoryId(category.id)}
-              style={styles.categoryButton}
-            >
-              <BlurView
-                intensity={30}
-                tint="dark"
-                style={[
-                  styles.categoryCard,
-                  selectedCategoryId === category.id && styles.categoryCardActive,
-                ]}
-              >
-                <View
-                  style={[styles.categoryDot, { backgroundColor: category.color }]}
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+        >
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.contentContainer}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Goal Title */}
+            <Text style={styles.label}>Goal Title *</Text>
+            <GlassCard style={styles.inputCard}>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., Practice guitar daily"
+                placeholderTextColor={theme.colors.text.quaternary}
+                value={title}
+                onChangeText={setTitle}
+                maxLength={50}
+              />
+            </GlassCard>
+
+            {/* Description */}
+            <Text style={styles.label}>Description (Optional)</Text>
+            <GlassCard style={styles.inputCard}>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="What do you want to achieve?"
+                placeholderTextColor={theme.colors.text.quaternary}
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={3}
+                maxLength={200}
+              />
+            </GlassCard>
+
+            {/* Target Time */}
+            <Text style={styles.label}>Target Time *</Text>
+            <View style={styles.timeInputRow}>
+              <GlassCard style={styles.timeInputCard}>
+                <TextInput
+                  style={styles.timeInput}
+                  placeholder="0"
+                  placeholderTextColor={theme.colors.text.quaternary}
+                  value={targetHours}
+                  onChangeText={setTargetHours}
+                  keyboardType="number-pad"
+                  maxLength={3}
                 />
-                <Text
+                <Text style={styles.timeLabel}>hours</Text>
+              </GlassCard>
+
+              <GlassCard style={styles.timeInputCard}>
+                <TextInput
+                  style={styles.timeInput}
+                  placeholder="0"
+                  placeholderTextColor={theme.colors.text.quaternary}
+                  value={targetMinutes}
+                  onChangeText={setTargetMinutes}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                />
+                <Text style={styles.timeLabel}>minutes</Text>
+              </GlassCard>
+            </View>
+
+            {/* Period */}
+            <Text style={styles.label}>Period *</Text>
+            <View style={styles.periodGrid}>
+              {(['daily', 'weekly', 'monthly', 'custom'] as GoalPeriod[]).map((p) => (
+                <TouchableOpacity
+                  key={p}
+                  onPress={() => handlePeriodChange(p)}
+                  style={styles.periodButton}
+                  activeOpacity={0.7}
+                >
+                  <GlassCard
+                    style={[
+                      styles.periodCard,
+                      period === p && styles.periodCardActive,
+                    ]}
+                  >
+                    <Ionicons
+                      name={
+                        p === 'daily'
+                          ? 'today'
+                          : p === 'weekly'
+                          ? 'calendar'
+                          : p === 'monthly'
+                          ? 'calendar-outline'
+                          : 'time'
+                      }
+                      size={24}
+                      color={period === p ? theme.colors.primary.cyan : theme.colors.text.secondary}
+                    />
+                    <Text
+                      style={[
+                        styles.periodText,
+                        period === p && styles.periodTextActive,
+                      ]}
+                    >
+                      {p.charAt(0).toUpperCase() + p.slice(1)}
+                    </Text>
+                  </GlassCard>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Category */}
+            <Text style={styles.label}>Category (Optional)</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoryScroll}
+            >
+              <TouchableOpacity
+                onPress={() => setSelectedCategoryId(undefined)}
+                activeOpacity={0.7}
+              >
+                <GlassCard
                   style={[
-                    styles.categoryText,
-                    selectedCategoryId === category.id && styles.categoryTextActive,
+                    styles.categoryCard,
+                    !selectedCategoryId && styles.categoryCardActive,
                   ]}
                 >
-                  {category.name}
-                </Text>
-              </BlurView>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {period === 'custom' && (
-          <>
-            <Text style={styles.label}>Date Range *</Text>
-            <View style={styles.dateRow}>
-              <TouchableOpacity
-                onPress={() => setShowStartDatePicker(true)}
-                style={styles.dateButton}
-              >
-                <BlurView intensity={30} tint="dark" style={styles.dateCard}>
-                  <Ionicons name="calendar-outline" size={20} color={COLORS.text.secondary} />
-                  <View style={styles.dateTextContainer}>
-                    <Text style={styles.dateLabel}>Start</Text>
-                    <Text style={styles.dateValue}>
-                      {startDate.toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </Text>
-                  </View>
-                </BlurView>
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      !selectedCategoryId && styles.categoryTextActive,
+                    ]}
+                  >
+                    All Categories
+                  </Text>
+                </GlassCard>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => setShowEndDatePicker(true)}
-                style={styles.dateButton}
-              >
-                <BlurView intensity={30} tint="dark" style={styles.dateCard}>
-                  <Ionicons name="calendar" size={20} color={COLORS.primary.cyan} />
-                  <View style={styles.dateTextContainer}>
-                    <Text style={styles.dateLabel}>End</Text>
-                    <Text style={styles.dateValue}>
-                      {endDate.toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
+              {categories.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
+                  onPress={() => setSelectedCategoryId(category.id)}
+                  activeOpacity={0.7}
+                >
+                  <GlassCard
+                    style={[
+                      styles.categoryCard,
+                      selectedCategoryId === category.id && styles.categoryCardActive,
+                    ]}
+                  >
+                    <View
+                      style={[styles.categoryDot, { backgroundColor: category.color }]}
+                    />
+                    <Text
+                      style={[
+                        styles.categoryText,
+                        selectedCategoryId === category.id && styles.categoryTextActive,
+                      ]}
+                    >
+                      {category.name}
                     </Text>
-                  </View>
-                </BlurView>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
+                  </GlassCard>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
 
-        <TouchableOpacity
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          style={styles.submitButton}
-        >
-          <LinearGradient
-            colors={[COLORS.primary.cyan, COLORS.primary.aqua]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.submitGradient}
-          >
-            {isSubmitting ? (
-              <Text style={styles.submitText}>Creating...</Text>
-            ) : (
+            {/* Date Range for Custom Period */}
+            {period === 'custom' && (
               <>
-                <Ionicons name="checkmark" size={24} color="#FFFFFF" />
-                <Text style={styles.submitText}>Create Goal</Text>
+                <Text style={styles.label}>Date Range *</Text>
+                <View style={styles.dateRow}>
+                  <TouchableOpacity
+                    onPress={() => setShowStartDatePicker(true)}
+                    style={styles.dateButton}
+                    activeOpacity={0.7}
+                  >
+                    <GlassCard style={styles.dateCard}>
+                      <Ionicons name="calendar-outline" size={20} color={theme.colors.text.secondary} />
+                      <View style={styles.dateTextContainer}>
+                        <Text style={styles.dateLabel}>Start</Text>
+                        <Text style={styles.dateValue}>
+                          {startDate.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </Text>
+                      </View>
+                    </GlassCard>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => setShowEndDatePicker(true)}
+                    style={styles.dateButton}
+                    activeOpacity={0.7}
+                  >
+                    <GlassCard style={styles.dateCard}>
+                      <Ionicons name="calendar" size={20} color={theme.colors.primary.cyan} />
+                      <View style={styles.dateTextContainer}>
+                        <Text style={styles.dateLabel}>End</Text>
+                        <Text style={styles.dateValue}>
+                          {endDate.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </Text>
+                      </View>
+                    </GlassCard>
+                  </TouchableOpacity>
+                </View>
               </>
             )}
-          </LinearGradient>
-        </TouchableOpacity>
-      </ScrollView>
+
+            {/* Submit Button */}
+            <TouchableOpacity
+              onPress={handleSubmit}
+              disabled={isSubmitting}
+              activeOpacity={0.8}
+              style={styles.submitButton}
+            >
+              <LinearGradient
+                colors={theme.gradients.primary}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.submitGradient}
+              >
+                {isSubmitting ? (
+                  <Text style={styles.submitText}>Creating...</Text>
+                ) : (
+                  <>
+                    <Ionicons name="checkmark" size={24} color={theme.colors.text.inverse} />
+                    <Text style={styles.submitText}>Create Goal</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
 
       {showStartDatePicker && (
         <DateTimePicker
@@ -413,6 +429,16 @@ export default function CreateGoalScreen() {
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  gradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
   container: {
     flex: 1,
   },
@@ -420,50 +446,49 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[4],
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: theme.borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: COLORS.text.primary,
+    fontSize: theme.fontSize['3xl'],
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text.primary,
+    letterSpacing: 0.5,
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
   },
   contentContainer: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: theme.spacing[4],
+    paddingBottom: theme.spacing[8],
   },
   label: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.text.secondary,
-    marginBottom: 8,
-    marginLeft: 4,
+    fontSize: theme.fontSize.xs,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing[2],
+    marginLeft: theme.spacing[1],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   inputCard: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.glass.border,
-    marginBottom: 20,
+    marginBottom: theme.spacing[4],
   },
   input: {
-    padding: 16,
-    fontSize: 16,
-    color: COLORS.text.primary,
-    fontWeight: '600',
+    padding: theme.spacing[4],
+    fontSize: theme.fontSize.base,
+    color: theme.colors.text.primary,
+    fontWeight: theme.fontWeight.medium,
   },
   textArea: {
     height: 80,
@@ -471,99 +496,85 @@ const styles = StyleSheet.create({
   },
   timeInputRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
+    gap: theme.spacing[3],
+    marginBottom: theme.spacing[4],
   },
   timeInputCard: {
     flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.glass.border,
-    padding: 16,
+    padding: theme.spacing[4],
     alignItems: 'center',
   },
   timeInput: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: COLORS.primary.cyan,
+    fontSize: theme.fontSize['3xl'],
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.primary.cyan,
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: theme.spacing[1],
   },
   timeLabel: {
-    fontSize: 12,
-    color: COLORS.text.secondary,
-    fontWeight: '600',
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text.secondary,
+    fontWeight: theme.fontWeight.semibold,
   },
   periodGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
+    gap: theme.spacing[3],
+    marginBottom: theme.spacing[4],
   },
   periodButton: {
     width: '48%',
   },
   periodCard: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.glass.border,
-    padding: 16,
+    padding: theme.spacing[4],
     alignItems: 'center',
-    gap: 8,
+    gap: theme.spacing[2],
   },
   periodCardActive: {
-    borderColor: COLORS.primary.cyan,
+    borderColor: theme.colors.primary.cyan,
     borderWidth: 2,
   },
   periodText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text.secondary,
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text.secondary,
   },
   periodTextActive: {
-    color: COLORS.primary.cyan,
+    color: theme.colors.primary.cyan,
   },
   categoryScroll: {
-    paddingBottom: 20,
-    gap: 8,
-  },
-  categoryButton: {
-    marginRight: 8,
+    paddingBottom: theme.spacing[4],
+    gap: theme.spacing[2],
   },
   categoryCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.glass.border,
-    gap: 8,
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[2],
+    marginRight: theme.spacing[2],
+    gap: theme.spacing[2],
   },
   categoryCardActive: {
-    borderColor: COLORS.primary.cyan,
+    borderColor: theme.colors.primary.cyan,
     borderWidth: 2,
   },
   categoryDot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: theme.borderRadius.full,
   },
   categoryText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text.secondary,
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text.secondary,
   },
   categoryTextActive: {
-    color: COLORS.primary.cyan,
+    color: theme.colors.primary.cyan,
   },
   dateRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
+    gap: theme.spacing[3],
+    marginBottom: theme.spacing[4],
   },
   dateButton: {
     flex: 1,
@@ -571,47 +582,39 @@ const styles = StyleSheet.create({
   dateCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.glass.border,
-    gap: 12,
+    padding: theme.spacing[4],
+    gap: theme.spacing[3],
   },
   dateTextContainer: {
     flex: 1,
   },
   dateLabel: {
-    fontSize: 12,
-    color: COLORS.text.tertiary,
-    fontWeight: '600',
-    marginBottom: 2,
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text.tertiary,
+    fontWeight: theme.fontWeight.semibold,
+    marginBottom: theme.spacing[0.5],
   },
   dateValue: {
-    fontSize: 14,
-    color: COLORS.text.primary,
-    fontWeight: '600',
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text.primary,
+    fontWeight: theme.fontWeight.semibold,
   },
   submitButton: {
-    borderRadius: 25,
+    borderRadius: theme.borderRadius['2xl'],
     overflow: 'hidden',
-    marginTop: 12,
-    elevation: 4,
-    shadowColor: COLORS.primary.cyan,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    marginTop: theme.spacing[4],
+    ...theme.shadows.glowCyan,
   },
   submitGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
+    paddingVertical: theme.spacing[4],
+    gap: theme.spacing[2],
   },
   submitText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: theme.fontSize.lg,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text.inverse,
   },
 });
