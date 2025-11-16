@@ -12,7 +12,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { useGoalStore } from '../stores/useGoalStore';
+import {
+  useGoalById,
+  useCompleteGoal,
+  useArchiveGoal,
+  useDeleteGoal
+} from '../stores/useGoalStore';
 import { useCategoryById } from '../stores/useCategoryStore';
 import { theme } from '../theme/theme';
 import { GoalDetailsRouteProp } from '../types';
@@ -23,8 +28,12 @@ export default function GoalDetailsScreen() {
   const route = useRoute<GoalDetailsRouteProp>();
   const { goalId } = route.params;
 
-  const { getGoalById, completeGoal, archiveGoal, deleteGoal } = useGoalStore();
-  const goal = getGoalById(goalId);
+  const getGoalById = useGoalById;
+  const completeGoal = useCompleteGoal();
+  const archiveGoal = useArchiveGoal();
+  const deleteGoal = useDeleteGoal();
+
+  const goal = useGoalById(goalId); 
   const category = useCategoryById(goal?.categoryId || '');
 
   useEffect(() => {
@@ -144,7 +153,7 @@ export default function GoalDetailsScreen() {
             {goal.description && (
               <Text style={styles.goalDescription}>{goal.description}</Text>
             )}
-            
+
             {/* Stats */}
             <View style={styles.statsRow}>
               <View style={styles.statItem}>

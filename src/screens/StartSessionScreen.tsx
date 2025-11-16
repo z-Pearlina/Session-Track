@@ -18,8 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme/theme';
 import { useTimer } from '../hooks/useTimer';
-import { useSessionStore } from '../stores/useSessionStore';
-import { useCategoryStore } from '../stores/useCategoryStore';
+import { useAddSession } from '../stores/useSessionStore';
+import { useCategories, useLoadCategories } from '../stores/useCategoryStore';
 import { Session } from '../types';
 import { RootStackNavigationProp } from '../types';
 
@@ -41,8 +41,9 @@ export default function StartSessionScreen() {
     resetTimer
   } = useTimer();
 
-  const { addSession } = useSessionStore();
-  const { categories, loadCategories } = useCategoryStore();
+  const addSession = useAddSession();
+  const categories = useCategories();
+  const loadCategories = useLoadCategories();
 
   // Load categories when screen mounts
   useEffect(() => {

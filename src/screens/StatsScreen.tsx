@@ -14,8 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Path, Circle, Defs, LinearGradient as SvgGradient, Stop, Rect } from 'react-native-svg';
 import { theme } from '../theme/theme';
-import { useSessionStore } from '../stores/useSessionStore';
-import { useCategoryStore } from '../stores/useCategoryStore';
+import { useSessions } from '../stores/useSessionStore';
+import { useCategories } from '../stores/useCategoryStore';
 import { GlassCard } from '../components/GlassCard';
 
 /**
@@ -35,9 +35,9 @@ const CHART_HEIGHT = 200;
 
 export default function StatsScreen() {
   const navigation = useNavigation();
-  const { sessions } = useSessionStore();
-  const { categories } = useCategoryStore();
-  
+  const sessions = useSessions();
+  const categories = useCategories();
+
   const [timeRange, setTimeRange] = useState<TimeRange>('month');
   const scrollX = useRef(new Animated.Value(0)).current;
 
@@ -74,7 +74,7 @@ export default function StatsScreen() {
     // Calculate streak
     const sortedSessions = [...sessions]
       .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
-    
+
     let streak = 0;
     let currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
@@ -82,9 +82,9 @@ export default function StatsScreen() {
     for (const session of sortedSessions) {
       const sessionDate = new Date(session.startedAt);
       sessionDate.setHours(0, 0, 0, 0);
-      
+
       const diffDays = Math.floor((currentDate.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       if (diffDays === streak) {
         streak++;
         currentDate = sessionDate;
@@ -99,10 +99,10 @@ export default function StatsScreen() {
       const halfwayPoint = Math.floor(filteredSessions.length / 2);
       const firstHalf = filteredSessions.slice(0, halfwayPoint);
       const secondHalf = filteredSessions.slice(halfwayPoint);
-      
+
       const firstHalfHours = firstHalf.reduce((sum, s) => sum + s.durationMs, 0) / (1000 * 60 * 60);
       const secondHalfHours = secondHalf.reduce((sum, s) => sum + s.durationMs, 0) / (1000 * 60 * 60);
-      
+
       if (firstHalfHours > 0) {
         growthPercent = ((secondHalfHours - firstHalfHours) / firstHalfHours) * 100;
       }
@@ -141,7 +141,7 @@ export default function StatsScreen() {
     });
 
     const totalDurationMs = filteredSessions.reduce((sum, s) => sum + s.durationMs, 0);
-    
+
     filteredSessions.forEach(session => {
       const stat = statsMap.get(session.categoryId);
       if (stat) {
@@ -218,12 +218,12 @@ export default function StatsScreen() {
 
         // Show label every 5 days
         const showLabel = day % 5 === 0 || day === 1 || day === today;
-        
-        data.push({ 
-          label: fullLabel, 
-          shortLabel: showLabel ? shortLabel : '', 
-          value: hours, 
-          x: 0, 
+
+        data.push({
+          label: fullLabel,
+          shortLabel: showLabel ? shortLabel : '',
+          value: hours,
+          x: 0,
           y: 0,
           date: date.toISOString(),
         });
@@ -251,14 +251,14 @@ export default function StatsScreen() {
       }
     } else {
       // ALL: All days ever - SCROLLABLE LINE CHART
-      const sortedSessions = [...sessions].sort((a, b) => 
+      const sortedSessions = [...sessions].sort((a, b) =>
         new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()
       );
 
       if (sortedSessions.length > 0) {
         const firstDate = new Date(sortedSessions[0].startedAt);
         firstDate.setHours(0, 0, 0, 0);
-        
+
         const lastDate = new Date();
         lastDate.setHours(0, 0, 0, 0);
 
@@ -267,7 +267,7 @@ export default function StatsScreen() {
         for (let i = 0; i <= daysDiff; i++) {
           const date = new Date(firstDate);
           date.setDate(date.getDate() + i);
-          
+
           const shortLabel = `${date.getMonth() + 1}/${date.getDate()}`;
           const fullLabel = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
@@ -295,7 +295,7 @@ export default function StatsScreen() {
 
     data.forEach((point, index) => {
       point.x = padding + (index / (data.length - 1 || 1)) * graphWidth;
-      point.y = maxValue > 0 
+      point.y = maxValue > 0
         ? padding + graphHeight - (point.value / maxValue) * graphHeight
         : padding + graphHeight;
     });
@@ -306,29 +306,29 @@ export default function StatsScreen() {
   // Generate smooth curve path for line charts
   const generateSmoothPath = () => {
     if (chartData.data.length === 0) return '';
-    
+
     const points = chartData.data;
     let path = `M ${points[0].x} ${points[0].y}`;
-    
+
     for (let i = 0; i < points.length - 1; i++) {
       const current = points[i];
       const next = points[i + 1];
-      
+
       const controlPointX = (current.x + next.x) / 2;
       path += ` C ${controlPointX} ${current.y}, ${controlPointX} ${next.y}, ${next.x} ${next.y}`;
     }
-    
+
     return path;
   };
 
   // Generate area gradient path
   const generateAreaPath = () => {
     if (chartData.data.length === 0) return '';
-    
+
     const smoothPath = generateSmoothPath();
     const lastPoint = chartData.data[chartData.data.length - 1];
     const firstPoint = chartData.data[0];
-    
+
     return `${smoothPath} L ${lastPoint.x} ${CHART_HEIGHT - 60} L ${firstPoint.x} ${CHART_HEIGHT - 60} Z`;
   };
 
@@ -357,13 +357,13 @@ export default function StatsScreen() {
               <Stop offset="100%" stopColor={theme.colors.primary.cyan} stopOpacity="0" />
             </SvgGradient>
           </Defs>
-          
+
           {/* Gradient area under curve */}
           <Path
             d={generateAreaPath()}
             fill="url(#areaGradient)"
           />
-          
+
           {/* Main curve line */}
           <Path
             d={generateSmoothPath()}
@@ -372,7 +372,7 @@ export default function StatsScreen() {
             fill="none"
             strokeLinecap="round"
           />
-          
+
           {/* Data points */}
           {chartData.data.map((point, index) => (
             point.value > 0 && (
@@ -425,10 +425,10 @@ export default function StatsScreen() {
         <View style={styles.barChartContainer}>
           {chartData.data.map((item, index) => {
             const maxHeight = CHART_HEIGHT - 80;
-            const height = chartData.maxValue > 0 
-              ? (item.value / chartData.maxValue) * maxHeight 
+            const height = chartData.maxValue > 0
+              ? (item.value / chartData.maxValue) * maxHeight
               : 0;
-            
+
             return (
               <View key={index} style={styles.barWrapper}>
                 <View style={styles.barColumn}>
@@ -479,15 +479,15 @@ export default function StatsScreen() {
               {overallStats.growthPercent !== '0' && (
                 <View style={[
                   styles.trendBadgeLarge,
-                  { 
+                  {
                     backgroundColor: overallStats.isPositiveGrowth ? 'transparent' : 'transparent',
                     borderColor: overallStats.isPositiveGrowth ? theme.colors.success : theme.colors.danger,
                   }
                 ]}>
-                  <Ionicons 
-                    name={overallStats.isPositiveGrowth ? "trending-up" : "trending-down"} 
-                    size={18} 
-                    color={overallStats.isPositiveGrowth ? theme.colors.success : theme.colors.danger} 
+                  <Ionicons
+                    name={overallStats.isPositiveGrowth ? "trending-up" : "trending-down"}
+                    size={18}
+                    color={overallStats.isPositiveGrowth ? theme.colors.success : theme.colors.danger}
                   />
                   <Text style={[
                     styles.trendTextLarge,
@@ -503,15 +503,15 @@ export default function StatsScreen() {
           {/* Chart Card */}
           <GlassCard style={styles.chartCard}>
             <Text style={styles.chartTitle}>
-              {timeRange === 'week' ? 'This Week' : 
-               timeRange === 'month' ? 'This Month' : 
-               timeRange === 'year' ? 'This Year' :
-               'All Time'}
+              {timeRange === 'week' ? 'This Week' :
+                timeRange === 'month' ? 'This Month' :
+                  timeRange === 'year' ? 'This Year' :
+                    'All Time'}
             </Text>
             {timeRange === 'all' && (
               <Text style={styles.chartSubtitle}>Scroll to explore →</Text>
             )}
-            
+
             <View style={styles.chartContainer}>
               {renderChart()}
             </View>

@@ -13,14 +13,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme/theme';
-import { useCategoryStore } from '../stores/useCategoryStore';
-import { useDashboardStore } from '../stores/useDashboardStore';
+import { useCategories, useLoadCategories } from '../stores/useCategoryStore';
+import {
+  useDashboardPreferences,
+  useLoadDashboardPreferences,
+  useToggleCategoryVisibility
+} from '../stores/useDashboardStore';
 import { GlassCard } from '../components/GlassCard';
 
 export default function CustomizeDashboardScreen() {
   const navigation = useNavigation();
-  const { categories, loadCategories } = useCategoryStore();
-  const { preferences, loadPreferences, toggleCategoryVisibility, isCategoryVisible } = useDashboardStore();
+  const categories = useCategories();
+  const loadCategories = useLoadCategories();
+  const preferences = useDashboardPreferences();
+  const loadPreferences = useLoadDashboardPreferences();
+  const toggleCategoryVisibility = useToggleCategoryVisibility();
   const [localVisible, setLocalVisible] = useState<string[]>([]);
 
   useEffect(() => {
@@ -72,7 +79,7 @@ export default function CustomizeDashboardScreen() {
           {/* Categories List */}
           <View style={styles.categoriesList}>
             {categories.map((category) => {
-              const isVisible = isCategoryVisible(category.id);
+              const isVisible = preferences.visibleCategoryIds.includes(category.id);
               return (
                 <GlassCard key={category.id} style={styles.categoryCard}>
                   <View style={styles.categoryContent}>
@@ -91,9 +98,9 @@ export default function CustomizeDashboardScreen() {
                     <Switch
                       value={isVisible}
                       onValueChange={() => handleToggle(category.id)}
-                      trackColor={{ 
-                        false: theme.colors.background.tertiary, 
-                        true: category.color + '80' 
+                      trackColor={{
+                        false: theme.colors.background.tertiary,
+                        true: category.color + '80'
                       }}
                       thumbColor={isVisible ? category.color : theme.colors.text.quaternary}
                       ios_backgroundColor={theme.colors.background.tertiary}

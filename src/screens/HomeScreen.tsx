@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  StyleSheet,
   FlatList,
   RefreshControl,
   Keyboard,
@@ -12,9 +12,18 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme/theme';
-import { useSessionStore } from '../stores/useSessionStore';
-import { useCategoryStore } from '../stores/useCategoryStore';
-import { useDashboardStore } from '../stores/useDashboardStore';
+import {
+  useSessions,
+  useFilteredSessions,
+  useLoadSessions,
+  useSessionFilter,
+  useSetFilter,
+} from '../stores/useSessionStore';
+import { useCategories, useLoadCategories } from '../stores/useCategoryStore';
+import {
+  useDashboardPreferences,
+  useLoadDashboardPreferences
+} from '../stores/useDashboardStore';
 import { CustomHeader } from '../components/CustomHeader';
 import { EnergyRingCard } from '../components/EnergyRingCard';
 import { MiniStatCard } from '../components/MiniStatCard';
@@ -40,11 +49,19 @@ const getSessionDateString = (session: Session) => {
 
 export default function HomeScreen() {
   const navigation = useNavigation();
-  
-  const { sessions, filteredSessions, loadSessions, filter, setFilter } = useSessionStore();
-  const { categories, loadCategories } = useCategoryStore();
-  const { preferences, loadPreferences } = useDashboardStore();
-  
+
+  const sessions = useSessions();
+  const filteredSessions = useFilteredSessions();
+  const filter = useSessionFilter();
+  const loadSessions = useLoadSessions();
+  const setFilter = useSetFilter();
+
+  const categories = useCategories();
+  const loadCategories = useLoadCategories();
+
+  const preferences = useDashboardPreferences();
+  const loadPreferences = useLoadDashboardPreferences();
+
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -113,26 +130,26 @@ export default function HomeScreen() {
   }, [yesterdaySessions]);
 
   const percentageChange = useMemo(() => {
-    return yesterdayTotalMs > 0 
+    return yesterdayTotalMs > 0
       ? Math.round(((todayStats.todayTotalMs - yesterdayTotalMs) / yesterdayTotalMs) * 100)
       : todayStats.todayTotalMs > 0 ? 100 : 0;
   }, [todayStats.todayTotalMs, yesterdayTotalMs]);
 
   const streak = useMemo(() => {
     if (sessions.length === 0) return 0;
-    
-    const sortedSessions = [...sessions].sort((a, b) => 
+
+    const sortedSessions = [...sessions].sort((a, b) =>
       new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
     );
-    
+
     const sessionDates = new Set(
       sortedSessions.map(s => new Date(s.startedAt).toDateString())
     );
-    
+
     let streak = 0;
     let currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
-    
+
     for (let i = 0; i < 365; i++) {
       const dateStr = currentDate.toDateString();
       if (sessionDates.has(dateStr)) {
@@ -142,7 +159,7 @@ export default function HomeScreen() {
         break;
       }
     }
-    
+
     return streak;
   }, [sessions]);
 
@@ -161,7 +178,7 @@ export default function HomeScreen() {
   }, [sessions]);
 
   const visibleCategories = useMemo(() => {
-    return categories.filter(cat => 
+    return categories.filter(cat =>
       preferences.visibleCategoryIds.includes(cat.id)
     );
   }, [categories, preferences.visibleCategoryIds]);
@@ -169,7 +186,7 @@ export default function HomeScreen() {
   const sessionsToDisplay = useMemo(() => {
     const hasFilters = filter.categoryId || filter.dateRange || filter.searchQuery;
     const baseList = hasFilters ? filteredSessions : sessions;
-    
+
     return baseList
       .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
       .slice(0, 20);
@@ -217,20 +234,20 @@ export default function HomeScreen() {
 
       <View style={styles.miniStatsWrapper}>
         <View style={styles.miniStatsScroll}>
-          <MiniStatCard 
-            icon="flame" 
-            value={`${streak} Day${streak !== 1 ? 's' : ''}`} 
-            label="Streak" 
+          <MiniStatCard
+            icon="flame"
+            value={`${streak} Day${streak !== 1 ? 's' : ''}`}
+            label="Streak"
           />
-          <MiniStatCard 
-            icon="timer" 
-            value={`${avgMinutes} min`} 
-            label="Avg Session" 
+          <MiniStatCard
+            icon="timer"
+            value={`${avgMinutes} min`}
+            label="Avg Session"
           />
-          <MiniStatCard 
-            icon="happy" 
-            value={sessions.length > 0 ? "Focused" : "Start"} 
-            label="Focus Mood" 
+          <MiniStatCard
+            icon="happy"
+            value={sessions.length > 0 ? "Focused" : "Start"}
+            label="Focus Mood"
           />
         </View>
       </View>
@@ -308,7 +325,7 @@ export default function HomeScreen() {
         </Text>
         <Text style={styles.emptySubtext}>
           {hasActiveFilters
-            ? searchQuery 
+            ? searchQuery
               ? `No sessions match "${searchQuery}"`
               : 'Try adjusting your filters'
             : 'Tap "Start Session" below to begin tracking'

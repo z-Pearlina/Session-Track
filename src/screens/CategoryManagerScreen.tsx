@@ -17,20 +17,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme/theme';
-import { useCategoryStore } from '../stores/useCategoryStore';
+import {
+  useCategories,
+  useLoadCategories,
+  useAddCategory,
+  useUpdateCategory,
+  useDeleteCategory
+} from '../stores/useCategoryStore';
 import { GlassCard } from '../components/GlassCard';
 import { Category } from '../types';
 import { validation } from '../services/validation';
 import { SUCCESS_MESSAGES, ERROR_MESSAGES } from '../config/constants';
 
-/**
- * ✨ OPTIMIZED CATEGORY MANAGER SCREEN
- * - No loading states (instant feel)
- * - Modal swipe-down transition (like Customize Dashboard)
- * - FlatList with virtualization
- * - Memoized components
- * - InteractionManager for smooth navigation
- */
 
 const CATEGORY_ICONS = [
   'briefcase', 'school', 'fitness', 'restaurant', 'bed', 'book', 'code', 'brush',
@@ -140,8 +138,13 @@ const PreviewCard = React.memo<{ name: string; icon: string; color: string }>(
 
 export default function CategoryManagerScreen() {
   const navigation = useNavigation();
-  const { categories, loadCategories, addCategory, updateCategory, deleteCategory } = useCategoryStore();
 
+  const categories = useCategories();
+  const loadCategories = useLoadCategories();
+  const addCategory = useAddCategory();
+  const updateCategory = useUpdateCategory();
+  const deleteCategory = useDeleteCategory();
+  
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [name, setName] = useState('');

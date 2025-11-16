@@ -17,8 +17,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { theme } from '../theme/theme';
-import { useSessionStore } from '../stores/useSessionStore';
-import { useCategoryStore } from '../stores/useCategoryStore';
+import { useSessions, useUpdateSession, useDeleteSession } from '../stores/useSessionStore';
+import { useCategories, useLoadCategories } from '../stores/useCategoryStore';
 import { GlassCard } from '../components/GlassCard';
 import { validation } from '../services/validation';
 import { SUCCESS_MESSAGES, ERROR_MESSAGES } from '../config/constants';
@@ -28,9 +28,11 @@ export default function EditSessionScreen() {
   const route = useRoute();
   const { sessionId } = route.params as { sessionId: string };
 
-  const { sessions, updateSession, deleteSession } = useSessionStore();
-  const { categories, loadCategories } = useCategoryStore();
-
+  const sessions = useSessions();
+  const updateSession = useUpdateSession();
+  const deleteSession = useDeleteSession();
+  const categories = useCategories();
+  const loadCategories = useLoadCategories();
   const session = sessions.find(s => s.id === sessionId);
 
   const [title, setTitle] = useState(session?.title || '');

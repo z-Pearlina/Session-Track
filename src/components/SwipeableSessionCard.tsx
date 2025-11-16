@@ -14,16 +14,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { GlassCard } from './GlassCard';
 import { theme } from '../theme/theme';
 import { Session, RootStackNavigationProp } from '../types';
-import { useCategoryStore } from '../stores/useCategoryStore';
-import { useSessionStore } from '../stores/useSessionStore';
+import { useGetCategoryById } from '../stores/useCategoryStore';
+import { useDeleteSession } from '../stores/useSessionStore';
 
 interface SwipeableSessionCardProps {
   session: Session;
 }
 
 function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
-  const { deleteSession } = useSessionStore();
-  const { getCategoryById } = useCategoryStore();
+  const deleteSession = useDeleteSession();
+  const getCategoryById = useGetCategoryById();
   const navigation = useNavigation<RootStackNavigationProp>();
 
   const translateX = useRef(new Animated.Value(0)).current;
@@ -110,17 +110,17 @@ function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
     navigation.navigate('SessionDetails', { sessionId: session.id });
   }, [navigation, session.id]);
 
-  
-  const ACTIONS_WIDTH = 125; 
+
+  const ACTIONS_WIDTH = 125;
 
   const panResponder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => !isDeleting,
         onMoveShouldSetPanResponder: (_, gestureState) => {
-          return Math.abs(gestureState.dx) > 10 && 
-                 Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && 
-                 !isDeleting;
+          return Math.abs(gestureState.dx) > 10 &&
+            Math.abs(gestureState.dx) > Math.abs(gestureState.dy) &&
+            !isDeleting;
         },
         onPanResponderGrant: () => {
           translateX.setOffset(lastOffset.current);
@@ -135,7 +135,7 @@ function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
         },
         onPanResponderRelease: (_, gestureState) => {
           const shouldOpen = gestureState.dx < -80;
-          const toValue = shouldOpen ? -ACTIONS_WIDTH : 0; 
+          const toValue = shouldOpen ? -ACTIONS_WIDTH : 0;
 
           lastOffset.current = toValue;
           translateX.flattenOffset();

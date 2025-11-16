@@ -14,19 +14,12 @@ import { Calendar, DateData } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme/theme';
-import { useSessionStore } from '../stores/useSessionStore';
-import { useCategoryStore } from '../stores/useCategoryStore';
+import { useSessions, useLoadSessions } from '../stores/useSessionStore';
+import { useCategories } from '../stores/useCategoryStore';
 import { SwipeableSessionCard } from '../components/SwipeableSessionCard';
 import { GlassCard } from '../components/GlassCard';
 import { Session } from '../types';
 
-/**
- * ✨ OPTIMIZED CALENDAR SCREEN
- * - Keeps ALL original features (today highlight, sessions display, stats)
- * - No loading states (instant feel)
- * - FlatList with virtualization
- * - Special zoom + rotate transition
- */
 
 // Memoized components
 const EmptyState = React.memo(() => (
@@ -67,9 +60,11 @@ const StatsCard = React.memo<{ totalHours: number; totalMinutes: number; session
 
 export default function CalendarScreen() {
   const navigation = useNavigation();
-  const { sessions, loadSessions } = useSessionStore();
-  const { categories } = useCategoryStore();
-  
+
+  const sessions = useSessions();
+  const loadSessions = useLoadSessions();
+  const categories = useCategories();
+
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Load data with InteractionManager

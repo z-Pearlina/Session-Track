@@ -9,14 +9,14 @@ import * as Sharing from 'expo-sharing';
 import { theme } from '../theme/theme';
 import { GlassCard } from '../components/GlassCard';
 import { RootStackNavigationProp } from '../types';
-import { useSessionStore } from '../stores/useSessionStore';
-import { useCategoryStore } from '../stores/useCategoryStore';
+import { useSessions } from '../stores/useSessionStore';
+import { useCategories } from '../stores/useCategoryStore';
 
 
 export default function SettingsScreen() {
   const navigation = useNavigation<RootStackNavigationProp>();
-  const { sessions } = useSessionStore();
-  const { categories } = useCategoryStore();
+  const sessions = useSessions();
+  const categories = useCategories();
   const [isExporting, setIsExporting] = useState(false);
 
   const exportData = async () => {
@@ -41,13 +41,13 @@ export default function SettingsScreen() {
       const fileName = `session-track-export-${timestamp}.json`;
 
       const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-      
+
       await FileSystem.writeAsStringAsync(fileUri, jsonString, {
         encoding: FileSystem.EncodingType.UTF8,
       });
 
       const isAvailable = await Sharing.isAvailableAsync();
-      
+
       if (isAvailable) {
         await Sharing.shareAsync(fileUri, {
           mimeType: 'application/json',
@@ -127,14 +127,14 @@ export default function SettingsScreen() {
       icon: 'help-circle',
       title: 'Help & Support',
       subtitle: 'Coming soon',
-      onPress: () => {},
+      onPress: () => { },
       color: theme.colors.primary.mint,
     },
     {
       icon: 'information-circle',
       title: 'About',
       subtitle: 'Version 1.0.0',
-      onPress: () => {},
+      onPress: () => { },
       color: theme.colors.primary.cyan,
     },
   ];
@@ -147,7 +147,7 @@ export default function SettingsScreen() {
       />
 
       <SafeAreaView style={styles.container} edges={['bottom']}>
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
@@ -165,20 +165,20 @@ export default function SettingsScreen() {
                 disabled={option.disabled}
               >
                 <View style={[styles.iconContainer, { backgroundColor: option.color + '20' }]}>
-                  <Ionicons 
-                    name={option.icon as any} 
-                    size={24} 
-                    color={option.disabled ? theme.colors.text.quaternary : option.color} 
+                  <Ionicons
+                    name={option.icon as any}
+                    size={24}
+                    color={option.disabled ? theme.colors.text.quaternary : option.color}
                   />
                 </View>
                 <View style={styles.optionText}>
                   <Text style={styles.optionTitle}>{option.title}</Text>
                   <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
                 </View>
-                <Ionicons 
-                  name="chevron-forward" 
-                  size={24} 
-                  color={option.disabled ? theme.colors.text.quaternary : theme.colors.text.tertiary} 
+                <Ionicons
+                  name="chevron-forward"
+                  size={24}
+                  color={option.disabled ? theme.colors.text.quaternary : theme.colors.text.tertiary}
                 />
               </TouchableOpacity>
             </GlassCard>

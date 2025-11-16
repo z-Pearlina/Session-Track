@@ -12,8 +12,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { theme } from '../theme/theme';
-import { useSessionStore } from '../stores/useSessionStore';
-import { useCategoryStore } from '../stores/useCategoryStore';
+import { useSessions, useDeleteSession } from '../stores/useSessionStore';
+import { useGetCategoryById } from '../stores/useCategoryStore';
 import { GlassCard } from '../components/GlassCard';
 import { RootStackParamList, RootStackNavigationProp } from '../types';
 
@@ -24,8 +24,9 @@ export default function SessionDetailsScreen() {
   const route = useRoute<SessionDetailsRouteProp>();
   const { sessionId } = route.params;
 
-  const { sessions, deleteSession } = useSessionStore();
-  const { getCategoryById } = useCategoryStore();
+  const sessions = useSessions();
+  const deleteSession = useDeleteSession();
+  const getCategoryById = useGetCategoryById();
 
   const session = sessions.find(s => s.id === sessionId);
   const category = session ? getCategoryById(session.categoryId) : null;
