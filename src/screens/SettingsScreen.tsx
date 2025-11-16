@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { theme } from '../theme/theme';
 import { GlassCard } from '../components/GlassCard';
 import { RootStackNavigationProp } from '../types';
 import { useSessionStore } from '../stores/useSessionStore';
 import { useCategoryStore } from '../stores/useCategoryStore';
-
+import { logger } from '../services/logger';
 
 export default function SettingsScreen() {
   const navigation = useNavigation<RootStackNavigationProp>();
@@ -23,7 +23,6 @@ export default function SettingsScreen() {
     try {
       setIsExporting(true);
 
-      // Prepare export data
       const exportData = {
         exportDate: new Date().toISOString(),
         version: '1.0.0',
@@ -36,26 +35,20 @@ export default function SettingsScreen() {
         }
       };
 
-      // Convert to JSON
       const jsonString = JSON.stringify(exportData, null, 2);
 
-      // Create filename with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const fileName = `session-track-export-${timestamp}.json`;
 
-      // Use the new File API
       const fileUri = `${FileSystem.documentDirectory}${fileName}`;
-      
-      // Write file using the new API
+
       await FileSystem.writeAsStringAsync(fileUri, jsonString, {
         encoding: FileSystem.EncodingType.UTF8,
       });
 
-      // Check if sharing is available
       const isAvailable = await Sharing.isAvailableAsync();
-      
+
       if (isAvailable) {
-        // Share the file
         await Sharing.shareAsync(fileUri, {
           mimeType: 'application/json',
           dialogTitle: 'Export Session Track Data',
@@ -74,8 +67,10 @@ export default function SettingsScreen() {
           [{ text: 'OK' }]
         );
       }
+
+      logger.success('Data exported successfully', { fileName, sessions: sessions.length });
     } catch (error) {
-      console.error('Export failed:', error);
+      logger.error('Export failed', error);
       Alert.alert(
         'Export Failed ❌',
         error instanceof Error ? error.message : 'An unknown error occurred',
@@ -87,46 +82,43 @@ export default function SettingsScreen() {
   };
 
   const settingsOptions = [
-    // ✅ NEW: Goals Section
     {
-      icon: 'trophy',
+      icon: 'trophy' as const,
       title: 'Goals',
       subtitle: 'Set and track your time goals',
       onPress: () => navigation.navigate('Goals'),
       color: theme.colors.primary.cyan,
     },
-    // ✅ NEW: Achievements Section
     {
-      icon: 'medal',
+      icon: 'medal' as const,
       title: 'Achievements',
       subtitle: 'View your unlocked badges',
       onPress: () => navigation.navigate('Achievements'),
-      color: '#FFD700', // Gold color for achievements
+      color: '#FFD700',
     },
-    // ✅ UPDATED: Notifications (now functional!)
     {
-      icon: 'notifications',
+      icon: 'notifications' as const,
       title: 'Notifications',
       subtitle: 'Configure reminders and alerts',
       onPress: () => navigation.navigate('NotificationSettings'),
       color: theme.colors.primary.aqua,
     },
     {
-      icon: 'grid',
+      icon: 'grid' as const,
       title: 'Customize Dashboard',
       subtitle: 'Choose which category cards to display',
       onPress: () => navigation.navigate('CustomizeDashboard'),
       color: theme.colors.primary.mint,
     },
     {
-      icon: 'apps',
+      icon: 'apps' as const,
       title: 'Manage Categories',
       subtitle: 'Add, edit, or delete categories',
       onPress: () => navigation.navigate('CategoryManager'),
       color: theme.colors.primary.cyan,
     },
     {
-      icon: 'download',
+      icon: 'download' as const,
       title: 'Export Data',
       subtitle: isExporting ? 'Exporting...' : `Export ${sessions.length} sessions to JSON`,
       onPress: exportData,
@@ -134,14 +126,14 @@ export default function SettingsScreen() {
       disabled: isExporting,
     },
     {
-      icon: 'help-circle',
+      icon: 'help-circle' as const,
       title: 'Help & Support',
       subtitle: 'Coming soon',
       onPress: () => {},
       color: theme.colors.primary.mint,
     },
     {
-      icon: 'information-circle',
+      icon: 'information-circle' as const,
       title: 'About',
       subtitle: 'Version 1.0.0',
       onPress: () => {},
@@ -151,24 +143,21 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Animated background gradient - same as HomeScreen */}
       <LinearGradient
         colors={theme.gradients.backgroundAnimated}
         style={styles.gradient}
       />
 
       <SafeAreaView style={styles.container} edges={['bottom']}>
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header Section */}
           <View style={styles.headerSection}>
             <Text style={styles.header}>Settings</Text>
             <Text style={styles.subtitle}>Customize your experience</Text>
           </View>
 
-          {/* Settings Options */}
           {settingsOptions.map((option, index) => (
             <GlassCard key={index} style={styles.optionCard}>
               <TouchableOpacity
@@ -178,26 +167,25 @@ export default function SettingsScreen() {
                 disabled={option.disabled}
               >
                 <View style={[styles.iconContainer, { backgroundColor: option.color + '20' }]}>
-                  <Ionicons 
-                    name={option.icon as any} 
-                    size={24} 
-                    color={option.disabled ? theme.colors.text.quaternary : option.color} 
+                  <Ionicons
+                    name={option.icon}
+                    size={24}
+                    color={option.disabled ? theme.colors.text.quaternary : option.color}
                   />
                 </View>
                 <View style={styles.optionText}>
                   <Text style={styles.optionTitle}>{option.title}</Text>
                   <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
                 </View>
-                <Ionicons 
-                  name="chevron-forward" 
-                  size={24} 
-                  color={option.disabled ? theme.colors.text.quaternary : theme.colors.text.tertiary} 
+                <Ionicons
+                  name="chevron-forward"
+                  size={24}
+                  color={option.disabled ? theme.colors.text.quaternary : theme.colors.text.tertiary}
                 />
               </TouchableOpacity>
             </GlassCard>
           ))}
 
-          {/* App Info Section */}
           <GlassCard style={styles.infoCard}>
             <View style={styles.infoContent}>
               <View style={styles.logoContainer}>

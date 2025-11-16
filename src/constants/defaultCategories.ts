@@ -34,7 +34,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
     isDefault: true,
   },
   {
-    id: 'default',
+    id: 'general',
     name: 'General',
     color: '#67E8F9',
     icon: 'apps',
