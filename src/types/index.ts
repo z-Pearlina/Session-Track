@@ -7,6 +7,7 @@ export interface Session {
   categoryId: string;
   durationMs: number;
   startedAt: string;
+  endedAt?: string;
   notes?: string;
   createdAt: string;
   updatedAt?: string;
@@ -19,6 +20,7 @@ export interface Category {
   icon: string;
   order?: number;
   createdAt: string;
+  isDefault?: boolean;
 }
 
 export interface Goal {

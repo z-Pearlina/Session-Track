@@ -29,26 +29,25 @@ export default function StartSessionScreen() {
   const [notes, setNotes] = useState('');
   const [startedAt, setStartedAt] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('work');
-  
-  const { 
-    elapsedMs, 
-    isRunning, 
-    isPaused, 
-    startTimer, 
-    pauseTimer, 
-    resumeTimer, 
+
+  const {
+    elapsedMs,
+    isRunning,
+    isPaused,
+    startTimer,
+    pauseTimer,
+    resumeTimer,
     stopTimer,
-    resetTimer 
+    resetTimer
   } = useTimer();
-  
+
   const { addSession } = useSessionStore();
   const { categories, loadCategories } = useCategoryStore();
 
   // Load categories when screen mounts
   useEffect(() => {
     loadCategories();
-  }, []);
-
+  }, [loadCategories]);
   const handleStart = () => {
     const now = new Date().toISOString();
     setStartedAt(now);
@@ -80,7 +79,7 @@ export default function StartSessionScreen() {
 
     try {
       const endedAt = new Date().toISOString();
-      
+
       const session: Session = {
         id: `session_${Date.now()}`,
         title: title.trim() || 'Untitled Session',
@@ -94,7 +93,7 @@ export default function StartSessionScreen() {
       };
 
       await addSession(session);
-      
+
       Alert.alert(
         'Success! 🎉',
         'Session saved successfully',
@@ -139,7 +138,7 @@ export default function StartSessionScreen() {
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         {/* Custom Header */}
         <View style={styles.header}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.headerButton}
             onPress={() => navigation.goBack()}
           >
@@ -151,12 +150,12 @@ export default function StartSessionScreen() {
           </TouchableOpacity>
         </View>
 
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <ScrollView 
+            <ScrollView
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
             >
@@ -164,7 +163,7 @@ export default function StartSessionScreen() {
               <View style={styles.timerContainer}>
                 {/* Animated glow ring */}
                 <View style={styles.glowRing} />
-                
+
                 {/* Timer circle */}
                 <View style={styles.timerCircle}>
                   <Text style={styles.timerText}>{formatTime(elapsedMs)}</Text>
@@ -173,14 +172,14 @@ export default function StartSessionScreen() {
 
               {/* Action Buttons */}
               <View style={styles.actionButtons}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.iconButton}
                   onPress={handleReset}
                 >
                   <Ionicons name="refresh" size={28} color={theme.colors.text.secondary} />
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.mainButton, isRunning && styles.stopButton]}
                   onPress={isRunning ? handleStop : handleStart}
                 >
@@ -189,15 +188,15 @@ export default function StartSessionScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.iconButton}
                   onPress={isPaused ? handleResume : handlePause}
                   disabled={!isRunning}
                 >
-                  <Ionicons 
-                    name={isPaused ? 'play' : 'pause'} 
-                    size={28} 
-                    color={isRunning ? theme.colors.text.secondary : theme.colors.text.quaternary} 
+                  <Ionicons
+                    name={isPaused ? 'play' : 'pause'}
+                    size={28}
+                    color={isRunning ? theme.colors.text.secondary : theme.colors.text.quaternary}
                   />
                 </TouchableOpacity>
               </View>
@@ -236,7 +235,7 @@ export default function StartSessionScreen() {
                 <View style={styles.categorySection}>
                   <View style={styles.categoryHeader}>
                     <Text style={styles.inputLabel}>Select a Category</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.manageCategoriesButton}
                       onPress={handleOpenCategoryManager}
                     >
@@ -244,8 +243,8 @@ export default function StartSessionScreen() {
                       <Text style={styles.manageCategoriesText}>Manage</Text>
                     </TouchableOpacity>
                   </View>
-                  <ScrollView 
-                    horizontal 
+                  <ScrollView
+                    horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.categoriesScroll}
                   >
@@ -256,9 +255,9 @@ export default function StartSessionScreen() {
                           styles.categoryButton,
                           selectedCategory === category.id && styles.categoryButtonActive,
                           { borderColor: category.color + '40' },
-                          selectedCategory === category.id && { 
+                          selectedCategory === category.id && {
                             backgroundColor: category.color,
-                            borderColor: category.color 
+                            borderColor: category.color
                           }
                         ]}
                         onPress={() => setSelectedCategory(category.id)}
