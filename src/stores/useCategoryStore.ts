@@ -54,7 +54,7 @@ const useCategoryStoreBase = create<CategoryState>((set, get) => ({
       
       const { categories } = get();
       set({ 
-        categories: [...categories, category], 
+        categories: [category, ...categories], 
         isLoading: false 
       });
       
@@ -131,14 +131,12 @@ const useCategoryStoreBase = create<CategoryState>((set, get) => ({
   clearError: () => set({ error: null }),
 }));
 
-// ✅ FIXED: Simple selectors only
 export const useCategories = () => useCategoryStoreBase((state) => state.categories);
 export const useCategoryById = (categoryId: string) => 
   useCategoryStoreBase((state) => state.categories.find(c => c.id === categoryId));
 export const useCategoriesLoading = () => useCategoryStoreBase((state) => state.isLoading);
 export const useCategoriesError = () => useCategoryStoreBase((state) => state.error);
 
-// ✅ FIXED: Return individual functions, not objects
 export const useLoadCategories = () => useCategoryStoreBase((state) => state.loadCategories);
 export const useAddCategory = () => useCategoryStoreBase((state) => state.addCategory);
 export const useUpdateCategory = () => useCategoryStoreBase((state) => state.updateCategory);

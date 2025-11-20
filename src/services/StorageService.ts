@@ -141,7 +141,7 @@ export class StorageService {
     return this.retryWithBackoff(
       async () => {
         const categories = await this.getCategories();
-        categories.push(category);
+        categories.unshift(category);
         await AsyncStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
         logger.success(`Category saved: ${category.name}`);
       },
@@ -251,6 +251,16 @@ export class StorageService {
     );
   }
 
+  static async clearAllGoals(): Promise<void> {
+    return this.retryWithBackoff(
+      async () => {
+        await AsyncStorage.removeItem(STORAGE_KEYS.GOALS);
+        logger.warn('All goals cleared');
+      },
+      'Clear all goals'
+    );
+  }
+
   static async getAchievements(): Promise<Achievement[]> {
     return this.retryWithBackoff(
       async () => {
@@ -270,15 +280,7 @@ export class StorageService {
     return this.retryWithBackoff(
       async () => {
         const achievements = await this.getAchievements();
-
-        const existingIndex = achievements.findIndex(a => a.id === achievement.id);
-
-        if (existingIndex >= 0) {
-          achievements[existingIndex] = achievement;
-        } else {
-          achievements.push(achievement);
-        }
-
+        achievements.push(achievement);
         await AsyncStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify(achievements));
         logger.success(`Achievement saved: ${achievement.title}`);
       },
@@ -491,7 +493,7 @@ export class StorageService {
   static async getStorageSize(): Promise<{ keys: number; estimatedSizeKB: number }> {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const appKeys = keys.filter(key => key.startsWith('@session_track:') || key.startsWith('@trackora:'));
+      const appKeys = keys.filter(key => key.startsWith('@flowtrix:') || key.startsWith('@trackora:'));
 
       let totalSize = 0;
       for (const key of appKeys) {

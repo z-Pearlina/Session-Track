@@ -41,7 +41,6 @@ const CATEGORY_COLORS = [
   '#FBBF24', '#60A5FA', '#EC4899', '#10B981', '#8B5CF6',
 ] as const;
 
-// Memoized components
 const InfoCard = React.memo(() => (
   <GlassCard style={styles.infoCard}>
     <View style={styles.infoContent}>
@@ -144,7 +143,7 @@ export default function CategoryManagerScreen() {
   const addCategory = useAddCategory();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
-  
+
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [name, setName] = useState('');
@@ -152,19 +151,16 @@ export default function CategoryManagerScreen() {
   const [selectedColor, setSelectedColor] = useState('#38BDF8');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load categories with InteractionManager
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => loadCategories());
     return () => task.cancel();
   }, [loadCategories]);
 
-  // Memoized sorted categories
   const sortedCategories = useMemo(() => {
-    return [...categories].sort((a, b) => {
-      if (a.isDefault && !b.isDefault) return -1;
-      if (!a.isDefault && b.isDefault) return 1;
-      return a.name.localeCompare(b.name);
-    });
+    const defaults = categories.filter(c => c.isDefault);
+    const customs = categories.filter(c => !c.isDefault);
+
+    return [...customs, ...defaults];
   }, [categories]);
 
   const handleOpenModal = useCallback((category?: Category) => {
@@ -183,55 +179,34 @@ export default function CategoryManagerScreen() {
   }, []);
 
   const handleCloseModal = useCallback(() => {
+    if (isSaving) return;
     setShowModal(false);
-    setTimeout(() => {
-      setEditingCategory(null);
-      setName('');
-      setSelectedIcon('apps');
-      setSelectedColor('#38BDF8');
-    }, 300);
-  }, []);
+    setEditingCategory(null);
+    setName('');
+    setSelectedIcon('apps');
+    setSelectedColor('#38BDF8');
+    Keyboard.dismiss();
+  }, [isSaving]);
 
   const handleSave = useCallback(async () => {
-    // Validate category name
-    const nameError = validation.validateCategoryName(
-      name,
-      categories,
-      editingCategory?.id
-    );
-    if (nameError) {
-      Alert.alert('Validation Error', nameError);
-      return;
-    }
-
-    // Validate icon
-    const iconError = validation.validateIconName(selectedIcon);
-    if (iconError) {
-      Alert.alert('Validation Error', iconError);
-      return;
-    }
-
-    // Validate color
-    const colorError = validation.validateColorHex(selectedColor);
-    if (colorError) {
-      Alert.alert('Validation Error', colorError);
+    const validationError = validation.validateCategoryName(name, categories, editingCategory?.id);
+    if (validationError) {
+      Alert.alert('Validation Error', validationError);
       return;
     }
 
     setIsSaving(true);
-    Keyboard.dismiss();
-
     try {
       if (editingCategory) {
         await updateCategory(editingCategory.id, {
           name: name.trim(),
           icon: selectedIcon,
-          color: selectedColor
+          color: selectedColor,
         });
-        Alert.alert('Success', SUCCESS_MESSAGES.CATEGORY_SAVED);
+        Alert.alert('Success', SUCCESS_MESSAGES.CATEGORY_UPDATED);
       } else {
         const newCategory: Category = {
-          id: `category_${Date.now()}`,
+          id: `category_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           name: name.trim(),
           icon: selectedIcon,
           color: selectedColor,
@@ -245,37 +220,49 @@ export default function CategoryManagerScreen() {
     } catch (error) {
       Alert.alert(
         'Error',
-        error instanceof Error ? error.message : ERROR_MESSAGES.CATEGORY_SAVE_FAILED
+        error instanceof Error
+          ? error.message
+          : editingCategory
+            ? ERROR_MESSAGES.CATEGORY_UPDATE_FAILED
+            : ERROR_MESSAGES.CATEGORY_SAVE_FAILED
       );
     } finally {
       setIsSaving(false);
     }
-  }, [name, selectedIcon, selectedColor, editingCategory, categories, updateCategory, addCategory, handleCloseModal]);
+  }, [name, selectedIcon, selectedColor, editingCategory, categories, addCategory, updateCategory, handleCloseModal]);
 
-  const handleDelete = useCallback((category: Category) => {
-    Alert.alert(
-      'Delete Category',
-      `Are you sure you want to delete "${category.name}"?\n\nSessions using this category will need to be reassigned.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteCategory(category.id);
-              Alert.alert('Success', SUCCESS_MESSAGES.CATEGORY_DELETED);
-            } catch (error) {
-              Alert.alert(
-                'Error',
-                error instanceof Error ? error.message : ERROR_MESSAGES.CATEGORY_DELETE_FAILED
-              );
-            }
+  const handleDelete = useCallback(
+    (category: Category) => {
+      if (category.isDefault) {
+        Alert.alert('Cannot Delete', 'Default categories cannot be deleted.');
+        return;
+      }
+
+      Alert.alert(
+        'Delete Category',
+        `Are you sure you want to delete "${category.name}"? This action cannot be undone.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await deleteCategory(category.id);
+                Alert.alert('Success', SUCCESS_MESSAGES.CATEGORY_DELETED);
+              } catch (error) {
+                Alert.alert(
+                  'Error',
+                  error instanceof Error ? error.message : ERROR_MESSAGES.CATEGORY_DELETE_FAILED
+                );
+              }
+            },
           },
-        },
-      ]
-    );
-  }, [deleteCategory]);
+        ]
+      );
+    },
+    [deleteCategory]
+  );
 
   const handleGoBack = useCallback(() => navigation.goBack(), [navigation]);
   const renderCategoryItem = useCallback(
@@ -322,7 +309,6 @@ export default function CategoryManagerScreen() {
           windowSize={5}
         />
 
-        {/* Modal */}
         <Modal visible={showModal} animationType="slide" transparent={true} onRequestClose={handleCloseModal} statusBarTranslucent>
           <View style={styles.modalOverlay}>
             <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={handleCloseModal} />

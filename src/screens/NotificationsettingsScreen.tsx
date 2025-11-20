@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { StorageService } from '../services/StorageService';
+import { NotificationService } from '../services/NotificationService';
 import { NotificationPreferences } from '../types';
 import { theme } from '../theme/theme';
 import { logger } from '../services/logger';
@@ -43,7 +43,7 @@ export default function NotificationSettingsScreen() {
 
   const loadPreferences = async () => {
     try {
-      const saved = await StorageService.getNotificationPreferences();
+      const saved = await NotificationService.getPreferences();
       if (saved) {
         setPreferences(saved);
       }
@@ -55,7 +55,7 @@ export default function NotificationSettingsScreen() {
   const savePreferences = async (newPreferences: NotificationPreferences) => {
     setIsSaving(true);
     try {
-      await StorageService.saveNotificationPreferences(newPreferences);
+      await NotificationService.savePreferences(newPreferences);
       setPreferences(newPreferences);
       logger.success('Notification preferences saved');
     } catch (error) {
@@ -102,6 +102,37 @@ export default function NotificationSettingsScreen() {
       minute: '2-digit',
       hour12: true,
     });
+  };
+
+  const handleTestNotification = async () => {
+    try {
+      await NotificationService.testNotification();
+      Alert.alert(
+        'Test Notification Sent',
+        'Check your notification tray. If you don\'t see it, check your device notification settings.',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      Alert.alert(
+        'Test Failed',
+        'Could not send test notification. Please check permissions.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleViewScheduled = async () => {
+    try {
+      const scheduled = await NotificationService.getAllScheduledNotifications();
+      if (scheduled.length === 0) {
+        Alert.alert('No Scheduled Notifications', 'There are no notifications currently scheduled.');
+      } else {
+        const list = scheduled.map((n, i) => `${i + 1}. ${n.content.title}`).join('\n');
+        Alert.alert(`Scheduled Notifications (${scheduled.length})`, list);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to get scheduled notifications');
+    }
   };
 
   return (
@@ -307,6 +338,31 @@ export default function NotificationSettingsScreen() {
             </View>
           </GlassCard>
 
+          <Text style={styles.sectionTitle}>Testing</Text>
+          <GlassCard style={styles.card}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleTestNotification}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="send" size={20} color={theme.colors.primary.cyan} />
+              <Text style={styles.actionButtonText}>Send Test Notification</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleViewScheduled}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="list" size={20} color={theme.colors.primary.aqua} />
+              <Text style={styles.actionButtonText}>View Scheduled</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
+            </TouchableOpacity>
+          </GlassCard>
+
           <GlassCard style={styles.infoCard}>
             <View style={styles.infoContent}>
               <Ionicons name="information-circle-outline" size={20} color={theme.colors.primary.cyan} />
@@ -315,6 +371,8 @@ export default function NotificationSettingsScreen() {
               </Text>
             </View>
           </GlassCard>
+
+          <View style={{ height: 40 }} />
         </ScrollView>
 
         {showTimePicker && (
@@ -420,6 +478,18 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: theme.colors.glass.border,
     marginVertical: theme.spacing[3],
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[3],
+    paddingVertical: theme.spacing[2],
+  },
+  actionButtonText: {
+    flex: 1,
+    fontSize: theme.fontSize.base,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text.primary,
   },
   infoCard: {
     marginTop: theme.spacing[6],

@@ -22,6 +22,7 @@ import { useCategories, useLoadCategories } from '../stores/useCategoryStore';
 import { GlassCard } from '../components/GlassCard';
 import { validation } from '../services/validation';
 import { SUCCESS_MESSAGES, ERROR_MESSAGES } from '../config/constants';
+import { dateUtils } from '../utils/dateUtils';
 
 export default function EditSessionScreen() {
   const navigation = useNavigation();
@@ -38,9 +39,6 @@ export default function EditSessionScreen() {
   const [title, setTitle] = useState(session?.title || '');
   const [notes, setNotes] = useState(session?.notes || '');
   const [selectedCategory, setSelectedCategory] = useState(session?.categoryId || 'work');
-  const [durationMinutes, setDurationMinutes] = useState(
-    session ? Math.round(session.durationMs / (1000 * 60)).toString() : '0'
-  );
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -57,29 +55,18 @@ export default function EditSessionScreen() {
   if (!session) return null;
 
   const handleSave = async () => {
-    // Validate session title
     const titleError = validation.validateSessionTitle(title);
     if (titleError) {
       Alert.alert('Validation Error', titleError);
       return;
     }
 
-    // Validate session notes
     const notesError = validation.validateSessionNotes(notes);
     if (notesError) {
       Alert.alert('Validation Error', notesError);
       return;
     }
 
-    // Parse and validate duration
-    const minutes = validation.parseDuration(durationMinutes);
-    const durationError = validation.validateSessionDurationMinutes(minutes);
-    if (durationError) {
-      Alert.alert('Validation Error', durationError);
-      return;
-    }
-
-    // Validate category exists
     const categoryError = validation.validateCategoryExists(selectedCategory, categories);
     if (categoryError) {
       Alert.alert('Validation Error', categoryError);
@@ -92,16 +79,15 @@ export default function EditSessionScreen() {
         title: title.trim() || 'Untitled Session',
         notes: notes.trim(),
         categoryId: selectedCategory,
-        durationMs: minutes * 60 * 1000,
       });
 
-      Alert.alert('Success', SUCCESS_MESSAGES.SESSION_SAVED, [
+      Alert.alert('Success', SUCCESS_MESSAGES.SESSION_UPDATED, [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
       Alert.alert(
         'Error',
-        error instanceof Error ? error.message : ERROR_MESSAGES.SESSION_SAVE_FAILED
+        error instanceof Error ? error.message : ERROR_MESSAGES.SESSION_UPDATE_FAILED
       );
     } finally {
       setIsSaving(false);
@@ -173,6 +159,18 @@ export default function EditSessionScreen() {
                     <Ionicons name="checkmark-circle-outline" size={18} color={theme.colors.primary.cyan} />
                     <Text style={styles.infoText}>Ended: {formatDate(session.endedAt)}</Text>
                   </View>
+                  <View style={styles.infoRow}>
+                    <Ionicons name="timer-outline" size={18} color={theme.colors.primary.cyan} />
+                    <Text style={styles.infoText}>
+                      Duration: {dateUtils.formatDuration(session.durationMs)}
+                    </Text>
+                  </View>
+                  <View style={styles.infoNote}>
+                    <Ionicons name="information-circle-outline" size={16} color={theme.colors.text.tertiary} />
+                    <Text style={styles.infoNoteText}>
+                      Duration cannot be edited after session completion
+                    </Text>
+                  </View>
                 </View>
               </GlassCard>
 
@@ -185,19 +183,6 @@ export default function EditSessionScreen() {
                     placeholderTextColor={theme.colors.text.quaternary}
                     value={title}
                     onChangeText={setTitle}
-                    returnKeyType="next"
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Duration (minutes)</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="30"
-                    placeholderTextColor={theme.colors.text.quaternary}
-                    value={durationMinutes}
-                    onChangeText={setDurationMinutes}
-                    keyboardType="number-pad"
                     returnKeyType="next"
                   />
                 </View>
@@ -348,6 +333,21 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: theme.fontSize.sm,
     color: theme.colors.text.secondary,
+  },
+  infoNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[1.5],
+    marginTop: theme.spacing[2],
+    paddingTop: theme.spacing[3],
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.glass.border,
+  },
+  infoNoteText: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text.tertiary,
+    fontStyle: 'italic',
+    flex: 1,
   },
   inputSection: {
     gap: theme.spacing[6],

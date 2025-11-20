@@ -30,10 +30,13 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "NOTIFICATIONS",
+        "POST_NOTIFICATIONS",
         "VIBRATE",
-        "RECEIVE_BOOT_COMPLETED"
-      ]
+        "RECEIVE_BOOT_COMPLETED",
+        "SCHEDULE_EXACT_ALARM",
+        "USE_EXACT_ALARM"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -44,7 +47,13 @@
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
-          "color": "#00D9FF"
+          "color": "#38BDF8",
+          "sounds": [
+            "./assets/notification-sound.wav"
+          ],
+          "androidMode": "default",
+          "androidCollapsedTitle": "#{unread_notifications} new notifications",
+          "iosDisplayInForeground": true
         }
       ]
     ],

@@ -8,34 +8,43 @@ import {
   RefreshControl,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAchievements, useLoadAchievements, useInitializeDefaultAchievements } from '../stores/useAchievementStore';
-import { Achievement, AchievementTier } from '../types';
+import { 
+  useAchievements, 
+  useLoadAchievements, 
+  useInitializeDefaultAchievements,
+  useCheckAndUnlockAchievements 
+} from '../stores/useAchievementStore';
+import { useSessions } from '../stores/useSessionStore';
+import { useGoals } from '../stores/useGoalStore';
+import { useCategories } from '../stores/useCategoryStore';
+import { Achievement, AchievementTier, AchievementCategory } from '../types';
 import { theme } from '../theme/theme';
 import { GlassCard } from '../components/GlassCard';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - (theme.spacing[4] * 3)) / 2;
 
-/**
- * 🏆 ACHIEVEMENTS SCREEN - UI FIXED
- * 
- * ✅ Fixed gap issue - stats and filters outside ScrollView
- * ✅ Proper spacing with theme.spacing
- * ✅ Clean layout structure
- */
+type FilterType = 'all' | AchievementCategory;
 
 export default function AchievementsScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  
   const achievements = useAchievements();
+  const sessions = useSessions();
+  const goals = useGoals();
+  const categories = useCategories();
+  
   const loadAchievements = useLoadAchievements();
   const initializeDefaultAchievements = useInitializeDefaultAchievements();
+  const checkAndUnlockAchievements = useCheckAndUnlockAchievements();
   
   const [refreshing, setRefreshing] = useState(false);
-  const [filterCategory, setFilterCategory] = useState<'all' | 'milestone' | 'streak' | 'dedication'>('all');
+  const [filterCategory, setFilterCategory] = useState<FilterType>('all');
   const hasInitialized = useRef(false);
 
   useEffect(() => {
@@ -54,9 +63,16 @@ export default function AchievementsScreen() {
     initialize();
   }, [loadAchievements, initializeDefaultAchievements, achievements.length]);
 
+  useEffect(() => {
+    if (achievements.length > 0 && sessions.length > 0) {
+      checkAndUnlockAchievements(sessions, goals, categories);
+    }
+  }, [sessions.length, goals.length]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadAchievements();
+    await checkAndUnlockAchievements(sessions, goals, categories);
     setRefreshing(false);
   };
 
@@ -71,17 +87,33 @@ export default function AchievementsScreen() {
   );
   
   const lockedAchievements = useMemo(() => 
-    filteredAchievements.filter(a => !a.isUnlocked),
+    filteredAchievements.filter(a => !a.isUnlocked).sort((a, b) => b.progress - a.progress),
     [filteredAchievements]
   );
 
-  const stats = useMemo(() => ({
-    total: achievements.length,
-    unlocked: achievements.filter(a => a.isUnlocked).length,
-    percentage: achievements.length > 0 
-      ? Math.round((achievements.filter(a => a.isUnlocked).length / achievements.length) * 100)
-      : 0,
-  }), [achievements]);
+  const stats = useMemo(() => {
+    const totalAchievements = achievements.length;
+    const totalUnlocked = achievements.filter(a => a.isUnlocked).length;
+    const percentage = totalAchievements > 0 
+      ? Math.round((totalUnlocked / totalAchievements) * 100)
+      : 0;
+
+    const recentlyUnlocked = achievements
+      .filter(a => a.isUnlocked && a.unlockedAt)
+      .sort((a, b) => new Date(b.unlockedAt!).getTime() - new Date(a.unlockedAt!).getTime())
+      .slice(0, 3);
+
+    return { totalUnlocked, totalAchievements, percentage, recentlyUnlocked };
+  }, [achievements]);
+
+  const filterOptions: { key: FilterType; label: string; icon: string }[] = [
+    { key: 'all', label: 'All', icon: 'apps' },
+    { key: 'milestone', label: 'Milestones', icon: 'flag' },
+    { key: 'streak', label: 'Streaks', icon: 'flame' },
+    { key: 'dedication', label: 'Dedication', icon: 'heart' },
+    { key: 'variety', label: 'Variety', icon: 'color-palette' },
+    { key: 'speed', label: 'Speed', icon: 'flash' },
+  ];
 
   return (
     <View style={styles.root}>
@@ -90,8 +122,7 @@ export default function AchievementsScreen() {
         style={styles.gradient}
       />
 
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        {/* Header */}
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
@@ -103,52 +134,85 @@ export default function AchievementsScreen() {
           <View style={styles.backButton} />
         </View>
 
-        {/* Stats Card - OUTSIDE ScrollView */}
         <View style={styles.statsWrapper}>
           <GlassCard style={styles.statsCard}>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{stats.unlocked}</Text>
-                <Text style={styles.statLabel}>Unlocked</Text>
+            <View style={styles.statsHeader}>
+              <View style={styles.statsMainInfo}>
+                <View style={styles.trophyContainer}>
+                  <LinearGradient
+                    colors={['#FFD700', '#FFA500']}
+                    style={styles.trophyGradient}
+                  >
+                    <Ionicons name="trophy" size={32} color="#fff" />
+                  </LinearGradient>
+                </View>
+                <View style={styles.statsTextContainer}>
+                  <Text style={styles.statsMainValue}>{stats.totalUnlocked}/{stats.totalAchievements}</Text>
+                  <Text style={styles.statsMainLabel}>Achievements Unlocked</Text>
+                </View>
               </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{stats.total}</Text>
-                <Text style={styles.statLabel}>Total</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{stats.percentage}%</Text>
-                <Text style={styles.statLabel}>Complete</Text>
+              <View style={styles.percentageBadge}>
+                <Text style={styles.percentageText}>{stats.percentage}%</Text>
               </View>
             </View>
+
+            <View style={styles.progressBarContainer}>
+              <LinearGradient
+                colors={theme.gradients.primary}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.progressBar, { width: `${stats.percentage}%` }]}
+              />
+            </View>
+
+            {stats.recentlyUnlocked.length > 0 && (
+              <View style={styles.recentSection}>
+                <Text style={styles.recentLabel}>Recently Unlocked:</Text>
+                <View style={styles.recentBadges}>
+                  {stats.recentlyUnlocked.map(achievement => (
+                    <View key={achievement.id} style={styles.recentBadge}>
+                      <Ionicons 
+                        name={achievement.icon as any} 
+                        size={16} 
+                        color={theme.colors.primary.cyan} 
+                      />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
           </GlassCard>
         </View>
 
-        {/* Filter Chips - OUTSIDE ScrollView */}
         <View style={styles.filtersWrapper}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filtersContainer}
           >
-            {(['all', 'milestone', 'streak', 'dedication'] as const).map((category) => (
+            {filterOptions.map((option) => (
               <TouchableOpacity
-                key={category}
-                onPress={() => setFilterCategory(category)}
+                key={option.key}
+                onPress={() => setFilterCategory(option.key)}
                 activeOpacity={0.7}
               >
                 <GlassCard style={[
                   styles.filterChip,
-                  filterCategory === category && styles.filterChipActive
+                  filterCategory === option.key && styles.filterChipActive
                 ]}>
+                  <Ionicons 
+                    name={option.icon as any} 
+                    size={16} 
+                    color={filterCategory === option.key ? theme.colors.primary.cyan : theme.colors.text.tertiary}
+                    style={styles.filterIcon}
+                  />
                   <Text
                     style={[
                       styles.filterChipText,
-                      filterCategory === category && styles.filterChipTextActive,
+                      filterCategory === option.key && styles.filterChipTextActive,
                     ]}
                   >
-                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                    {option.label}
                   </Text>
                 </GlassCard>
               </TouchableOpacity>
@@ -156,10 +220,12 @@ export default function AchievementsScreen() {
           </ScrollView>
         </View>
 
-        {/* Achievements Grid - ONLY THIS SCROLLS */}
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[
+            styles.contentContainer,
+            { paddingBottom: insets.bottom + 100 }
+          ]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -169,10 +235,12 @@ export default function AchievementsScreen() {
             />
           }
         >
-          {/* Unlocked Achievements */}
           {unlockedAchievements.length > 0 && (
             <>
-              <Text style={styles.sectionTitle}>Unlocked 🎉</Text>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Unlocked</Text>
+                <Text style={styles.sectionCount}>{unlockedAchievements.length}</Text>
+              </View>
               <View style={styles.achievementsGrid}>
                 {unlockedAchievements.map((achievement) => (
                   <AchievementBadge
@@ -184,12 +252,12 @@ export default function AchievementsScreen() {
             </>
           )}
 
-          {/* Locked Achievements */}
           {lockedAchievements.length > 0 && (
             <>
-              <Text style={[styles.sectionTitle, unlockedAchievements.length > 0 && styles.sectionTitleSpacing]}>
-                Locked 🔒
-              </Text>
+              <View style={[styles.sectionHeader, unlockedAchievements.length > 0 && styles.sectionHeaderSpacing]}>
+                <Text style={styles.sectionTitle}>Locked</Text>
+                <Text style={styles.sectionCount}>{lockedAchievements.length}</Text>
+              </View>
               <View style={styles.achievementsGrid}>
                 {lockedAchievements.map((achievement) => (
                   <AchievementBadge
@@ -201,7 +269,6 @@ export default function AchievementsScreen() {
             </>
           )}
 
-          {/* Empty State */}
           {filteredAchievements.length === 0 && (
             <View style={styles.emptyState}>
               <Ionicons name="trophy-outline" size={64} color={theme.colors.text.tertiary} />
@@ -241,10 +308,9 @@ function AchievementBadge({ achievement }: AchievementBadgeProps) {
 
   return (
     <GlassCard style={[styles.badge, !isUnlocked && styles.badgeLocked]}>
-      {/* Icon Container */}
       <View style={styles.badgeIconContainer}>
         <LinearGradient
-          colors={isUnlocked ? getTierColor(achievement.tier) : ['#333333', '#1a1a1a']}
+          colors={isUnlocked ? getTierColor(achievement.tier) : ['#2a2a3a', '#1a1a2a']}
           style={styles.badgeIconGradient}
         >
           <Ionicons
@@ -255,7 +321,6 @@ function AchievementBadge({ achievement }: AchievementBadgeProps) {
         </LinearGradient>
       </View>
 
-      {/* Title */}
       <Text
         style={[styles.badgeTitle, !isUnlocked && styles.badgeTitleLocked]}
         numberOfLines={2}
@@ -263,7 +328,6 @@ function AchievementBadge({ achievement }: AchievementBadgeProps) {
         {achievement.title}
       </Text>
 
-      {/* Description */}
       <Text
         style={[styles.badgeDescription, !isUnlocked && styles.badgeDescriptionLocked]}
         numberOfLines={2}
@@ -271,7 +335,6 @@ function AchievementBadge({ achievement }: AchievementBadgeProps) {
         {achievement.description}
       </Text>
 
-      {/* Progress Bar (for locked achievements) */}
       {!isUnlocked && achievement.progress > 0 && (
         <View style={styles.badgeProgressContainer}>
           <View style={styles.badgeProgressBackground}>
@@ -291,15 +354,21 @@ function AchievementBadge({ achievement }: AchievementBadgeProps) {
         </View>
       )}
 
-      {/* Tier Badge */}
       <View style={styles.tierBadge}>
         <Text style={styles.tierText}>{achievement.tier.toUpperCase()}</Text>
       </View>
 
-      {/* Lock Icon Overlay */}
       {!isUnlocked && (
         <View style={styles.lockOverlay}>
-          <Ionicons name="lock-closed" size={20} color={theme.colors.text.quaternary} />
+          <Ionicons name="lock-closed" size={18} color={theme.colors.text.quaternary} />
+        </View>
+      )}
+
+      {isUnlocked && achievement.unlockedAt && (
+        <View style={styles.checkmarkOverlay}>
+          <View style={styles.checkmarkCircle}>
+            <Ionicons name="checkmark" size={16} color="#fff" />
+          </View>
         </View>
       )}
     </GlassCard>
@@ -335,8 +404,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: theme.fontSize['3xl'],
-    fontWeight: theme.fontWeight.bold,
+    fontSize: theme.fontSize['2xl'],
+    fontWeight: theme.fontWeight.black,
     color: theme.colors.text.primary,
     letterSpacing: 0.5,
   },
@@ -345,33 +414,89 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[3],
   },
   statsCard: {
-    padding: theme.spacing[4],
+    padding: theme.spacing[5],
   },
-  statsRow: {
+  statsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing[4],
+  },
+  statsMainInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  statItem: {
+    gap: theme.spacing[3],
     flex: 1,
+  },
+  trophyContainer: {
+    width: 64,
+    height: 64,
+  },
+  trophyGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: theme.borderRadius.full,
     alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.glowCyan,
   },
-  statValue: {
+  statsTextContainer: {
+    flex: 1,
+  },
+  statsMainValue: {
     fontSize: theme.fontSize['2xl'],
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.primary.cyan,
-    marginBottom: theme.spacing[1],
+    fontWeight: theme.fontWeight.black,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing[0.5],
   },
-  statLabel: {
+  statsMainLabel: {
     fontSize: theme.fontSize.xs,
     color: theme.colors.text.secondary,
     fontWeight: theme.fontWeight.semibold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
-  statDivider: {
-    width: 1,
-    height: 40,
+  percentageBadge: {
+    backgroundColor: theme.colors.primary.cyan + '20',
+    paddingHorizontal: theme.spacing[3],
+    paddingVertical: theme.spacing[2],
+    borderRadius: theme.borderRadius.xl,
+  },
+  percentageText: {
+    fontSize: theme.fontSize.xl,
+    fontWeight: theme.fontWeight.black,
+    color: theme.colors.primary.cyan,
+  },
+  progressBarContainer: {
+    height: 8,
     backgroundColor: theme.colors.glass.border,
+    borderRadius: theme.borderRadius.full,
+    overflow: 'hidden',
+    marginBottom: theme.spacing[3],
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: theme.borderRadius.full,
+  },
+  recentSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  recentLabel: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text.tertiary,
+    fontWeight: theme.fontWeight.semibold,
+  },
+  recentBadges: {
+    flexDirection: 'row',
+    gap: theme.spacing[2],
+  },
+  recentBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.glass.medium,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   filtersWrapper: {
     marginBottom: theme.spacing[3],
@@ -381,17 +506,24 @@ const styles = StyleSheet.create({
     gap: theme.spacing[2],
   },
   filterChip: {
-    paddingHorizontal: theme.spacing[4],
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing[3],
     paddingVertical: theme.spacing[2],
     marginRight: theme.spacing[2],
+    gap: theme.spacing[1.5],
   },
   filterChipActive: {
     borderColor: theme.colors.primary.cyan,
     borderWidth: 2,
+    backgroundColor: theme.colors.primary.cyan + '10',
+  },
+  filterIcon: {
+    marginRight: theme.spacing[0.5],
   },
   filterChipText: {
     fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.semibold,
+    fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.secondary,
   },
   filterChipTextActive: {
@@ -403,17 +535,30 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: theme.spacing[4],
     paddingTop: 0,
-    paddingBottom: theme.spacing[8],
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing[3],
+  },
+  sectionHeaderSpacing: {
+    marginTop: theme.spacing[6],
   },
   sectionTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
+    fontSize: theme.fontSize.xl,
+    fontWeight: theme.fontWeight.black,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing[3],
     letterSpacing: 0.3,
   },
-  sectionTitleSpacing: {
-    marginTop: theme.spacing[6],
+  sectionCount: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text.tertiary,
+    backgroundColor: theme.colors.glass.border,
+    paddingHorizontal: theme.spacing[2],
+    paddingVertical: theme.spacing[1],
+    borderRadius: theme.borderRadius.full,
   },
   achievementsGrid: {
     flexDirection: 'row',
@@ -426,7 +571,7 @@ const styles = StyleSheet.create({
     minHeight: 200,
   },
   badgeLocked: {
-    opacity: 0.6,
+    opacity: 0.7,
   },
   badgeIconContainer: {
     alignItems: 'center',
@@ -478,20 +623,20 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSize.xs,
     color: theme.colors.text.tertiary,
     textAlign: 'center',
-    fontWeight: theme.fontWeight.semibold,
+    fontWeight: theme.fontWeight.bold,
   },
   tierBadge: {
     position: 'absolute',
     top: theme.spacing[2],
     right: theme.spacing[2],
-    paddingHorizontal: theme.spacing[1.5],
-    paddingVertical: theme.spacing[0.5],
+    paddingHorizontal: theme.spacing[2],
+    paddingVertical: theme.spacing[1],
     backgroundColor: theme.colors.glass.border,
     borderRadius: theme.borderRadius.md,
   },
   tierText: {
-    fontSize: 8,
-    fontWeight: theme.fontWeight.bold,
+    fontSize: 9,
+    fontWeight: theme.fontWeight.black,
     color: theme.colors.text.tertiary,
     letterSpacing: 0.5,
   },
@@ -499,6 +644,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: theme.spacing[2],
     right: theme.spacing[2],
+  },
+  checkmarkOverlay: {
+    position: 'absolute',
+    bottom: theme.spacing[2],
+    right: theme.spacing[2],
+  },
+  checkmarkCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.glowCyan,
   },
   emptyState: {
     flex: 1,

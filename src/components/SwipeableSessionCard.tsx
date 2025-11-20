@@ -16,6 +16,7 @@ import { theme } from '../theme/theme';
 import { Session, RootStackNavigationProp } from '../types';
 import { useGetCategoryById } from '../stores/useCategoryStore';
 import { useDeleteSession } from '../stores/useSessionStore';
+import { dateUtils } from '../utils/dateUtils';
 
 interface SwipeableSessionCardProps {
   session: Session;
@@ -33,33 +34,11 @@ function SwipeableSessionCardComponent({ session }: SwipeableSessionCardProps) {
   const category = getCategoryById(session.categoryId);
 
   const formattedDuration = useMemo(() => {
-    const totalMinutes = Math.floor(session.durationMs / (1000 * 60));
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    return `${minutes}m`;
+    return dateUtils.formatDuration(session.durationMs);
   }, [session.durationMs]);
 
   const formattedDate = useMemo(() => {
-    const date = new Date(session.startedAt);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 60) {
-      return `${diffMins}m ago`;
-    } else if (diffHours < 24) {
-      return `${diffHours}h ago`;
-    } else if (diffDays < 7) {
-      return `${diffDays}d ago`;
-    } else {
-      return date.toLocaleDateString();
-    }
+    return dateUtils.formatRelativeTime(session.startedAt);
   }, [session.startedAt]);
 
   const handleEdit = useCallback(() => {

@@ -17,10 +17,9 @@ export function GlassCard({
 }: GlassCardProps) {
   return (
     <View style={[styles.container, style]}>
-      <View style={styles.glassBackground}>
+      <View style={styles.contentContainer}>
         {children}
         
-        {/* Reflection overlay */}
         {withReflection && (
           <LinearGradient
             colors={theme.gradients.reflection}
@@ -43,8 +42,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.glass.border,
     backgroundColor: theme.colors.glass.background,
   },
-  glassBackground: {
-    backgroundColor: theme.colors.glass.background,
+  contentContainer: {
     position: 'relative',
   },
   reflection: {
