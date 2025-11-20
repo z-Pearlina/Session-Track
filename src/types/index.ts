@@ -1,11 +1,15 @@
-import { NavigationProp, RouteProp, NavigatorScreenParams } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import {
+  NavigationProp,
+  RouteProp,
+  NavigatorScreenParams,
+} from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
 
 export interface SessionTemplate {
   id: string;
   name: string;
   categoryId: string;
-  defaultDuration?: number; 
+  defaultDuration?: number;
   notes?: string;
   icon: string;
   color: string;
@@ -32,8 +36,8 @@ export interface Session {
   endedAt: string;
   notes?: string;
   goalId?: string;
-  tags?: string[]; 
-  templateId?: string; 
+  tags?: string[];
+  templateId?: string;
 }
 
 export interface Category {
@@ -62,8 +66,8 @@ export interface Goal {
   completedAt?: string;
 }
 
-export type GoalPeriod = 'daily' | 'weekly' | 'monthly' | 'custom';
-export type GoalStatus = 'active' | 'completed' | 'archived' | 'failed';
+export type GoalPeriod = "daily" | "weekly" | "monthly" | "custom";
+export type GoalStatus = "active" | "completed" | "archived" | "failed";
 
 export interface Achievement {
   id: string;
@@ -78,11 +82,30 @@ export interface Achievement {
   progress: number;
 }
 
-export type AchievementCategory = 'milestone' | 'streak' | 'dedication' | 'variety' | 'speed';
-export type AchievementTier = 'bronze' | 'silver' | 'gold' | 'platinum';
+export type AchievementCategory =
+  | "milestone"
+  | "streak"
+  | "dedication"
+  | "variety"
+  | "speed";
+export type AchievementTier = "bronze" | "silver" | "gold" | "platinum";
+
+export type AchievementRequirementType =
+  | "sessionCount"
+  | "totalHours"
+  | "streak"
+  | "longestSession"
+  | "categoryCount"
+  | "completedGoals"
+  | "earlyBird"
+  | "nightOwl"
+  | "weekend"
+  | "categoryMaster"
+  | "weeklyStreak"
+  | "focusedSessions";
 
 export interface AchievementRequirement {
-  type: 'totalHours' | 'streak' | 'sessionCount' | 'categoryCount' | 'longestSession';
+  type: AchievementRequirementType;
   value: number;
 }
 
@@ -140,12 +163,15 @@ export type RootStackParamList = {
 export type RootStackNavigationProp = StackNavigationProp<RootStackParamList>;
 export type MainTabNavigationProp = NavigationProp<MainTabParamList>;
 
-export type EditSessionRouteProp = RouteProp<RootStackParamList, 'EditSession'>;
-export type SessionDetailsRouteProp = RouteProp<RootStackParamList, 'SessionDetails'>;
-export type GoalDetailsRouteProp = RouteProp<RootStackParamList, 'GoalDetails'>;
-export type StartSessionRouteProp = RouteProp<MainTabParamList, 'StartSession'>;
+export type EditSessionRouteProp = RouteProp<RootStackParamList, "EditSession">;
+export type SessionDetailsRouteProp = RouteProp<
+  RootStackParamList,
+  "SessionDetails"
+>;
+export type GoalDetailsRouteProp = RouteProp<RootStackParamList, "GoalDetails">;
+export type StartSessionRouteProp = RouteProp<MainTabParamList, "StartSession">;
 
-export type TimeRange = 'week' | 'month' | 'year' | 'all';
+export type TimeRange = "week" | "month" | "year" | "all";
 
 export interface ChartDataPoint {
   label: string;

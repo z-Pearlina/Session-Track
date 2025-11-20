@@ -12,11 +12,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { 
-  useAchievements, 
-  useLoadAchievements, 
+import {
+  useAchievements,
+  useLoadAchievements,
   useInitializeDefaultAchievements,
-  useCheckAndUnlockAchievements 
+  useCheckAndUnlockAchievements
 } from '../stores/useAchievementStore';
 import { useSessions } from '../stores/useSessionStore';
 import { useGoals } from '../stores/useGoalStore';
@@ -33,16 +33,16 @@ type FilterType = 'all' | AchievementCategory;
 export default function AchievementsScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  
+
   const achievements = useAchievements();
   const sessions = useSessions();
   const goals = useGoals();
   const categories = useCategories();
-  
+
   const loadAchievements = useLoadAchievements();
   const initializeDefaultAchievements = useInitializeDefaultAchievements();
   const checkAndUnlockAchievements = useCheckAndUnlockAchievements();
-  
+
   const [refreshing, setRefreshing] = useState(false);
   const [filterCategory, setFilterCategory] = useState<FilterType>('all');
   const hasInitialized = useRef(false);
@@ -50,11 +50,11 @@ export default function AchievementsScreen() {
   useEffect(() => {
     const initialize = async () => {
       if (hasInitialized.current) return;
-      
+
       hasInitialized.current = true;
       await initializeDefaultAchievements();
     };
-    
+
     initialize();
   }, [initializeDefaultAchievements]);
 
@@ -80,12 +80,12 @@ export default function AchievementsScreen() {
     return achievements.filter(achievement => achievement.category === filterCategory);
   }, [achievements, filterCategory]);
 
-  const unlockedAchievements = useMemo(() => 
+  const unlockedAchievements = useMemo(() =>
     filteredAchievements.filter(a => a.isUnlocked),
     [filteredAchievements]
   );
-  
-  const lockedAchievements = useMemo(() => 
+
+  const lockedAchievements = useMemo(() =>
     filteredAchievements.filter(a => !a.isUnlocked).sort((a, b) => b.progress - a.progress),
     [filteredAchievements]
   );
@@ -93,7 +93,7 @@ export default function AchievementsScreen() {
   const stats = useMemo(() => {
     const totalAchievements = achievements.length;
     const totalUnlocked = achievements.filter(a => a.isUnlocked).length;
-    const percentage = totalAchievements > 0 
+    const percentage = totalAchievements > 0
       ? Math.round((totalUnlocked / totalAchievements) * 100)
       : 0;
 
@@ -170,10 +170,10 @@ export default function AchievementsScreen() {
                 <View style={styles.recentBadges}>
                   {stats.recentlyUnlocked.map(achievement => (
                     <View key={achievement.id} style={styles.recentBadge}>
-                      <Ionicons 
-                        name={achievement.icon as any} 
-                        size={16} 
-                        color={theme.colors.primary.cyan} 
+                      <Ionicons
+                        name={achievement.icon as any}
+                        size={16}
+                        color={theme.colors.primary.cyan}
                       />
                     </View>
                   ))}
@@ -199,9 +199,9 @@ export default function AchievementsScreen() {
                   styles.filterChip,
                   filterCategory === option.key && styles.filterChipActive
                 ]}>
-                  <Ionicons 
-                    name={option.icon as any} 
-                    size={16} 
+                  <Ionicons
+                    name={option.icon as any}
+                    size={16}
                     color={filterCategory === option.key ? theme.colors.primary.cyan : theme.colors.text.tertiary}
                     style={styles.filterIcon}
                   />
@@ -284,7 +284,7 @@ export default function AchievementsScreen() {
 }
 
 function AchievementBadge({ achievement }: { achievement: Achievement }) {
-  const tierColors: Record<AchievementTier, string[]> = {
+  const tierColors: Record<AchievementTier, [string, string]> = {
     bronze: ['#CD7F32', '#8B5A00'],
     silver: ['#C0C0C0', '#808080'],
     gold: ['#FFD700', '#FFA500'],
@@ -313,10 +313,10 @@ function AchievementBadge({ achievement }: { achievement: Achievement }) {
           colors={tierColors[achievement.tier]}
           style={styles.badgeIconGradient}
         >
-          <Ionicons 
-            name={achievement.icon as any} 
-            size={28} 
-            color="#fff" 
+          <Ionicons
+            name={achievement.icon as any}
+            size={28}
+            color="#fff"
           />
         </LinearGradient>
       </View>

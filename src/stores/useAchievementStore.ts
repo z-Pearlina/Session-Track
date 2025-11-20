@@ -383,33 +383,44 @@ function checkAchievementCondition(
       shouldUnlock = stats.categoriesUsed.size >= achievement.requirement.value;
       break;
 
+    case 'completedGoals':
+      progress = Math.min((stats.completedGoals / achievement.requirement.value) * 100, 100);
+      shouldUnlock = stats.completedGoals >= achievement.requirement.value;
+      break;
+
+    case 'earlyBird':
+      progress = Math.min((stats.earlyBirdSessions / achievement.requirement.value) * 100, 100);
+      shouldUnlock = stats.earlyBirdSessions >= achievement.requirement.value;
+      break;
+
+    case 'nightOwl':
+      progress = Math.min((stats.nightOwlSessions / achievement.requirement.value) * 100, 100);
+      shouldUnlock = stats.nightOwlSessions >= achievement.requirement.value;
+      break;
+
+    case 'weekend':
+      progress = Math.min((stats.weekendSessions / achievement.requirement.value) * 100, 100);
+      shouldUnlock = stats.weekendSessions >= achievement.requirement.value;
+      break;
+
+    case 'categoryMaster':
+      const maxCategorySessions = Math.max(...Array.from(stats.categorySessionCounts.values()), 0);
+      progress = Math.min((maxCategorySessions / achievement.requirement.value) * 100, 100);
+      shouldUnlock = maxCategorySessions >= achievement.requirement.value;
+      break;
+
+    case 'weeklyStreak':
+      progress = Math.min((stats.weeklyStreakDays.size / 7) * 100, 100);
+      shouldUnlock = stats.weeklyStreakDays.size >= 7;
+      break;
+
+    case 'focusedSessions':
+      progress = Math.min((stats.focusedSessions / achievement.requirement.value) * 100, 100);
+      shouldUnlock = stats.focusedSessions >= achievement.requirement.value;
+      break;
+
     default:
-      if (achievement.id.includes('early_bird')) {
-        progress = Math.min((stats.earlyBirdSessions / achievement.requirement.value) * 100, 100);
-        shouldUnlock = stats.earlyBirdSessions >= achievement.requirement.value;
-      } else if (achievement.id.includes('night_owl')) {
-        progress = Math.min((stats.nightOwlSessions / achievement.requirement.value) * 100, 100);
-        shouldUnlock = stats.nightOwlSessions >= achievement.requirement.value;
-      } else if (achievement.id.includes('weekend')) {
-        progress = Math.min((stats.weekendSessions / achievement.requirement.value) * 100, 100);
-        shouldUnlock = stats.weekendSessions >= achievement.requirement.value;
-      } else if (achievement.id.includes('goal_')) {
-        progress = Math.min((stats.completedGoals / achievement.requirement.value) * 100, 100);
-        shouldUnlock = stats.completedGoals >= achievement.requirement.value;
-      } else if (achievement.id.includes('category_master')) {
-        const maxCategorySessions = Math.max(...Array.from(stats.categorySessionCounts.values()), 0);
-        progress = Math.min((maxCategorySessions / achievement.requirement.value) * 100, 100);
-        shouldUnlock = maxCategorySessions >= achievement.requirement.value;
-      } else if (achievement.id.includes('weekly_warrior')) {
-        progress = Math.min((stats.weeklyStreakDays.size / 7) * 100, 100);
-        shouldUnlock = stats.weeklyStreakDays.size >= 7;
-      } else if (achievement.id.includes('long_session')) {
-        progress = Math.min((stats.longSessions / achievement.requirement.value) * 100, 100);
-        shouldUnlock = stats.longSessions >= achievement.requirement.value;
-      } else if (achievement.id.includes('focused')) {
-        progress = Math.min((stats.focusedSessions / achievement.requirement.value) * 100, 100);
-        shouldUnlock = stats.focusedSessions >= achievement.requirement.value;
-      }
+      logger.warn(`Unknown achievement requirement type: ${achievement.requirement.type}`);
       break;
   }
 
