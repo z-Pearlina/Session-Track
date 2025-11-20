@@ -1,134 +1,60 @@
-import React, { Component, ReactNode, ErrorInfo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  SafeAreaView,
-} from 'react-native';
+import React, { Component, ReactNode } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
+import { logger } from '../services/logger';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
-  errorInfo: ErrorInfo | null;
 }
 
-/**
- * ErrorBoundary component catches JavaScript errors anywhere in the child
- * component tree and displays a fallback UI instead of crashing the app.
- *
- * Usage:
- * <ErrorBoundary>
- *   <App />
- * </ErrorBoundary>
- */
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = {
-      hasError: false,
-      error: null,
-      errorInfo: null,
-    };
+    this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error: Error): Partial<State> {
-    // Update state so the next render will show the fallback UI
-    return {
-      hasError: true,
-      error,
-    };
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    // Log error details to console in development
-    if (__DEV__) {
-      console.error('ErrorBoundary caught an error:', error);
-      console.error('Error Info:', errorInfo);
-    }
-
-    // In production, you would send this to an error reporting service
-    // Example: Sentry.captureException(error, { extra: errorInfo });
-
-    this.setState({
-      error,
-      errorInfo,
-    });
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    logger.error('Error Boundary caught error', error);
+    logger.error('Error Info', errorInfo);
+    this.props.onError?.(error, errorInfo);
   }
 
-  handleReset = (): void => {
-    this.setState({
-      hasError: false,
-      error: null,
-      errorInfo: null,
-    });
+  handleReset = () => {
+    this.setState({ hasError: false, error: null });
   };
 
-  render(): ReactNode {
+  render() {
     if (this.state.hasError) {
-      // Custom fallback UI provided
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
-      // Default fallback UI
       return (
-        <SafeAreaView style={styles.container}>
-          <View style={styles.content}>
-            <View style={styles.iconContainer}>
-              <Ionicons
-                name="warning-outline"
-                size={64}
-                color={theme.colors.danger}
-              />
-            </View>
-
-            <Text style={styles.title}>Oops! Something went wrong</Text>
-
-            <Text style={styles.message}>
-              We encountered an unexpected error. Don't worry, your data is safe.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.button}
-              onPress={this.handleReset}
-              accessibilityLabel="Try again"
-              accessibilityRole="button"
-              accessibilityHint="Attempts to recover from the error and reload the app"
-            >
-              <Ionicons
-                name="refresh"
-                size={20}
-                color={theme.colors.text.inverse}
-                style={styles.buttonIcon}
-              />
-              <Text style={styles.buttonText}>Try Again</Text>
-            </TouchableOpacity>
-
-            {/* Show error details in development mode */}
-            {__DEV__ && this.state.error && (
-              <ScrollView style={styles.errorDetails}>
-                <Text style={styles.errorDetailsTitle}>Error Details (Dev Only):</Text>
-                <Text style={styles.errorDetailsText}>
-                  {this.state.error.toString()}
-                </Text>
-                {this.state.errorInfo && (
-                  <Text style={styles.errorDetailsText}>
-                    {this.state.errorInfo.componentStack}
-                  </Text>
-                )}
-              </ScrollView>
-            )}
-          </View>
-        </SafeAreaView>
+        <View style={styles.container}>
+          <Ionicons name="warning" size={64} color={theme.colors.danger} />
+          <Text style={styles.title}>Oops! Something went wrong</Text>
+          <Text style={styles.message}>
+            {this.state.error?.message || 'An unexpected error occurred'}
+          </Text>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={this.handleReset}
+          >
+            <Text style={styles.buttonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
       );
     }
 
@@ -139,65 +65,33 @@ export class ErrorBoundary extends Component<Props, State> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  content: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.spacing[6],
-  },
-  iconContainer: {
-    marginBottom: theme.spacing[6],
+    backgroundColor: theme.colors.background.primary,
   },
   title: {
-    fontSize: theme.fontSize['3xl'],
+    fontSize: theme.fontSize['2xl'],
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing[4],
-    textAlign: 'center',
+    marginTop: theme.spacing[4],
+    marginBottom: theme.spacing[2],
   },
   message: {
     fontSize: theme.fontSize.base,
     color: theme.colors.text.secondary,
     textAlign: 'center',
-    marginBottom: theme.spacing[8],
-    lineHeight: 24,
+    marginBottom: theme.spacing[6],
   },
   button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.primary.aqua,
+    backgroundColor: theme.colors.primary.cyan,
     paddingHorizontal: theme.spacing[6],
-    paddingVertical: theme.spacing[4],
-    borderRadius: theme.borderRadius.lg,
-    ...theme.shadows.md,
-  },
-  buttonIcon: {
-    marginRight: theme.spacing[2],
+    paddingVertical: theme.spacing[3],
+    borderRadius: theme.borderRadius.xl,
   },
   buttonText: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.semibold,
     color: theme.colors.text.inverse,
-  },
-  errorDetails: {
-    marginTop: theme.spacing[8],
-    maxHeight: 200,
-    width: '100%',
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing[4],
-  },
-  errorDetailsTitle: {
-    fontSize: theme.fontSize.sm,
+    fontSize: theme.fontSize.base,
     fontWeight: theme.fontWeight.bold,
-    color: theme.colors.danger,
-    marginBottom: theme.spacing[2],
-  },
-  errorDetailsText: {
-    fontSize: theme.fontSize.xs,
-    color: theme.colors.text.tertiary,
-    fontFamily: 'monospace',
   },
 });

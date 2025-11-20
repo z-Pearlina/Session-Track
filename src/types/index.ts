@@ -1,17 +1,39 @@
 import { NavigationProp, RouteProp, NavigatorScreenParams } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 
+export interface SessionTemplate {
+  id: string;
+  name: string;
+  categoryId: string;
+  defaultDuration?: number; 
+  notes?: string;
+  icon: string;
+  color: string;
+  createdAt: string;
+  usageCount: number;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+}
+
 export interface Session {
   id: string;
   title: string;
   categoryId: string;
+  categoryName: string;
+  categoryColor: string;
+  categoryIcon: string;
   durationMs: number;
   startedAt: string;
-  endedAt?: string;
+  endedAt: string;
   notes?: string;
   goalId?: string;
-  createdAt: string;
-  updatedAt?: string;
+  tags?: string[]; 
+  templateId?: string; 
 }
 
 export interface Category {

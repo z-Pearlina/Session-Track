@@ -308,6 +308,22 @@ function AchievementBadge({ achievement }: AchievementBadgeProps) {
 
   return (
     <GlassCard style={[styles.badge, !isUnlocked && styles.badgeLocked]}>
+      <View style={styles.badgeHeader}>
+        <View style={styles.tierBadge}>
+          <Text style={styles.tierText}>{achievement.tier.toUpperCase()}</Text>
+        </View>
+        {isUnlocked && (
+          <View style={styles.checkmarkBadge}>
+            <Ionicons name="checkmark-circle" size={20} color={theme.colors.success} />
+          </View>
+        )}
+        {!isUnlocked && (
+          <View style={styles.lockBadge}>
+            <Ionicons name="lock-closed" size={16} color={theme.colors.text.quaternary} />
+          </View>
+        )}
+      </View>
+
       <View style={styles.badgeIconContainer}>
         <LinearGradient
           colors={isUnlocked ? getTierColor(achievement.tier) : ['#2a2a3a', '#1a1a2a']}
@@ -315,7 +331,7 @@ function AchievementBadge({ achievement }: AchievementBadgeProps) {
         >
           <Ionicons
             name={achievement.icon as any}
-            size={32}
+            size={28}
             color={isUnlocked ? theme.colors.text.inverse : theme.colors.text.quaternary}
           />
         </LinearGradient>
@@ -351,24 +367,6 @@ function AchievementBadge({ achievement }: AchievementBadgeProps) {
           <Text style={styles.badgeProgressText}>
             {Math.round(achievement.progress)}%
           </Text>
-        </View>
-      )}
-
-      <View style={styles.tierBadge}>
-        <Text style={styles.tierText}>{achievement.tier.toUpperCase()}</Text>
-      </View>
-
-      {!isUnlocked && (
-        <View style={styles.lockOverlay}>
-          <Ionicons name="lock-closed" size={18} color={theme.colors.text.quaternary} />
-        </View>
-      )}
-
-      {isUnlocked && achievement.unlockedAt && (
-        <View style={styles.checkmarkOverlay}>
-          <View style={styles.checkmarkCircle}>
-            <Ionicons name="checkmark" size={16} color="#fff" />
-          </View>
         </View>
       )}
     </GlassCard>
@@ -573,13 +571,43 @@ const styles = StyleSheet.create({
   badgeLocked: {
     opacity: 0.7,
   },
+  badgeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: theme.spacing[2],
+  },
+  tierBadge: {
+    paddingHorizontal: theme.spacing[2],
+    paddingVertical: theme.spacing[1],
+    backgroundColor: theme.colors.glass.border,
+    borderRadius: theme.borderRadius.md,
+  },
+  tierText: {
+    fontSize: 9,
+    fontWeight: theme.fontWeight.black,
+    color: theme.colors.text.tertiary,
+    letterSpacing: 0.5,
+  },
+  checkmarkBadge: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockBadge: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   badgeIconContainer: {
     alignItems: 'center',
     marginBottom: theme.spacing[3],
   },
   badgeIconGradient: {
-    width: 64,
-    height: 64,
+    width: 56,
+    height: 56,
     borderRadius: theme.borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
@@ -624,40 +652,6 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
     textAlign: 'center',
     fontWeight: theme.fontWeight.bold,
-  },
-  tierBadge: {
-    position: 'absolute',
-    top: theme.spacing[2],
-    right: theme.spacing[2],
-    paddingHorizontal: theme.spacing[2],
-    paddingVertical: theme.spacing[1],
-    backgroundColor: theme.colors.glass.border,
-    borderRadius: theme.borderRadius.md,
-  },
-  tierText: {
-    fontSize: 9,
-    fontWeight: theme.fontWeight.black,
-    color: theme.colors.text.tertiary,
-    letterSpacing: 0.5,
-  },
-  lockOverlay: {
-    position: 'absolute',
-    bottom: theme.spacing[2],
-    right: theme.spacing[2],
-  },
-  checkmarkOverlay: {
-    position: 'absolute',
-    bottom: theme.spacing[2],
-    right: theme.spacing[2],
-  },
-  checkmarkCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...theme.shadows.glowCyan,
   },
   emptyState: {
     flex: 1,

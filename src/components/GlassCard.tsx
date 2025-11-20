@@ -1,25 +1,25 @@
 import React, { ReactNode } from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
+import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../theme/theme';
 
 interface GlassCardProps {
   children: ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   intensity?: number;
   withReflection?: boolean;
 }
 
-export function GlassCard({ 
-  children, 
-  style, 
-  withReflection = false 
+export function GlassCard({
+  children,
+  style,
+  withReflection = false
 }: GlassCardProps) {
   return (
     <View style={[styles.container, style]}>
       <View style={styles.contentContainer}>
         {children}
-        
+
         {withReflection && (
           <LinearGradient
             colors={theme.gradients.reflection}

@@ -1,254 +1,173 @@
-/**
- * Validation Service
- *
- * Centralized validation logic for all user inputs.
- * Returns null if valid, or an error message string if invalid.
- *
- * Usage:
- * import { validation } from '../services/validation';
- *
- * const error = validation.validateCategoryName(name);
- * if (error) {
- *   Alert.alert('Validation Error', error);
- *   return;
- * }
- */
+import { Session, Goal, Category } from '../types';
 
-import { Category } from '../types';
+export interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
 
-// Configuration constants for validation rules
-const VALIDATION_RULES = {
-  CATEGORY_NAME_MIN_LENGTH: 1,
-  CATEGORY_NAME_MAX_LENGTH: 30,
-  SESSION_TITLE_MIN_LENGTH: 1,
-  SESSION_TITLE_MAX_LENGTH: 100,
-  SESSION_NOTES_MAX_LENGTH: 500,
-  SESSION_MIN_DURATION_SECONDS: 1,
-  SESSION_MAX_DURATION_HOURS: 24,
-  SESSION_MIN_DURATION_MINUTES: 1,
-  SESSION_MAX_DURATION_MINUTES: 1440, // 24 hours
-} as const;
+export class ValidationService {
+  // Session validation
+  static validateSession(session: Partial<Session>): ValidationResult {
+    const errors: string[] = [];
 
-export { VALIDATION_RULES };
-
-class ValidationService {
-  /**
-   * Validates category name
-   * @param name - Category name to validate
-   * @param existingCategories - Existing categories to check for duplicates (optional)
-   * @param currentCategoryId - ID of current category being edited (for duplicate check, optional)
-   * @returns Error message if invalid, null if valid
-   */
-  validateCategoryName(
-    name: string,
-    existingCategories?: Category[],
-    currentCategoryId?: string
-  ): string | null {
-    // Check if name is empty or only whitespace
-    if (!name || !name.trim()) {
-      return 'Category name cannot be empty';
+    // Title validation
+    if (!session.title || session.title.trim().length === 0) {
+      errors.push('Session title is required');
+    } else if (session.title.length > 100) {
+      errors.push('Session title must be 100 characters or less');
     }
 
-    // Check minimum length
-    if (name.trim().length < VALIDATION_RULES.CATEGORY_NAME_MIN_LENGTH) {
-      return `Category name must be at least ${VALIDATION_RULES.CATEGORY_NAME_MIN_LENGTH} character`;
-    }
-
-    // Check maximum length
-    if (name.length > VALIDATION_RULES.CATEGORY_NAME_MAX_LENGTH) {
-      return `Category name must be ${VALIDATION_RULES.CATEGORY_NAME_MAX_LENGTH} characters or less`;
-    }
-
-    // Check for invalid characters (optional - allows letters, numbers, spaces, hyphens, underscores)
-    const validNamePattern = /^[a-zA-Z0-9\s\-_]+$/;
-    if (!validNamePattern.test(name)) {
-      return 'Category name can only contain letters, numbers, spaces, hyphens, and underscores';
-    }
-
-    // Check for duplicate names (case-insensitive)
-    if (existingCategories) {
-      const trimmedName = name.trim().toLowerCase();
-      const duplicate = existingCategories.find(
-        (cat) =>
-          cat.name.toLowerCase() === trimmedName &&
-          cat.id !== currentCategoryId // Exclude current category when editing
-      );
-
-      if (duplicate) {
-        return `A category named "${duplicate.name}" already exists`;
+    // Duration validation
+    if (session.durationMs !== undefined) {
+      const minDuration = 60 * 1000; // 1 minute
+      const maxDuration = 24 * 60 * 60 * 1000; // 24 hours
+      
+      if (session.durationMs < minDuration) {
+        errors.push('Session must be at least 1 minute');
+      } else if (session.durationMs > maxDuration) {
+        errors.push('Session cannot exceed 24 hours');
       }
     }
 
-    return null;
+    // Date validation
+    if (session.startedAt) {
+      const startDate = new Date(session.startedAt);
+      const now = new Date();
+      
+      if (isNaN(startDate.getTime())) {
+        errors.push('Invalid start date');
+      } else if (startDate > now) {
+        errors.push('Start date cannot be in the future');
+      }
+    }
+
+    if (session.endedAt && session.startedAt) {
+      const startDate = new Date(session.startedAt);
+      const endDate = new Date(session.endedAt);
+      
+      if (endDate < startDate) {
+        errors.push('End date must be after start date');
+      }
+    }
+
+    // Category validation
+    if (!session.categoryId || session.categoryId.trim().length === 0) {
+      errors.push('Category is required');
+    }
+
+    // Notes validation (optional but if provided, check length)
+    if (session.notes && session.notes.length > 500) {
+      errors.push('Notes must be 500 characters or less');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
   }
 
-  /**
-   * Validates session title
-   * @param title - Session title to validate
-   * @returns Error message if invalid, null if valid
-   */
-  validateSessionTitle(title: string): string | null {
-    // Title can be empty (will default to "Untitled Session"), but if provided, must be valid
-    if (!title || !title.trim()) {
-      return null; // Empty is OK - will use default
+  // Goal validation
+  static validateGoal(goal: Partial<Goal>): ValidationResult {
+    const errors: string[] = [];
+
+    // Title validation
+    if (!goal.title || goal.title.trim().length === 0) {
+      errors.push('Goal title is required');
+    } else if (goal.title.length > 100) {
+      errors.push('Goal title must be 100 characters or less');
     }
 
-    // Check maximum length
-    if (title.length > VALIDATION_RULES.SESSION_TITLE_MAX_LENGTH) {
-      return `Session title must be ${VALIDATION_RULES.SESSION_TITLE_MAX_LENGTH} characters or less`;
+    // Target validation
+    if (goal.targetMinutes !== undefined) {
+      if (goal.targetMinutes < 1) {
+        errors.push('Goal target must be at least 1 minute');
+      } else if (goal.targetMinutes > 10000) {
+        errors.push('Goal target cannot exceed 10,000 minutes');
+      }
     }
 
-    return null;
+    // Date validation
+    if (goal.startDate && goal.endDate) {
+      const start = new Date(goal.startDate);
+      const end = new Date(goal.endDate);
+      
+      if (isNaN(start.getTime())) {
+        errors.push('Invalid start date');
+      }
+      
+      if (isNaN(end.getTime())) {
+        errors.push('Invalid end date');
+      }
+      
+      if (end < start) {
+        errors.push('End date must be after start date');
+      }
+    }
+
+    // Period validation
+    if (goal.period && !['daily', 'weekly', 'monthly', 'custom'].includes(goal.period)) {
+      errors.push('Invalid goal period');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
   }
 
-  /**
-   * Validates session notes
-   * @param notes - Session notes to validate
-   * @returns Error message if invalid, null if valid
-   */
-  validateSessionNotes(notes: string): string | null {
-    // Notes are optional
-    if (!notes || !notes.trim()) {
-      return null;
+  // Category validation
+  static validateCategory(category: Partial<Category>): ValidationResult {
+    const errors: string[] = [];
+
+    // Name validation
+    if (!category.name || category.name.trim().length === 0) {
+      errors.push('Category name is required');
+    } else if (category.name.length > 50) {
+      errors.push('Category name must be 50 characters or less');
     }
 
-    // Check maximum length
-    if (notes.length > VALIDATION_RULES.SESSION_NOTES_MAX_LENGTH) {
-      return `Notes must be ${VALIDATION_RULES.SESSION_NOTES_MAX_LENGTH} characters or less`;
+    // Color validation (hex format)
+    if (category.color) {
+      const hexColorRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+      if (!hexColorRegex.test(category.color)) {
+        errors.push('Invalid color format (use hex color like #FF5733)');
+      }
     }
 
-    return null;
+    // Icon validation
+    if (!category.icon || category.icon.trim().length === 0) {
+      errors.push('Category icon is required');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
   }
 
-  /**
-   * Validates session duration in minutes
-   * @param minutes - Duration in minutes
-   * @returns Error message if invalid, null if valid
-   */
-  validateSessionDurationMinutes(minutes: number): string | null {
-    // Check if it's a valid number
-    if (!Number.isFinite(minutes)) {
-      return 'Please enter a valid duration';
-    }
-
-    // Check if it's a positive number
-    if (minutes <= 0) {
-      return 'Duration must be greater than 0';
-    }
-
-    // Check minimum duration
-    if (minutes < VALIDATION_RULES.SESSION_MIN_DURATION_MINUTES) {
-      return `Duration must be at least ${VALIDATION_RULES.SESSION_MIN_DURATION_MINUTES} minute`;
-    }
-
-    // Check maximum duration
-    if (minutes > VALIDATION_RULES.SESSION_MAX_DURATION_MINUTES) {
-      return `Duration cannot exceed ${VALIDATION_RULES.SESSION_MAX_DURATION_HOURS} hours (${VALIDATION_RULES.SESSION_MAX_DURATION_MINUTES} minutes)`;
-    }
-
-    return null;
+  // Sanitize input
+  static sanitizeString(input: string): string {
+    return input.trim().replace(/\s+/g, ' ');
   }
 
-  /**
-   * Validates session duration in milliseconds
-   * @param milliseconds - Duration in milliseconds
-   * @returns Error message if invalid, null if valid
-   */
-  validateSessionDurationMs(milliseconds: number): string | null {
-    // Check if it's a valid number
-    if (!Number.isFinite(milliseconds)) {
-      return 'Invalid duration';
-    }
-
-    // Check if it's a positive number
-    if (milliseconds <= 0) {
-      return 'Duration must be greater than 0';
-    }
-
-    // Check minimum duration (1 second)
-    const minMs = VALIDATION_RULES.SESSION_MIN_DURATION_SECONDS * 1000;
-    if (milliseconds < minMs) {
-      return `Duration must be at least ${VALIDATION_RULES.SESSION_MIN_DURATION_SECONDS} second`;
-    }
-
-    // Check maximum duration (24 hours)
-    const maxMs = VALIDATION_RULES.SESSION_MAX_DURATION_HOURS * 60 * 60 * 1000;
-    if (milliseconds > maxMs) {
-      return `Duration cannot exceed ${VALIDATION_RULES.SESSION_MAX_DURATION_HOURS} hours`;
-    }
-
-    return null;
+  // Check if date is valid
+  static isValidDate(date: any): boolean {
+    const d = new Date(date);
+    return d instanceof Date && !isNaN(d.getTime());
   }
 
-  /**
-   * Validates a category ID exists in the provided categories
-   * @param categoryId - Category ID to validate
-   * @param categories - Available categories
-   * @returns Error message if invalid, null if valid
-   */
-  validateCategoryExists(categoryId: string, categories: Category[]): string | null {
-    if (!categoryId) {
-      return 'Please select a category';
-    }
-
-    const categoryExists = categories.some((cat) => cat.id === categoryId);
-    if (!categoryExists) {
-      return 'Selected category does not exist';
-    }
-
-    return null;
+  // Validate duration format (HH:MM:SS)
+  static validateDurationFormat(duration: string): boolean {
+    const durationRegex = /^([0-9]{1,2}):([0-5][0-9]):([0-5][0-9])$/;
+    return durationRegex.test(duration);
   }
 
-  /**
-   * Validates a color hex code
-   * @param color - Hex color code to validate
-   * @returns Error message if invalid, null if valid
-   */
-  validateColorHex(color: string): string | null {
-    if (!color) {
-      return 'Color is required';
-    }
-
-    const hexPattern = /^#[0-9A-Fa-f]{6}$/;
-    if (!hexPattern.test(color)) {
-      return 'Invalid color format (must be hex like #FFFFFF)';
-    }
-
-    return null;
-  }
-
-  /**
-   * Validates an icon name (basic check)
-   * @param icon - Icon name to validate
-   * @returns Error message if invalid, null if valid
-   */
-  validateIconName(icon: string): string | null {
-    if (!icon || !icon.trim()) {
-      return 'Icon is required';
-    }
-
-    return null;
-  }
-
-  /**
-   * Helper: Parse duration string to number safely
-   * @param input - String input to parse
-   * @returns Parsed number or NaN
-   */
-  parseDuration(input: string): number {
-    const parsed = parseFloat(input);
-    return Number.isNaN(parsed) ? NaN : Math.floor(parsed);
-  }
-
-  /**
-   * Helper: Check if a string is empty or only whitespace
-   * @param str - String to check
-   * @returns true if empty/whitespace, false otherwise
-   */
-  isEmpty(str: string | null | undefined): boolean {
-    return !str || !str.trim();
+  // Convert duration string to milliseconds
+  static durationToMs(duration: string): number {
+    const parts = duration.split(':');
+    const hours = parseInt(parts[0], 10);
+    const minutes = parseInt(parts[1], 10);
+    const seconds = parseInt(parts[2], 10);
+    return (hours * 3600 + minutes * 60 + seconds) * 1000;
   }
 }
-
-// Export singleton instance
-export const validation = new ValidationService();

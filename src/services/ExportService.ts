@@ -1,336 +1,247 @@
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { Alert, Platform } from 'react-native';
-import { StorageService } from './StorageService';
-import { Session, Category, DashboardPreferences } from '../types';
+import { Session, Goal, Achievement, Category } from '../types';
 import { logger } from './logger';
-import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../config/constants';
+import { format } from 'date-fns';
 
 export class ExportService {
-  private static getDocumentDirectory(): string {
-    return FileSystem.documentDirectory || FileSystem.cacheDirectory || '';
-  }
-
-  static async exportToJSON(): Promise<void> {
+  // ✅ EXISTING: JSON export
+  static async exportToJSON(data: {
+    sessions: Session[];
+    goals: Goal[];
+    achievements: Achievement[];
+    categories: Category[];
+  }): Promise<void> {
     try {
-      const data = await StorageService.getAllData();
+      const jsonString = JSON.stringify(data, null, 2);
+      const fileName = `flowtrix-backup-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.json`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 
-      const exportData = {
-        appName: 'Session Tracker',
-        exportDate: new Date().toISOString(),
-        version: data.version,
-        data: {
-          sessions: data.sessions,
-          categories: data.categories,
-          preferences: data.preferences,
-        },
-        stats: {
-          totalSessions: data.sessions.length,
-          totalCategories: data.categories.length,
-          totalDurationMs: data.sessions.reduce((sum, s) => sum + s.durationMs, 0),
-        },
-      };
-
-      const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `session-tracker-backup-${timestamp}.json`;
-
-      const fileUri = `${this.getDocumentDirectory()}${filename}`;
-      await FileSystem.writeAsStringAsync(
-        fileUri,
-        JSON.stringify(exportData, null, 2)
-      );
-
+      await FileSystem.writeAsStringAsync(fileUri, jsonString);
+      
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
         await Sharing.shareAsync(fileUri, {
           mimeType: 'application/json',
-          dialogTitle: 'Backup Your Session Data',
-          UTI: 'public.json',
+          dialogTitle: 'Export FlowTrix Data',
         });
-      } else {
-        Alert.alert(
-          'Success',
-          `Backup saved to:\n${fileUri}\n\nYou can find it in your Files app.`
-        );
       }
-
-      logger.success(`Exported ${data.sessions.length} sessions to ${filename}`);
+      
+      logger.success('Data exported to JSON successfully');
     } catch (error) {
-      logger.error('Export to JSON failed', error);
-      Alert.alert(
-        'Export Failed',
-        ERROR_MESSAGES.EXPORT_FAILED
-      );
+      logger.error('Failed to export data to JSON', error);
       throw error;
     }
   }
 
-  static async importFromJSON(fileUri: string): Promise<void> {
+  // ✅ NEW: CSV export for sessions
+  static async exportSessionsToCSV(sessions: Session[]): Promise<void> {
     try {
-      const content = await FileSystem.readAsStringAsync(fileUri);
+      const csvContent = this.convertSessionsToCSV(sessions);
+      const fileName = `flowtrix-sessions-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.csv`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 
-      const importData = JSON.parse(content);
-
-      if (!importData.data || !importData.data.sessions || !importData.data.categories) {
-        throw new Error('Invalid backup file format');
-      }
-
-      const stats = importData.stats || {
-        totalSessions: importData.data.sessions.length,
-        totalCategories: importData.data.categories.length,
-      };
-
-      Alert.alert(
-        'Restore Backup?',
-        `This will restore:\n\n` +
-        `• ${stats.totalSessions} sessions\n` +
-        `• ${stats.totalCategories} categories\n\n` +
-        `Your current data will be backed up first.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Restore',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await StorageService.restoreAllData(importData.data);
-                Alert.alert(
-                  'Success!',
-                  `Restored ${stats.totalSessions} sessions and ${stats.totalCategories} categories.`
-                );
-              } catch (error) {
-                Alert.alert(
-                  'Restore Failed',
-                  'Could not restore backup. Your data is safe.'
-                );
-                throw error;
-              }
-            },
-          },
-        ]
-      );
-    } catch (error) {
-      logger.error('Import from JSON failed', error);
-      Alert.alert(
-        'Import Failed',
-        ERROR_MESSAGES.IMPORT_FAILED
-      );
-      throw error;
-    }
-  }
-
-  static async exportSessionsToCSV(): Promise<void> {
-    try {
-      const data = await StorageService.getAllData();
-      const { sessions, categories } = data;
-
-      const categoryMap = new Map(categories.map(c => [c.id, c.name]));
-
-      const headers = [
-        'Date',
-        'Title',
-        'Category',
-        'Duration (minutes)',
-        'Duration (hours)',
-        'Notes',
-        'Started At',
-        'Session ID',
-      ];
-
-      const rows = sessions.map(session => {
-        const durationMinutes = Math.round(session.durationMs / 60000);
-        const durationHours = (session.durationMs / 3600000).toFixed(2);
-        const categoryName = categoryMap.get(session.categoryId) || 'Unknown';
-        const date = new Date(session.startedAt).toLocaleDateString();
-        const startTime = new Date(session.startedAt).toLocaleString();
-
-        return [
-          date,
-          this.escapeCSV(session.title),
-          this.escapeCSV(categoryName),
-          durationMinutes,
-          durationHours,
-          this.escapeCSV(session.notes || ''),
-          startTime,
-          session.id,
-        ];
-      });
-
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.join(',')),
-      ].join('\n');
-
-      const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `session-tracker-export-${timestamp}.csv`;
-
-      const fileUri = `${this.getDocumentDirectory()}${filename}`;
       await FileSystem.writeAsStringAsync(fileUri, csvContent);
-
+      
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
         await Sharing.shareAsync(fileUri, {
           mimeType: 'text/csv',
-          dialogTitle: 'Export Session Data',
-          UTI: 'public.comma-separated-values-text',
+          dialogTitle: 'Export Sessions to CSV',
         });
-      } else {
-        Alert.alert(
-          'Success',
-          `CSV exported to:\n${fileUri}\n\nOpen in Excel or Google Sheets.`
-        );
       }
-
-      logger.success(`Exported ${sessions.length} sessions to CSV`);
+      
+      logger.success('Sessions exported to CSV successfully');
     } catch (error) {
-      logger.error('Export to CSV failed', error);
-      Alert.alert(
-        'Export Failed',
-        ERROR_MESSAGES.EXPORT_FAILED
-      );
+      logger.error('Failed to export sessions to CSV', error);
       throw error;
     }
   }
 
+  // ✅ NEW: CSV export for goals
+  static async exportGoalsToCSV(goals: Goal[]): Promise<void> {
+    try {
+      const csvContent = this.convertGoalsToCSV(goals);
+      const fileName = `flowtrix-goals-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.csv`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+
+      await FileSystem.writeAsStringAsync(fileUri, csvContent);
+      
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'text/csv',
+          dialogTitle: 'Export Goals to CSV',
+        });
+      }
+      
+      logger.success('Goals exported to CSV successfully');
+    } catch (error) {
+      logger.error('Failed to export goals to CSV', error);
+      throw error;
+    }
+  }
+
+  // ✅ NEW: Convert sessions to CSV format
+  private static convertSessionsToCSV(sessions: Session[]): string {
+    const headers = [
+      'Date',
+      'Title',
+      'Category',
+      'Duration (Minutes)',
+      'Start Time',
+      'End Time',
+      'Notes',
+      'Goal',
+      'Tags'
+    ];
+
+    const rows = sessions.map(session => {
+      const durationMinutes = Math.round(session.durationMs / (1000 * 60));
+      const startTime = format(new Date(session.startedAt), 'yyyy-MM-dd HH:mm:ss');
+      const endTime = format(new Date(session.endedAt), 'yyyy-MM-dd HH:mm:ss');
+      const date = format(new Date(session.startedAt), 'yyyy-MM-dd');
+      
+      return [
+        date,
+        this.escapeCSV(session.title),
+        this.escapeCSV(session.categoryName),
+        durationMinutes.toString(),
+        startTime,
+        endTime,
+        this.escapeCSV(session.notes || ''),
+        session.goalId || '',
+        session.tags?.join('; ') || ''
+      ];
+    });
+
+    // Sort by date descending
+    rows.sort((a, b) => b[0].localeCompare(a[0]));
+
+    // Combine headers and rows
+    const csvLines = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ];
+
+    return csvLines.join('\n');
+  }
+
+  // ✅ NEW: Convert goals to CSV format
+  private static convertGoalsToCSV(goals: Goal[]): string {
+    const headers = [
+      'Title',
+      'Category',
+      'Period',
+      'Target (Minutes)',
+      'Progress (Minutes)',
+      'Progress (%)',
+      'Status',
+      'Start Date',
+      'End Date',
+      'Completed At'
+    ];
+
+    const rows = goals.map(goal => {
+      const progressPercent = goal.targetMinutes > 0 
+        ? Math.round((goal.currentMinutes / goal.targetMinutes) * 100)
+        : 0;
+      
+      return [
+        this.escapeCSV(goal.title),
+        this.escapeCSV(goal.categoryName || ''),
+        goal.period,
+        goal.targetMinutes.toString(),
+        goal.currentMinutes.toString(),
+        progressPercent.toString(),
+        goal.status,
+        format(new Date(goal.startDate), 'yyyy-MM-dd'),
+        format(new Date(goal.endDate), 'yyyy-MM-dd'),
+        goal.completedAt ? format(new Date(goal.completedAt), 'yyyy-MM-dd HH:mm:ss') : ''
+      ];
+    });
+
+    const csvLines = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ];
+
+    return csvLines.join('\n');
+  }
+
+  // ✅ NEW: Escape CSV special characters
   private static escapeCSV(value: string): string {
-    if (!value) return '';
-    
     if (value.includes(',') || value.includes('"') || value.includes('\n')) {
       return `"${value.replace(/"/g, '""')}"`;
     }
-    
     return value;
   }
 
-  static async exportStatisticsToCSV(): Promise<void> {
+  // ✅ NEW: Import from CSV (sessions)
+  static async importSessionsFromCSV(csvContent: string): Promise<Session[]> {
     try {
-      const data = await StorageService.getAllData();
-      const { sessions, categories } = data;
+      const lines = csvContent.split('\n');
+      const headers = lines[0].split(',');
+      const sessions: Partial<Session>[] = [];
 
-      const categoryStats = new Map<string, {
-        name: string;
-        count: number;
-        totalMinutes: number;
-        totalHours: number;
-      }>();
-
-      categories.forEach(cat => {
-        categoryStats.set(cat.id, {
-          name: cat.name,
-          count: 0,
-          totalMinutes: 0,
-          totalHours: 0,
-        });
-      });
-
-      sessions.forEach(session => {
-        const stats = categoryStats.get(session.categoryId);
-        if (stats) {
-          stats.count++;
-          const minutes = session.durationMs / 60000;
-          stats.totalMinutes += minutes;
-          stats.totalHours = stats.totalMinutes / 60;
-        }
-      });
-
-      const headers = [
-        'Category',
-        'Total Sessions',
-        'Total Minutes',
-        'Total Hours',
-        'Average Minutes per Session',
-      ];
-
-      const rows = Array.from(categoryStats.values())
-        .filter(stat => stat.count > 0)
-        .sort((a, b) => b.totalMinutes - a.totalMinutes)
-        .map(stat => [
-          this.escapeCSV(stat.name),
-          stat.count,
-          Math.round(stat.totalMinutes),
-          stat.totalHours.toFixed(2),
-          stat.count > 0 ? Math.round(stat.totalMinutes / stat.count) : 0,
-        ]);
-
-      const totals = Array.from(categoryStats.values()).reduce(
-        (acc, stat) => ({
-          count: acc.count + stat.count,
-          totalMinutes: acc.totalMinutes + stat.totalMinutes,
-        }),
-        { count: 0, totalMinutes: 0 }
-      );
-
-      rows.push([
-        'TOTAL',
-        totals.count,
-        Math.round(totals.totalMinutes),
-        (totals.totalMinutes / 60).toFixed(2),
-        totals.count > 0 ? Math.round(totals.totalMinutes / totals.count) : 0,
-      ]);
-
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.join(',')),
-      ].join('\n');
-
-      const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `session-tracker-stats-${timestamp}.csv`;
-
-      const fileUri = `${this.getDocumentDirectory()}${filename}`;
-      await FileSystem.writeAsStringAsync(fileUri, csvContent);
-
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'text/csv',
-          dialogTitle: 'Export Statistics',
-        });
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        
+        const values = this.parseCSVLine(lines[i]);
+        const session: Partial<Session> = {
+          id: `imported_${Date.now()}_${i}`,
+          title: values[1] || 'Imported Session',
+          categoryName: values[2] || 'General',
+          durationMs: parseInt(values[3] || '0') * 60 * 1000,
+          startedAt: values[4] || new Date().toISOString(),
+          endedAt: values[5] || new Date().toISOString(),
+          notes: values[6] || '',
+        };
+        
+        sessions.push(session as Session);
       }
 
-      logger.success('Statistics exported to CSV');
+      logger.success(`Imported ${sessions.length} sessions from CSV`);
+      return sessions as Session[];
     } catch (error) {
-      logger.error('Export statistics failed', error);
-      Alert.alert('Export Failed', ERROR_MESSAGES.EXPORT_FAILED);
+      logger.error('Failed to import sessions from CSV', error);
       throw error;
     }
   }
 
-  static showExportMenu(): void {
-    Alert.alert(
-      'Export Data',
-      'Choose export format:',
-      [
-        {
-          text: 'Full Backup (JSON)',
-          onPress: () => this.exportToJSON(),
-        },
-        {
-          text: 'Sessions (CSV)',
-          onPress: () => this.exportSessionsToCSV(),
-        },
-        {
-          text: 'Statistics (CSV)',
-          onPress: () => this.exportStatisticsToCSV(),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
-  }
+  // ✅ NEW: Parse CSV line with proper quote handling
+  private static parseCSVLine(line: string): string[] {
+    const values: string[] = [];
+    let current = '';
+    let inQuotes = false;
 
-  static async canShare(): Promise<boolean> {
-    try {
-      return await Sharing.isAvailableAsync();
-    } catch {
-      return false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        values.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
     }
+    values.push(current);
+
+    return values;
   }
 
-  static getExportDirectory(): string {
-    return this.getDocumentDirectory();
+  // ✅ NEW: Get file size
+  static async getExportFileSize(sessions: Session[], goals: Goal[]): Promise<number> {
+    const data = { sessions, goals };
+    const jsonString = JSON.stringify(data);
+    return new Blob([jsonString]).size;
   }
 }
-
-export default ExportService;

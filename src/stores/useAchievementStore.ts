@@ -1,9 +1,19 @@
-import { create } from 'zustand';
-import { Achievement, Session, Goal, Category } from '../types';
-import { StorageService } from '../services/StorageService';
-import { NotificationService } from '../services/NotificationService';
-import { logger } from '../services/logger';
-import { ACHIEVEMENT_DEFINITIONS } from '../constants/achievements';
+import { create } from "zustand";
+import { Achievement, Session, Goal, Category } from "../types";
+import { StorageService } from "../services/StorageService";
+import { NotificationService } from "../services/NotificationService";
+import { logger } from "../services/logger";
+import { ACHIEVEMENT_DEFINITIONS } from "../constants/achievements";
+
+// --- Custom Debounce Utility ---
+// prevents achievement checks from firing too frequently during rapid updates
+const debounce = <T extends (...args: any[]) => any>(func: T, waitFor: number) => {
+  let timeout: ReturnType<typeof setTimeout>;
+  return (...args: Parameters<T>): void => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), waitFor);
+  };
+};
 
 interface AchievementState {
   achievements: Achievement[];
@@ -12,7 +22,11 @@ interface AchievementState {
 
   loadAchievements: () => Promise<void>;
   initializeDefaultAchievements: () => Promise<void>;
-  checkAndUnlockAchievements: (sessions: Session[], goals: Goal[], categories: Category[]) => Promise<Achievement[]>;
+  checkAndUnlockAchievements: (
+    sessions: Session[],
+    goals: Goal[],
+    categories: Category[]
+  ) => Promise<Achievement[]>;
   unlockAchievement: (achievementId: string) => Promise<void>;
   updateProgress: (achievementId: string, progress: number) => Promise<void>;
   clearError: () => void;
@@ -28,14 +42,19 @@ const useAchievementStoreBase = create<AchievementState>((set, get) => ({
   loadAchievements: async () => {
     set({ isLoading: true, error: null });
     try {
+      await StorageService.deduplicateAchievements();
+
       const achievements = await StorageService.getAchievements();
       set({ achievements, isLoading: false });
       logger.info(`Loaded ${achievements.length} achievements`);
     } catch (error) {
-      logger.error('Failed to load achievements', error);
-      set({ 
-        error: error instanceof Error ? error.message : 'Failed to load achievements',
-        isLoading: false 
+      logger.error("Failed to load achievements", error);
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to load achievements",
+        isLoading: false,
       });
     }
   },
@@ -47,22 +66,31 @@ const useAchievementStoreBase = create<AchievementState>((set, get) => ({
         await StorageService.saveAchievement(achievement);
       }
       set({ achievements: ACHIEVEMENT_DEFINITIONS, isLoading: false });
-      logger.success('Default achievements initialized');
+      logger.success("Default achievements initialized");
     } catch (error) {
-      logger.error('Failed to initialize achievements', error);
-      set({ 
-        error: error instanceof Error ? error.message : 'Failed to initialize achievements',
-        isLoading: false 
+      logger.error("Failed to initialize achievements", error);
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to initialize achievements",
+        isLoading: false,
       });
     }
   },
 
-  checkAndUnlockAchievements: async (sessions: Session[], goals: Goal[], categories: Category[]) => {
+  checkAndUnlockAchievements: async (
+    sessions: Session[],
+    goals: Goal[],
+    categories: Category[]
+  ) => {
     const unlockedAchievements: Achievement[] = [];
     const { achievements } = get();
 
-    const validSessions = sessions.filter(s => s.durationMs >= MIN_SESSION_DURATION_MS);
-    
+    const validSessions = sessions.filter(
+      (s) => s.durationMs >= MIN_SESSION_DURATION_MS
+    );
+
     const stats = calculateStats(validSessions, goals, categories);
 
     for (const achievement of achievements) {
@@ -76,12 +104,15 @@ const useAchievementStoreBase = create<AchievementState>((set, get) => ({
         categories
       );
 
-      await get().updateProgress(achievement.id, progress);
+      // Only update if progress has changed significantly or unlocked to reduce writes
+      if (progress !== achievement.progress || shouldUnlock) {
+        await get().updateProgress(achievement.id, progress);
+      }
 
       if (shouldUnlock) {
         await get().unlockAchievement(achievement.id);
         unlockedAchievements.push(achievement);
-        
+
         await NotificationService.sendAchievementUnlocked(
           achievement.title,
           achievement.description
@@ -108,10 +139,10 @@ const useAchievementStoreBase = create<AchievementState>((set, get) => ({
             : a
         ),
       }));
-      
+
       logger.success(`Achievement unlocked: ${achievementId}`);
     } catch (error) {
-      logger.error('Failed to unlock achievement', error);
+      logger.error("Failed to unlock achievement", error);
       throw error;
     }
   },
@@ -119,14 +150,14 @@ const useAchievementStoreBase = create<AchievementState>((set, get) => ({
   updateProgress: async (achievementId: string, progress: number) => {
     try {
       await StorageService.updateAchievement(achievementId, { progress });
-      
+
       set((state) => ({
         achievements: state.achievements.map((a) =>
           a.id === achievementId ? { ...a, progress } : a
         ),
       }));
     } catch (error) {
-      logger.error('Failed to update achievement progress', error);
+      logger.error("Failed to update achievement progress", error);
     }
   },
 
@@ -152,39 +183,47 @@ interface Stats {
   focusedSessions: number;
 }
 
-function calculateStats(sessions: Session[], goals: Goal[], categories: Category[]): Stats {
+function calculateStats(
+  sessions: Session[],
+  goals: Goal[],
+  categories: Category[]
+): Stats {
   const totalSessions = sessions.length;
-  const totalHours = sessions.reduce((sum, s) => sum + s.durationMs, 0) / (1000 * 60 * 60);
-  
+  const totalHours =
+    sessions.reduce((sum, s) => sum + s.durationMs, 0) / (1000 * 60 * 60);
+
   const { currentStreak, longestStreak } = calculateStreaks(sessions);
-  
-  const completedGoals = goals.filter(g => g.status === 'completed').length;
-  const activeGoals = goals.filter(g => g.status === 'active').length;
-  
+
+  const completedGoals = goals.filter((g) => g.status === "completed").length;
+  const activeGoals = goals.filter((g) => g.status === "active").length;
+
   const longestSessionMinutes = Math.max(
-    ...sessions.map(s => s.durationMs / (1000 * 60)),
+    ...sessions.map((s) => s.durationMs / (1000 * 60)),
     0
   );
-  
-  const categoriesUsed = new Set(sessions.map(s => s.categoryId));
-  
+
+  const categoriesUsed = new Set(sessions.map((s) => s.categoryId));
+
   const categorySessionCounts = new Map<string, number>();
-  sessions.forEach(s => {
-    categorySessionCounts.set(s.categoryId, (categorySessionCounts.get(s.categoryId) || 0) + 1);
+  sessions.forEach((s) => {
+    categorySessionCounts.set(
+      s.categoryId,
+      (categorySessionCounts.get(s.categoryId) || 0) + 1
+    );
   });
-  
+
   let earlyBirdSessions = 0;
   let nightOwlSessions = 0;
   let weekendSessions = 0;
   let longSessions = 0;
   let focusedSessions = 0;
 
-  sessions.forEach(session => {
+  sessions.forEach((session) => {
     const startDate = new Date(session.startedAt);
     const hour = startDate.getHours();
     const dayOfWeek = startDate.getDay();
     const durationMinutes = session.durationMs / (1000 * 60);
-    
+
     if (hour >= 5 && hour < 9) earlyBirdSessions++;
     if (hour >= 22 || hour < 5) nightOwlSessions++;
     if (dayOfWeek === 0 || dayOfWeek === 6) weekendSessions++;
@@ -194,18 +233,20 @@ function calculateStats(sessions: Session[], goals: Goal[], categories: Category
 
   const last7Days = new Set<string>();
   const now = new Date();
-  sessions.forEach(s => {
+  sessions.forEach((s) => {
     const sessionDate = new Date(s.startedAt);
-    const diffDays = Math.floor((now.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor(
+      (now.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
     if (diffDays < 7) {
       last7Days.add(sessionDate.toDateString());
     }
   });
 
-  const goalCompletionSessions = sessions.filter(s => {
+  const goalCompletionSessions = sessions.filter((s) => {
     if (!s.goalId) return false;
-    const goal = goals.find(g => g.id === s.goalId);
-    return goal && goal.status === 'completed';
+    const goal = goals.find((g) => g.id === s.goalId);
+    return goal && goal.status === "completed";
   }).length;
 
   return {
@@ -228,11 +269,14 @@ function calculateStats(sessions: Session[], goals: Goal[], categories: Category
   };
 }
 
-function calculateStreaks(sessions: Session[]): { currentStreak: number; longestStreak: number } {
+function calculateStreaks(sessions: Session[]): {
+  currentStreak: number;
+  longestStreak: number;
+} {
   if (sessions.length === 0) return { currentStreak: 0, longestStreak: 0 };
 
   const sessionDates = new Set(
-    sessions.map(s => new Date(s.startedAt).toDateString())
+    sessions.map((s) => new Date(s.startedAt).toDateString())
   );
 
   let currentStreak = 0;
@@ -273,56 +317,96 @@ function checkAchievementCondition(
   let progress = 0;
 
   switch (achievement.requirement.type) {
-    case 'totalHours':
-      progress = Math.min((stats.totalHours / achievement.requirement.value) * 100, 100);
+    case "totalHours":
+      progress = Math.min(
+        (stats.totalHours / achievement.requirement.value) * 100,
+        100
+      );
       shouldUnlock = stats.totalHours >= achievement.requirement.value;
       break;
 
-    case 'streak':
-      progress = Math.min((stats.currentStreak / achievement.requirement.value) * 100, 100);
+    case "streak":
+      progress = Math.min(
+        (stats.currentStreak / achievement.requirement.value) * 100,
+        100
+      );
       shouldUnlock = stats.currentStreak >= achievement.requirement.value;
       break;
 
-    case 'sessionCount':
-      progress = Math.min((stats.totalSessions / achievement.requirement.value) * 100, 100);
+    case "sessionCount":
+      progress = Math.min(
+        (stats.totalSessions / achievement.requirement.value) * 100,
+        100
+      );
       shouldUnlock = stats.totalSessions >= achievement.requirement.value;
       break;
 
-    case 'longestSession':
-      progress = Math.min((stats.longestSessionMinutes / achievement.requirement.value) * 100, 100);
-      shouldUnlock = stats.longestSessionMinutes >= achievement.requirement.value;
+    case "longestSession":
+      progress = Math.min(
+        (stats.longestSessionMinutes / achievement.requirement.value) * 100,
+        100
+      );
+      shouldUnlock =
+        stats.longestSessionMinutes >= achievement.requirement.value;
       break;
 
-    case 'categoryCount':
-      progress = Math.min((stats.categoriesUsed.size / achievement.requirement.value) * 100, 100);
+    case "categoryCount":
+      progress = Math.min(
+        (stats.categoriesUsed.size / achievement.requirement.value) * 100,
+        100
+      );
       shouldUnlock = stats.categoriesUsed.size >= achievement.requirement.value;
       break;
 
     default:
-      if (achievement.id.includes('early_bird')) {
-        progress = Math.min((stats.earlyBirdSessions / achievement.requirement.value) * 100, 100);
+      if (achievement.id.includes("early_bird")) {
+        progress = Math.min(
+          (stats.earlyBirdSessions / achievement.requirement.value) * 100,
+          100
+        );
         shouldUnlock = stats.earlyBirdSessions >= achievement.requirement.value;
-      } else if (achievement.id.includes('night_owl')) {
-        progress = Math.min((stats.nightOwlSessions / achievement.requirement.value) * 100, 100);
+      } else if (achievement.id.includes("night_owl")) {
+        progress = Math.min(
+          (stats.nightOwlSessions / achievement.requirement.value) * 100,
+          100
+        );
         shouldUnlock = stats.nightOwlSessions >= achievement.requirement.value;
-      } else if (achievement.id.includes('weekend')) {
-        progress = Math.min((stats.weekendSessions / achievement.requirement.value) * 100, 100);
+      } else if (achievement.id.includes("weekend")) {
+        progress = Math.min(
+          (stats.weekendSessions / achievement.requirement.value) * 100,
+          100
+        );
         shouldUnlock = stats.weekendSessions >= achievement.requirement.value;
-      } else if (achievement.id.includes('goal_complete')) {
-        progress = Math.min((stats.completedGoals / achievement.requirement.value) * 100, 100);
+      } else if (achievement.id.includes("goal_complete")) {
+        progress = Math.min(
+          (stats.completedGoals / achievement.requirement.value) * 100,
+          100
+        );
         shouldUnlock = stats.completedGoals >= achievement.requirement.value;
-      } else if (achievement.id.includes('category_master')) {
-        const maxCategorySessions = Math.max(...Array.from(stats.categorySessionCounts.values()), 0);
-        progress = Math.min((maxCategorySessions / achievement.requirement.value) * 100, 100);
+      } else if (achievement.id.includes("category_master")) {
+        const maxCategorySessions = Math.max(
+          ...Array.from(stats.categorySessionCounts.values()),
+          0
+        );
+        progress = Math.min(
+          (maxCategorySessions / achievement.requirement.value) * 100,
+          100
+        );
         shouldUnlock = maxCategorySessions >= achievement.requirement.value;
-      } else if (achievement.id.includes('weekly_warrior')) {
+      } else if (achievement.id.includes("weekly_warrior")) {
         progress = Math.min((stats.weeklyStreakDays.size / 7) * 100, 100);
         shouldUnlock = stats.weeklyStreakDays.size >= 7;
-      } else if (achievement.id.includes('long_session')) {
-        progress = Math.min((stats.longSessions / achievement.requirement.value) * 100, 100);
+      } else if (achievement.id.includes("long_session")) {
+        progress = Math.min(
+          (stats.longSessions / achievement.requirement.value) * 100,
+          100
+        );
         shouldUnlock = stats.longSessions >= achievement.requirement.value;
-      } else if (achievement.id.includes('focused')) {
-        progress = Math.min((stats.focusedSessions / achievement.requirement.value) * 100, 100);
+      } else if (achievement.id.includes("focused")) {
+        progress = Math.min(
+          (stats.focusedSessions / achievement.requirement.value) * 100,
+          100
+        );
         shouldUnlock = stats.focusedSessions >= achievement.requirement.value;
       }
       break;
@@ -331,17 +415,47 @@ function checkAchievementCondition(
   return { shouldUnlock, progress: Math.round(progress) };
 }
 
-export const useAchievements = () => useAchievementStoreBase((state) => state.achievements);
-export const useAchievementsLoading = () => useAchievementStoreBase((state) => state.isLoading);
-export const useAchievementsError = () => useAchievementStoreBase((state) => state.error);
-export const useAchievementById = (achievementId: string) =>
-  useAchievementStoreBase((state) => state.achievements.find((a) => a.id === achievementId));
 
-export const useLoadAchievements = () => useAchievementStoreBase((state) => state.loadAchievements);
-export const useInitializeDefaultAchievements = () => useAchievementStoreBase((state) => state.initializeDefaultAchievements);
-export const useCheckAndUnlockAchievements = () => useAchievementStoreBase((state) => state.checkAndUnlockAchievements);
-export const useUnlockAchievement = () => useAchievementStoreBase((state) => state.unlockAchievement);
-export const useUpdateAchievementProgress = () => useAchievementStoreBase((state) => state.updateProgress);
-export const useClearAchievementError = () => useAchievementStoreBase((state) => state.clearError);
+export const useAchievements = () =>
+  useAchievementStoreBase((state) => state.achievements);
+export const useAchievementsLoading = () =>
+  useAchievementStoreBase((state) => state.isLoading);
+export const useAchievementsError = () =>
+  useAchievementStoreBase((state) => state.error);
+export const useAchievementById = (achievementId: string) =>
+  useAchievementStoreBase((state) =>
+    state.achievements.find((a) => a.id === achievementId)
+  );
+
+export const useLoadAchievements = () =>
+  useAchievementStoreBase((state) => state.loadAchievements);
+export const useInitializeDefaultAchievements = () =>
+  useAchievementStoreBase((state) => state.initializeDefaultAchievements);
+export const useCheckAndUnlockAchievements = () =>
+  useAchievementStoreBase((state) => state.checkAndUnlockAchievements);
+export const useUnlockAchievement = () =>
+  useAchievementStoreBase((state) => state.unlockAchievement);
+export const useUpdateAchievementProgress = () =>
+  useAchievementStoreBase((state) => state.updateProgress);
+export const useClearAchievementError = () =>
+  useAchievementStoreBase((state) => state.clearError);
 
 export const useAchievementStore = useAchievementStoreBase;
+
+// Export the debounced check function
+export const debouncedCheckAchievements = debounce(
+  async (
+    sessions: Session[],
+    goals: Goal[],
+    categories: Category[],
+    checkFn: (
+      sessions: Session[],
+      goals: Goal[],
+      categories: Category[]
+    ) => Promise<Achievement[]>
+  ) => {
+    logger.info("Running debounced achievement check...");
+    await checkFn(sessions, goals, categories);
+  },
+  1000 
+);

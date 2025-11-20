@@ -9,6 +9,7 @@ import {
   InteractionManager,
   ListRenderItemInfo,
   TouchableOpacity,
+  ActivityIndicator, 
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -36,7 +37,7 @@ import { FilterChips } from '../components/FilterChips';
 import { SearchBar } from '../components/SearchBar';
 import { Ionicons } from '@expo/vector-icons';
 import { Session } from '../types';
-
+import { usePaginatedSessions } from '../hooks/usePaginatedSessions'; // Import the hook
 
 const getTodayDateString = () => new Date().toDateString();
 const getYesterdayDateString = () => {
@@ -51,8 +52,6 @@ const getSessionDateString = (session: Session) => {
 
 export default function HomeScreen() {
   const navigation = useNavigation();
-  
-  // ✅ Get safe area insets for proper spacing
   const insets = useSafeAreaInsets();
 
   const sessions = useSessions();
@@ -74,6 +73,7 @@ export default function HomeScreen() {
   const [localCategoryId, setLocalCategoryId] = useState(filter.categoryId);
   const [localDateRange, setLocalDateRange] = useState(filter.dateRange);
 
+  // Debounce filter updates
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setFilter({
@@ -86,6 +86,7 @@ export default function HomeScreen() {
     return () => clearTimeout(timeoutId);
   }, [searchQuery, localCategoryId, localDateRange]);
 
+  // Initial Data Load
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {
       Promise.all([
@@ -100,6 +101,7 @@ export default function HomeScreen() {
     return () => task.cancel();
   }, []);
 
+  // Refresh on focus
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       InteractionManager.runAfterInteractions(() => {
@@ -112,6 +114,7 @@ export default function HomeScreen() {
     return unsubscribe;
   }, [navigation, loadSessions, loadCategories, loadPreferences]);
 
+  // --- Stats Calculations ---
   const todayDateString = useMemo(() => getTodayDateString(), []);
   const yesterdayDateString = useMemo(() => getYesterdayDateString(), []);
 
@@ -142,19 +145,15 @@ export default function HomeScreen() {
 
   const streak = useMemo(() => {
     if (sessions.length === 0) return 0;
-
     const sortedSessions = [...sessions].sort((a, b) =>
       new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
     );
-
     const sessionDates = new Set(
       sortedSessions.map(s => new Date(s.startedAt).toDateString())
     );
-
     let streak = 0;
     let currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
-
     for (let i = 0; i < 365; i++) {
       const dateStr = currentDate.toDateString();
       if (sessionDates.has(dateStr)) {
@@ -164,7 +163,6 @@ export default function HomeScreen() {
         break;
       }
     }
-
     return streak;
   }, [sessions]);
 
@@ -188,23 +186,28 @@ export default function HomeScreen() {
     );
   }, [categories, preferences.visibleCategoryIds]);
 
-  const sessionsToDisplay = useMemo(() => {
-    const hasFilters = filter.categoryId || filter.dateRange || filter.searchQuery;
-    const baseList = hasFilters ? filteredSessions : sessions;
-
-    return baseList
-      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
-      .slice(0, 20);
-  }, [sessions, filteredSessions, filter.categoryId, filter.dateRange, filter.searchQuery]);
+  // --- Filtering & Pagination Logic ---
 
   const hasActiveFilters = useMemo(() => {
     return !!(filter.categoryId || filter.dateRange || searchQuery);
   }, [filter.categoryId, filter.dateRange, searchQuery]);
 
-  // ✅ NEW: Determine if FAB should be visible (only when no sessions)
-  const showFAB = useMemo(() => {
-    return sessions.length === 0;
-  }, [sessions.length]);
+  // 1. Prepare the Sorted List (All items matching filter)
+  const sortedSessions = useMemo(() => {
+    const baseList = hasActiveFilters ? filteredSessions : sessions;
+    return baseList.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+  }, [sessions, filteredSessions, hasActiveFilters]);
+
+  // 2. Apply Pagination Hook
+  const { 
+    paginatedSessions, 
+    hasMore, 
+    loadMore, 
+    currentPage, 
+    totalPages 
+  } = usePaginatedSessions(sortedSessions, 20);
+
+  // --- Event Handlers ---
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -228,11 +231,33 @@ export default function HomeScreen() {
     Keyboard.dismiss();
   }, [setFilter]);
 
+  // --- Render Helpers ---
+
   const renderSessionItem = useCallback(({ item }: ListRenderItemInfo<Session>) => {
     return <SwipeableSessionCard session={item} />;
   }, []);
 
   const keyExtractor = useCallback((item: Session) => item.id, []);
+
+  // Footer component for loading indicator and spacing
+  const ListFooterComponent = useCallback(() => {
+    return (
+      <View style={[styles.footerContainer, { paddingBottom: insets.bottom + 80 }]}>
+        {hasMore ? (
+          <View style={styles.loadingFooter}>
+            <ActivityIndicator color={theme.colors.primary.cyan} />
+            <Text style={styles.loadingText}>Loading more...</Text>
+          </View>
+        ) : (
+          paginatedSessions.length > 0 && (
+            <Text style={styles.endText}>
+              — {sortedSessions.length} Sessions —
+            </Text>
+          )
+        )}
+      </View>
+    );
+  }, [hasMore, insets.bottom, paginatedSessions.length, sortedSessions.length]);
 
   const ListHeaderComponent = useCallback(() => (
     <>
@@ -303,9 +328,9 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>
           {hasActiveFilters ? 'Filtered Sessions' : 'Recent Sessions'}
         </Text>
-        {sessionsToDisplay.length > 0 && (
+        {paginatedSessions.length > 0 && (
           <View style={styles.countBadge}>
-            <Text style={styles.countText}>{sessionsToDisplay.length}</Text>
+            <Text style={styles.countText}>{sortedSessions.length}</Text>
           </View>
         )}
       </View>
@@ -321,7 +346,8 @@ export default function HomeScreen() {
     searchQuery,
     handleClearSearch,
     hasActiveFilters,
-    sessionsToDisplay.length,
+    paginatedSessions.length,
+    sortedSessions.length, // Show total count, not just loaded count
   ]);
 
   const ListEmptyComponent = useCallback(() => (
@@ -329,10 +355,7 @@ export default function HomeScreen() {
       <View style={styles.emptyState}>
         <Ionicons name="analytics-outline" size={64} color={theme.colors.text.quaternary} />
         <Text style={styles.emptyText}>
-          {hasActiveFilters
-            ? 'No sessions found'
-            : 'No sessions yet'
-          }
+          {hasActiveFilters ? 'No sessions found' : 'No sessions yet'}
         </Text>
         <Text style={styles.emptySubtext}>
           {hasActiveFilters
@@ -342,7 +365,6 @@ export default function HomeScreen() {
             : 'Tap "Start Session" below to begin tracking'
           }
         </Text>
-        
         
         {!hasActiveFilters && sessions.length === 0 && (
           <TouchableOpacity
@@ -375,11 +397,12 @@ export default function HomeScreen() {
       <CustomHeader />
 
       <FlatList
-        data={sessionsToDisplay}
+        data={paginatedSessions}
         renderItem={renderSessionItem}
         keyExtractor={keyExtractor}
         ListHeaderComponent={ListHeaderComponent}
         ListEmptyComponent={ListEmptyComponent}
+        ListFooterComponent={ListFooterComponent}
         contentContainerStyle={styles.flatListContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -392,12 +415,17 @@ export default function HomeScreen() {
           />
         }
         keyboardShouldPersistTaps="handled"
+        
+        // Pagination Props
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        
+        // Optimization Props
         removeClippedSubviews={true}
         maxToRenderPerBatch={10}
         updateCellsBatchingPeriod={50}
-        initialNumToRender={10}
+        initialNumToRender={15}
         windowSize={5}
-        ListFooterComponent={<View style={{ height: 120 + insets.bottom }} />}
       />
     </View>
   );
@@ -416,7 +444,7 @@ const styles = StyleSheet.create({
   },
   flatListContent: {
     paddingTop: 120,
-    paddingBottom: theme.spacing[8],
+    paddingBottom: 0, // Handled by footer now
   },
   miniStatsWrapper: {
     marginBottom: theme.spacing[6],
@@ -503,7 +531,6 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[6],
     lineHeight: 22,
   },
-  // ✅ NEW: Empty state button styles
   emptyStateButton: {
     borderRadius: theme.borderRadius['2xl'],
     overflow: 'hidden',
@@ -526,10 +553,24 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeight.bold,
     color: '#FFFFFF',
   },
-
-  fabContainer: {
-    position: 'absolute',
-    right: 16,
-    zIndex: 100,
+  // Footer Styles
+  footerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: theme.spacing[4],
+  },
+  loadingFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[2],
+  },
+  loadingText: {
+    color: theme.colors.text.tertiary,
+    fontSize: theme.fontSize.sm,
+  },
+  endText: {
+    color: theme.colors.text.quaternary,
+    fontSize: theme.fontSize.xs,
+    marginBottom: theme.spacing[2],
   },
 });

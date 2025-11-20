@@ -172,14 +172,12 @@ function applyFilterToSessions(sessions: Session[], filter: SessionFilter): Sess
   return filtered;
 }
 
-// ✅ FIXED: Simple selectors only
 export const useSessions = () => useSessionStoreBase((state) => state.sessions);
 export const useFilteredSessions = () => useSessionStoreBase((state) => state.filteredSessions);
 export const useSessionsLoading = () => useSessionStoreBase((state) => state.isLoading);
 export const useSessionsError = () => useSessionStoreBase((state) => state.error);
 export const useSessionFilter = () => useSessionStoreBase((state) => state.filter);
 
-// ✅ FIXED: Return individual functions, not objects
 export const useLoadSessions = () => useSessionStoreBase((state) => state.loadSessions);
 export const useAddSession = () => useSessionStoreBase((state) => state.addSession);
 export const useUpdateSession = () => useSessionStoreBase((state) => state.updateSession);
