@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
   useAchievements, 
@@ -49,32 +49,31 @@ export default function AchievementsScreen() {
 
   useEffect(() => {
     const initialize = async () => {
-      if (!hasInitialized.current) {
-        hasInitialized.current = true;
-        await loadAchievements();
-        
-        if (achievements.length === 0) {
-          await initializeDefaultAchievements();
-          await loadAchievements();
-        }
-      }
+      if (hasInitialized.current) return;
+      
+      hasInitialized.current = true;
+      await initializeDefaultAchievements();
     };
     
     initialize();
-  }, [loadAchievements, initializeDefaultAchievements, achievements.length]);
+  }, [initializeDefaultAchievements]);
 
-  useEffect(() => {
-    if (achievements.length > 0 && sessions.length > 0) {
-      checkAndUnlockAchievements(sessions, goals, categories);
-    }
-  }, [sessions.length, goals.length]);
+  useFocusEffect(
+    useCallback(() => {
+      if (achievements.length > 0 && sessions.length > 0) {
+        checkAndUnlockAchievements(sessions, goals, categories);
+      }
+    }, [achievements.length, sessions.length, goals.length])
+  );
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadAchievements();
-    await checkAndUnlockAchievements(sessions, goals, categories);
+    if (sessions.length > 0) {
+      await checkAndUnlockAchievements(sessions, goals, categories);
+    }
     setRefreshing(false);
-  };
+  }, [loadAchievements, checkAndUnlockAchievements, sessions, goals, categories]);
 
   const filteredAchievements = useMemo(() => {
     if (filterCategory === 'all') return achievements;
@@ -269,12 +268,12 @@ export default function AchievementsScreen() {
             </>
           )}
 
-          {filteredAchievements.length === 0 && (
+          {achievements.length === 0 && (
             <View style={styles.emptyState}>
               <Ionicons name="trophy-outline" size={64} color={theme.colors.text.tertiary} />
-              <Text style={styles.emptyStateTitle}>No Achievements</Text>
+              <Text style={styles.emptyStateTitle}>No Achievements Yet</Text>
               <Text style={styles.emptyStateText}>
-                Complete sessions to unlock achievements!
+                Complete sessions to unlock your first achievement!
               </Text>
             </View>
           )}
@@ -284,89 +283,62 @@ export default function AchievementsScreen() {
   );
 }
 
-interface AchievementBadgeProps {
-  achievement: Achievement;
-}
-
-function AchievementBadge({ achievement }: AchievementBadgeProps) {
-  const getTierColor = (tier: AchievementTier): string[] => {
-    switch (tier) {
-      case 'bronze':
-        return ['#CD7F32', '#8B5A2B'];
-      case 'silver':
-        return ['#C0C0C0', '#808080'];
-      case 'gold':
-        return ['#FFD700', '#FFA500'];
-      case 'platinum':
-        return ['#E5E4E2', '#B5B5B5'];
-      default:
-        return theme.gradients.primary;
-    }
+function AchievementBadge({ achievement }: { achievement: Achievement }) {
+  const tierColors: Record<AchievementTier, string[]> = {
+    bronze: ['#CD7F32', '#8B5A00'],
+    silver: ['#C0C0C0', '#808080'],
+    gold: ['#FFD700', '#FFA500'],
+    platinum: ['#E5E4E2', '#B8B8B8'],
   };
 
-  const isUnlocked = achievement.isUnlocked;
-
   return (
-    <GlassCard style={[styles.badge, !isUnlocked && styles.badgeLocked]}>
+    <GlassCard style={[styles.badge, !achievement.isUnlocked && styles.badgeLocked]}>
       <View style={styles.badgeHeader}>
         <View style={styles.tierBadge}>
           <Text style={styles.tierText}>{achievement.tier.toUpperCase()}</Text>
         </View>
-        {isUnlocked && (
+        {achievement.isUnlocked ? (
           <View style={styles.checkmarkBadge}>
-            <Ionicons name="checkmark-circle" size={20} color={theme.colors.success} />
+            <Ionicons name="checkmark-circle" size={24} color={theme.colors.success} />
           </View>
-        )}
-        {!isUnlocked && (
+        ) : (
           <View style={styles.lockBadge}>
-            <Ionicons name="lock-closed" size={16} color={theme.colors.text.quaternary} />
+            <Ionicons name="lock-closed" size={20} color={theme.colors.text.tertiary} />
           </View>
         )}
       </View>
 
       <View style={styles.badgeIconContainer}>
         <LinearGradient
-          colors={isUnlocked ? getTierColor(achievement.tier) : ['#2a2a3a', '#1a1a2a']}
+          colors={tierColors[achievement.tier]}
           style={styles.badgeIconGradient}
         >
-          <Ionicons
-            name={achievement.icon as any}
-            size={28}
-            color={isUnlocked ? theme.colors.text.inverse : theme.colors.text.quaternary}
+          <Ionicons 
+            name={achievement.icon as any} 
+            size={28} 
+            color="#fff" 
           />
         </LinearGradient>
       </View>
 
-      <Text
-        style={[styles.badgeTitle, !isUnlocked && styles.badgeTitleLocked]}
-        numberOfLines={2}
-      >
+      <Text style={[styles.badgeTitle, !achievement.isUnlocked && styles.badgeTitleLocked]}>
         {achievement.title}
       </Text>
-
-      <Text
-        style={[styles.badgeDescription, !isUnlocked && styles.badgeDescriptionLocked]}
-        numberOfLines={2}
-      >
+      <Text style={[styles.badgeDescription, !achievement.isUnlocked && styles.badgeDescriptionLocked]}>
         {achievement.description}
       </Text>
 
-      {!isUnlocked && achievement.progress > 0 && (
+      {!achievement.isUnlocked && (
         <View style={styles.badgeProgressContainer}>
           <View style={styles.badgeProgressBackground}>
             <LinearGradient
               colors={theme.gradients.primary}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={[
-                styles.badgeProgressFill,
-                { width: `${achievement.progress}%` },
-              ]}
+              style={[styles.badgeProgressFill, { width: `${achievement.progress}%` }]}
             />
           </View>
-          <Text style={styles.badgeProgressText}>
-            {Math.round(achievement.progress)}%
-          </Text>
+          <Text style={styles.badgeProgressText}>{achievement.progress}%</Text>
         </View>
       )}
     </GlassCard>
@@ -376,6 +348,7 @@ function AchievementBadge({ achievement }: AchievementBadgeProps) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: theme.colors.background.primary,
   },
   gradient: {
     position: 'absolute',
@@ -393,11 +366,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing[4],
     paddingVertical: theme.spacing[3],
+    marginBottom: theme.spacing[2],
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: theme.borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -409,15 +382,15 @@ const styles = StyleSheet.create({
   },
   statsWrapper: {
     paddingHorizontal: theme.spacing[4],
-    marginBottom: theme.spacing[3],
+    marginBottom: theme.spacing[4],
   },
   statsCard: {
-    padding: theme.spacing[5],
+    padding: theme.spacing[4],
   },
   statsHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: theme.spacing[4],
   },
   statsMainInfo: {
