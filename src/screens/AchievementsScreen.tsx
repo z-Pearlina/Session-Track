@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,11 +12,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { 
-  useAchievements, 
-  useLoadAchievements, 
-  useInitializeDefaultAchievements,
-  useCheckAndUnlockAchievements 
+import {
+  useAchievements,
+  useLoadAchievements,
+  useCheckAndUnlockAchievements
 } from '../stores/useAchievementStore';
 import { useSessions } from '../stores/useSessionStore';
 import { useGoals } from '../stores/useGoalStore';
@@ -38,30 +37,16 @@ export default function AchievementsScreen() {
   const sessions = useSessions();
   const goals = useGoals();
   const categories = useCategories();
-  
+
   const loadAchievements = useLoadAchievements();
-  const initializeDefaultAchievements = useInitializeDefaultAchievements();
   const checkAndUnlockAchievements = useCheckAndUnlockAchievements();
-  
+
   const [refreshing, setRefreshing] = useState(false);
   const [filterCategory, setFilterCategory] = useState<FilterType>('all');
-  const hasInitialized = useRef(false);
 
   useEffect(() => {
-    const initialize = async () => {
-      if (!hasInitialized.current) {
-        hasInitialized.current = true;
-        await loadAchievements();
-        
-        if (achievements.length === 0) {
-          await initializeDefaultAchievements();
-          await loadAchievements();
-        }
-      }
-    };
-    
-    initialize();
-  }, [loadAchievements, initializeDefaultAchievements, achievements.length]);
+    loadAchievements();
+  }, []);
 
   useEffect(() => {
     if (achievements.length > 0 && sessions.length > 0) {

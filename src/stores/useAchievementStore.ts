@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Achievement, Session, Goal, Category } from '../types';
 import { StorageService } from '../services/StorageService';
 import { NotificationService } from '../services/NotificationService';
@@ -10,6 +11,7 @@ interface AchievementState {
   isLoading: boolean;
   error: string | null;
   isInitialized: boolean;
+  isInitializing: boolean;
 
   loadAchievements: () => Promise<void>;
   initializeDefaultAchievements: () => Promise<void>;
@@ -26,18 +28,25 @@ const useAchievementStoreBase = create<AchievementState>((set, get) => ({
   isLoading: false,
   error: null,
   isInitialized: false,
+  isInitializing: false,
 
   loadAchievements: async () => {
-    const { isInitialized, achievements: currentAchievements } = get();
-    
+    const { isInitialized, isInitializing, achievements: currentAchievements } = get();
+
     if (isInitialized && currentAchievements.length > 0) {
+      return;
+    }
+
+    if (isInitializing) {
+      logger.info('Already initializing, skipping load');
       return;
     }
 
     set({ isLoading: true, error: null });
     try {
+      await StorageService.deduplicateAchievements();
       const achievements = await StorageService.getAchievements();
-      
+
       if (achievements.length === 0) {
         await get().initializeDefaultAchievements();
       } else {
@@ -54,38 +63,43 @@ const useAchievementStoreBase = create<AchievementState>((set, get) => ({
   },
 
   initializeDefaultAchievements: async () => {
-    const { isInitialized } = get();
-    
-    if (isInitialized) {
+    const { isInitialized, isInitializing } = get();
+
+    if (isInitialized || isInitializing) {
+      logger.info('Already initialized or initializing, skipping');
       return;
     }
 
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, isInitializing: true, error: null });
     try {
+      await StorageService.deduplicateAchievements();
       const existingAchievements = await StorageService.getAchievements();
-      
+
       if (existingAchievements.length > 0) {
-        set({ achievements: existingAchievements, isLoading: false, isInitialized: true });
+        set({ achievements: existingAchievements, isLoading: false, isInitialized: true, isInitializing: false });
+        logger.info(`Found ${existingAchievements.length} existing achievements`);
         return;
       }
+
+      await StorageService.clearAchievements();
 
       const achievementsToSave = ACHIEVEMENT_DEFINITIONS.map(achievement => ({
         ...achievement,
       }));
 
-      await StorageService.clearAchievements();
+      await AsyncStorage.setItem(
+        '@flowtrix:achievements',
+        JSON.stringify(achievementsToSave)
+      );
 
-      for (const achievement of achievementsToSave) {
-        await StorageService.saveAchievement(achievement);
-      }
-
-      set({ achievements: achievementsToSave, isLoading: false, isInitialized: true });
-      logger.success('Default achievements initialized');
+      set({ achievements: achievementsToSave, isLoading: false, isInitialized: true, isInitializing: false });
+      logger.success(`Initialized ${achievementsToSave.length} default achievements`);
     } catch (error) {
       logger.error('Failed to initialize achievements', error);
       set({
         error: error instanceof Error ? error.message : 'Failed to initialize achievements',
-        isLoading: false
+        isLoading: false,
+        isInitializing: false
       });
     }
   },
