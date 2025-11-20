@@ -441,6 +441,13 @@ export class StorageService {
     }, "Delete achievement");
   }
 
+  static async clearAchievements(): Promise<void> {
+    return this.retryWithBackoff(async () => {
+      await AsyncStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify([]));
+      logger.success("All achievements cleared");
+    }, "Clear achievements");
+  }
+
   // --- Preference Methods ---
 
   static async getDashboardPreferences(): Promise<DashboardPreferences> {
@@ -590,10 +597,7 @@ export class StorageService {
       }
 
       if (data.templates) {
-        entries.push([
-          STORAGE_KEYS.TEMPLATES,
-          JSON.stringify(data.templates),
-        ]);
+        entries.push([STORAGE_KEYS.TEMPLATES, JSON.stringify(data.templates)]);
       }
 
       if (data.preferences) {
