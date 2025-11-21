@@ -7,6 +7,7 @@ export const STORAGE_KEYS = {
   NOTIFICATION_PREFERENCES: '@flowtrix:notification_preferences',
   STORAGE_VERSION: '@flowtrix:storage_version',
   BACKUP_PREFIX: '@flowtrix:backup:',
+  TEMPLATES: '@flowtrix:templates',
 } as const;
 
 export const APP_CONFIG = {

@@ -38,6 +38,8 @@ export interface Session {
   goalId?: string;
   tags?: string[];
   templateId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Category {
@@ -58,12 +60,14 @@ export interface Goal {
   currentProgress: number;
   period: GoalPeriod;
   categoryId?: string;
+  categoryName?: string;
   status: GoalStatus;
   startDate: string;
   endDate: string;
   createdAt: string;
   updatedAt?: string;
   completedAt?: string;
+  currentMinutes?: number;
 }
 
 export type GoalPeriod = "daily" | "weekly" | "monthly" | "custom";

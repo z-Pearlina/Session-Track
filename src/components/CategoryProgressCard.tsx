@@ -8,7 +8,7 @@ import { theme } from '../theme/theme';
 interface CategoryProgressCardProps {
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
-  progress: number; // 0-100
+  progress: number;
   color: string;
   gradientColors: string[];
 }
@@ -20,20 +20,22 @@ function CategoryProgressCardComponent({
   color,
   gradientColors 
 }: CategoryProgressCardProps) {
+  const colors = gradientColors.length >= 2 
+    ? [gradientColors[0], gradientColors[1], ...(gradientColors.slice(2) || [])] as [string, string, ...string[]]
+    : ['#38BDF8', '#67E8F9'] as [string, string];
+
   return (
     <GlassCard style={styles.card} withReflection>
       <View style={styles.content}>
-        {/* Icon container */}
         <View style={[styles.iconContainer, { backgroundColor: color + '33' }]}>
           <Ionicons name={icon} size={24} color={color} />
         </View>
 
-        {/* Title & Progress */}
         <View style={styles.progressSection}>
           <Text style={styles.title}>{title}</Text>
           <View style={styles.progressBar}>
             <LinearGradient
-              colors={gradientColors as [string, ...string[]]}
+              colors={colors}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[
@@ -49,7 +51,6 @@ function CategoryProgressCardComponent({
   );
 }
 
-// ✅ Custom comparison function for React.memo
 const areEqual = (
   prevProps: CategoryProgressCardProps,
   nextProps: CategoryProgressCardProps
@@ -64,7 +65,6 @@ const areEqual = (
   );
 };
 
-// ✅ Export memoized component
 export const CategoryProgressCard = memo(CategoryProgressCardComponent, areEqual);
 
 const styles = StyleSheet.create({

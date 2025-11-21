@@ -1,8 +1,9 @@
-import { NavigationProp } from '@react-navigation/native';
+import { NavigationProp, CommonActions } from '@react-navigation/native';
 import { RootStackParamList, MainTabParamList } from '../types';
 
 type RootNavigation = NavigationProp<RootStackParamList>;
 type TabNavigation = NavigationProp<MainTabParamList>;
+type CombinedNavigation = NavigationProp<RootStackParamList & MainTabParamList>;
 
 export const navigationHelpers = {
   navigateToScreen<T extends keyof RootStackParamList>(
@@ -11,66 +12,90 @@ export const navigationHelpers = {
     params?: RootStackParamList[T]
   ) {
     if (params) {
-      navigation.navigate(screen as any, params as any);
+      navigation.dispatch(
+        CommonActions.navigate({
+          name: screen,
+          params,
+        })
+      );
     } else {
-      navigation.navigate(screen as any);
+      navigation.dispatch(
+        CommonActions.navigate({
+          name: screen,
+        })
+      );
     }
   },
 
   navigateToEditSession(navigation: RootNavigation, sessionId: string) {
-    navigation.navigate('EditSession', { sessionId });
+    navigation.dispatch(
+      CommonActions.navigate({
+        name: 'EditSession',
+        params: { sessionId },
+      })
+    );
   },
 
   navigateToSessionDetails(navigation: RootNavigation, sessionId: string) {
-    navigation.navigate('SessionDetails', { sessionId });
+    navigation.dispatch(
+      CommonActions.navigate({
+        name: 'SessionDetails',
+        params: { sessionId },
+      })
+    );
   },
 
   navigateToGoalDetails(navigation: RootNavigation, goalId: string) {
-    navigation.navigate('GoalDetails', { goalId });
+    navigation.dispatch(
+      CommonActions.navigate({
+        name: 'GoalDetails',
+        params: { goalId },
+      })
+    );
   },
 
   navigateToCalendar(navigation: RootNavigation) {
-    navigation.navigate('Calendar');
+    navigation.dispatch(CommonActions.navigate({ name: 'Calendar' }));
   },
 
   navigateToCategoryManager(navigation: RootNavigation) {
-    navigation.navigate('CategoryManager');
+    navigation.dispatch(CommonActions.navigate({ name: 'CategoryManager' }));
   },
 
   navigateToCustomizeDashboard(navigation: RootNavigation) {
-    navigation.navigate('CustomizeDashboard');
+    navigation.dispatch(CommonActions.navigate({ name: 'CustomizeDashboard' }));
   },
 
   navigateToGoals(navigation: RootNavigation) {
-    navigation.navigate('Goals');
+    navigation.dispatch(CommonActions.navigate({ name: 'Goals' }));
   },
 
   navigateToCreateGoal(navigation: RootNavigation) {
-    navigation.navigate('CreateGoal');
+    navigation.dispatch(CommonActions.navigate({ name: 'CreateGoal' }));
   },
 
   navigateToAchievements(navigation: RootNavigation) {
-    navigation.navigate('Achievements');
+    navigation.dispatch(CommonActions.navigate({ name: 'Achievements' }));
   },
 
   navigateToNotificationSettings(navigation: RootNavigation) {
-    navigation.navigate('NotificationSettings');
+    navigation.dispatch(CommonActions.navigate({ name: 'NotificationSettings' }));
   },
 
-  navigateToStartSession(navigation: TabNavigation | RootNavigation) {
-    navigation.navigate('StartSession' as any);
+  navigateToStartSession(navigation: CombinedNavigation) {
+    navigation.dispatch(CommonActions.navigate({ name: 'StartSession' as any }));
   },
 
-  navigateToHome(navigation: TabNavigation | RootNavigation) {
-    navigation.navigate('Home' as any);
+  navigateToHome(navigation: CombinedNavigation) {
+    navigation.dispatch(CommonActions.navigate({ name: 'Home' as any }));
   },
 
-  navigateToStats(navigation: TabNavigation | RootNavigation) {
-    navigation.navigate('Stats' as any);
+  navigateToStats(navigation: CombinedNavigation) {
+    navigation.dispatch(CommonActions.navigate({ name: 'Stats' as any }));
   },
 
-  navigateToSettings(navigation: TabNavigation | RootNavigation) {
-    navigation.navigate('Settings' as any);
+  navigateToSettings(navigation: CombinedNavigation) {
+    navigation.dispatch(CommonActions.navigate({ name: 'Settings' as any }));
   },
 
   goBack(navigation: RootNavigation | TabNavigation) {
