@@ -1,204 +1,347 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Switch,
+  TouchableOpacity,
   Alert,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { NotificationService } from '../services/NotificationService';
-import { NotificationPreferences } from '../types';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme/theme';
-import { logger } from '../services/logger';
+import { typography, fonts } from '../utils/typography';
 import { GlassCard } from '../components/GlassCard';
+import {
+  useNotificationPreferences,
+  useLoadNotificationPreferences,
+  useUpdateNotificationPreference,
+  useSendTestNotification,
+  useNotificationsLoading,
+} from '../stores/useNotificationStore';
+import { NotificationService, NotificationPreferences } from '../services/NotificationService';
 
-const DEFAULT_PREFERENCES: NotificationPreferences = {
-  enabled: true,
-  dailyReminderEnabled: true,
-  dailyReminderTime: '20:00',
-  streakReminderEnabled: true,
-  goalReminderEnabled: true,
-  achievementNotificationsEnabled: true,
-  soundEnabled: true,
-  vibrationEnabled: true,
-};
-
-export default function NotificationSettingsScreen() {
+const NotificationSettingsScreen: React.FC = () => {
   const navigation = useNavigation();
-  const [preferences, setPreferences] = useState<NotificationPreferences>(DEFAULT_PREFERENCES);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const preferences = useNotificationPreferences();
+  const loadPreferences = useLoadNotificationPreferences();
+  const updatePreference = useUpdateNotificationPreference();
+  const sendTestNotification = useSendTestNotification();
+  const isLoading = useNotificationsLoading();
+
+  const [showTimePicker, setShowTimePicker] = React.useState(false);
+  const [tempTime, setTempTime] = React.useState(new Date());
 
   useEffect(() => {
     loadPreferences();
+    checkPermissions();
   }, []);
 
-  const loadPreferences = async () => {
-    try {
-      const saved = await NotificationService.getPreferences();
-      if (saved) {
-        setPreferences(saved);
-      }
-    } catch (error) {
-      logger.error('Failed to load notification preferences', error);
-    }
-  };
-
-  const savePreferences = async (newPreferences: NotificationPreferences) => {
-    setIsSaving(true);
-    try {
-      await NotificationService.savePreferences(newPreferences);
-      setPreferences(newPreferences);
-      logger.success('Notification preferences saved');
-    } catch (error) {
-      logger.error('Failed to save notification preferences', error);
-      Alert.alert('Error', 'Failed to save preferences. Please try again.');
-    } finally {
-      setIsSaving(false);
+  const checkPermissions = async () => {
+    const status = await NotificationService.getPermissionStatus();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Notification Permissions',
+        'Please enable notifications in your device settings to receive updates.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Enable',
+            onPress: async () => {
+              const granted = await NotificationService.requestPermissions();
+              if (!granted) {
+                Alert.alert('Permission Denied', 'You can enable notifications later in Settings.');
+              }
+            }
+          },
+        ]
+      );
     }
   };
 
   const handleToggle = async (key: keyof NotificationPreferences, value: boolean) => {
-    const newPreferences = { ...preferences, [key]: value };
-    await savePreferences(newPreferences);
+    if (!preferences) return;
+    await updatePreference(key, value);
   };
 
-  const handleTimeChange = async (event: any, selectedDate?: Date) => {
-    setShowTimePicker(Platform.OS === 'ios');
+  const handleTimeChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+    }
 
     if (selectedDate) {
+      setTempTime(selectedDate);
       const hours = selectedDate.getHours().toString().padStart(2, '0');
       const minutes = selectedDate.getMinutes().toString().padStart(2, '0');
       const timeString = `${hours}:${minutes}`;
-
-      const newPreferences = {
-        ...preferences,
-        dailyReminderTime: timeString,
-      };
-      await savePreferences(newPreferences);
+      updatePreference('dailyReminderTime', timeString);
     }
-  };
-
-  const parseTime = (timeString: string): Date => {
-    const [hours, minutes] = timeString.split(':').map(Number);
-    const date = new Date();
-    date.setHours(hours);
-    date.setMinutes(minutes);
-    return date;
-  };
-
-  const formatTime = (timeString: string): string => {
-    const date = parseTime(timeString);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
   };
 
   const handleTestNotification = async () => {
     try {
-      await NotificationService.testNotification();
-      Alert.alert(
-        'Test Notification Sent',
-        'Check your notification tray. If you don\'t see it, check your device notification settings.',
-        [{ text: 'OK' }]
-      );
+      await sendTestNotification();
+      Alert.alert('Success', 'Test notification sent!');
     } catch (error) {
-      Alert.alert(
-        'Test Failed',
-        'Could not send test notification. Please check permissions.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Error', 'Failed to send test notification');
     }
   };
 
-  const handleViewScheduled = async () => {
-    try {
-      const scheduled = await NotificationService.getAllScheduledNotifications();
-      if (scheduled.length === 0) {
-        Alert.alert('No Scheduled Notifications', 'There are no notifications currently scheduled.');
-      } else {
-        const list = scheduled.map((n, i) => `${i + 1}. ${n.content.title}`).join('\n');
-        Alert.alert(`Scheduled Notifications (${scheduled.length})`, list);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to get scheduled notifications');
-    }
-  };
+  const handleGoBack = () => navigation.goBack();
 
-  return (
-    <View style={styles.root}>
+  if (!preferences) {
+    return (
       <LinearGradient
         colors={theme.gradients.backgroundAnimated}
         style={styles.gradient}
-      />
+      >
+        <SafeAreaView style={styles.loadingContainer} edges={['top', 'bottom']}>
+          <Text style={styles.loadingText}>Loading preferences...</Text>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
 
+  return (
+    <LinearGradient
+      colors={theme.gradients.backgroundAnimated}
+      style={styles.gradient}
+    >
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+          <TouchableOpacity style={styles.headerButton} onPress={handleGoBack}>
+            <Ionicons name="arrow-back" size={24} color={theme.colors.text.secondary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Notifications</Text>
-          <View style={styles.backButton} />
+          <View style={styles.headerButton} />
         </View>
 
-        <ScrollView
+        <ScrollView 
           style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
+          {/* Info Card */}
+          <GlassCard style={styles.infoCard}>
+            <View style={styles.infoContent}>
+              <Ionicons name="information-circle" size={24} color={theme.colors.primary.cyan} />
+              <Text style={styles.infoText}>
+                Customize your notification preferences to stay updated on sessions, goals, and achievements.
+              </Text>
+            </View>
+          </GlassCard>
+
+          {/* Master Toggle */}
+          <Text style={styles.sectionTitle}>General</Text>
           <GlassCard style={styles.card}>
             <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <Ionicons name="notifications" size={24} color={theme.colors.primary.cyan} />
-                <View style={styles.settingText}>
-                  <Text style={styles.settingTitle}>Enable Notifications</Text>
-                  <Text style={styles.settingDescription}>
-                    Turn all notifications on or off
-                  </Text>
+              <View style={styles.settingLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: theme.colors.primary.cyan + '20' }]}>
+                  <Ionicons name="notifications" size={24} color={theme.colors.primary.cyan} />
+                </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Enable Notifications</Text>
+                  <Text style={styles.settingDescription}>Master switch for all notifications</Text>
                 </View>
               </View>
               <Switch
                 value={preferences.enabled}
                 onValueChange={(value) => handleToggle('enabled', value)}
                 trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
-                thumbColor="#FFFFFF"
+                thumbColor={theme.colors.background.primary}
                 ios_backgroundColor={theme.colors.glass.border}
               />
             </View>
           </GlassCard>
 
-          <Text style={styles.sectionTitle}>Daily Reminders</Text>
+          {/* Session Notifications */}
+          <Text style={styles.sectionTitle}>Sessions</Text>
           <GlassCard style={styles.card}>
             <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <Ionicons name="calendar-outline" size={24} color={theme.colors.primary.aqua} />
-                <View style={styles.settingText}>
-                  <Text style={styles.settingTitle}>Daily Reminder</Text>
-                  <Text style={styles.settingDescription}>
-                    Remind me to track my time
-                  </Text>
+              <View style={styles.settingLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: '#10B981' + '20' }]}>
+                  <Ionicons name="time" size={24} color="#10B981" />
+                </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Session Completion</Text>
+                  <Text style={styles.settingDescription}>Notify when you complete a session</Text>
+                </View>
+              </View>
+              <Switch
+                value={preferences.sessionCompletionEnabled}
+                onValueChange={(value) => handleToggle('sessionCompletionEnabled', value)}
+                disabled={!preferences.enabled}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
+                thumbColor={theme.colors.background.primary}
+                ios_backgroundColor={theme.colors.glass.border}
+              />
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: '#10B981' + '20' }]}>
+                  <Ionicons name="alarm" size={24} color="#10B981" />
+                </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Session Reminders</Text>
+                  <Text style={styles.settingDescription}>Remind you to track sessions</Text>
+                </View>
+              </View>
+              <Switch
+                value={preferences.sessionReminderEnabled}
+                onValueChange={(value) => handleToggle('sessionReminderEnabled', value)}
+                disabled={!preferences.enabled}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
+                thumbColor={theme.colors.background.primary}
+                ios_backgroundColor={theme.colors.glass.border}
+              />
+            </View>
+          </GlassCard>
+
+          {/* Goal Notifications */}
+          <Text style={styles.sectionTitle}>Goals</Text>
+          <GlassCard style={styles.card}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: '#F59E0B' + '20' }]}>
+                  <Ionicons name="flag" size={24} color="#F59E0B" />
+                </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Goal Completion</Text>
+                  <Text style={styles.settingDescription}>Notify when you complete a goal</Text>
+                </View>
+              </View>
+              <Switch
+                value={preferences.goalCompletionEnabled}
+                onValueChange={(value) => handleToggle('goalCompletionEnabled', value)}
+                disabled={!preferences.enabled}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
+                thumbColor={theme.colors.background.primary}
+                ios_backgroundColor={theme.colors.glass.border}
+              />
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: '#F59E0B' + '20' }]}>
+                  <Ionicons name="trending-up" size={24} color="#F59E0B" />
+                </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Goal Progress</Text>
+                  <Text style={styles.settingDescription}>Notify at 80% and 90% progress</Text>
+                </View>
+              </View>
+              <Switch
+                value={preferences.goalProgressEnabled}
+                onValueChange={(value) => handleToggle('goalProgressEnabled', value)}
+                disabled={!preferences.enabled}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
+                thumbColor={theme.colors.background.primary}
+                ios_backgroundColor={theme.colors.glass.border}
+              />
+            </View>
+          </GlassCard>
+
+          {/* Streak Notifications */}
+          <Text style={styles.sectionTitle}>Streaks</Text>
+          <GlassCard style={styles.card}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: '#EF4444' + '20' }]}>
+                  <Ionicons name="flame" size={24} color="#EF4444" />
+                </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Streak Reminders</Text>
+                  <Text style={styles.settingDescription}>Remind you to maintain your streak</Text>
+                </View>
+              </View>
+              <Switch
+                value={preferences.streakReminderEnabled}
+                onValueChange={(value) => handleToggle('streakReminderEnabled', value)}
+                disabled={!preferences.enabled}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
+                thumbColor={theme.colors.background.primary}
+                ios_backgroundColor={theme.colors.glass.border}
+              />
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: '#EF4444' + '20' }]}>
+                  <Ionicons name="trophy" size={24} color="#EF4444" />
+                </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Streak Milestones</Text>
+                  <Text style={styles.settingDescription}>Celebrate at 3, 7, 14, 30 days</Text>
+                </View>
+              </View>
+              <Switch
+                value={preferences.streakMilestoneEnabled}
+                onValueChange={(value) => handleToggle('streakMilestoneEnabled', value)}
+                disabled={!preferences.enabled}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
+                thumbColor={theme.colors.background.primary}
+                ios_backgroundColor={theme.colors.glass.border}
+              />
+            </View>
+          </GlassCard>
+
+          {/* Achievement Notifications */}
+          <Text style={styles.sectionTitle}>Achievements</Text>
+          <GlassCard style={styles.card}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: '#9B59B6' + '20' }]}>
+                  <Ionicons name="trophy" size={24} color="#9B59B6" />
+                </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Achievement Unlocks</Text>
+                  <Text style={styles.settingDescription}>Notify when you unlock achievements</Text>
+                </View>
+              </View>
+              <Switch
+                value={preferences.achievementNotificationsEnabled}
+                onValueChange={(value) => handleToggle('achievementNotificationsEnabled', value)}
+                disabled={!preferences.enabled}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
+                thumbColor={theme.colors.background.primary}
+                ios_backgroundColor={theme.colors.glass.border}
+              />
+            </View>
+          </GlassCard>
+
+          {/* Daily Reminder */}
+          <Text style={styles.sectionTitle}>Daily Reminder</Text>
+          <GlassCard style={styles.card}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: '#FFD700' + '20' }]}>
+                  <Ionicons name="alarm" size={24} color="#FFD700" />
+                </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Enable Daily Reminder</Text>
+                  <Text style={styles.settingDescription}>Daily reminder to track your sessions</Text>
                 </View>
               </View>
               <Switch
                 value={preferences.dailyReminderEnabled}
                 onValueChange={(value) => handleToggle('dailyReminderEnabled', value)}
-                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={theme.colors.glass.border}
                 disabled={!preferences.enabled}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
+                thumbColor={theme.colors.background.primary}
+                ios_backgroundColor={theme.colors.glass.border}
               />
             </View>
 
@@ -206,18 +349,18 @@ export default function NotificationSettingsScreen() {
               <>
                 <View style={styles.divider} />
                 <TouchableOpacity
-                  style={styles.settingRow}
+                  style={styles.timePickerButton}
                   onPress={() => setShowTimePicker(true)}
                   disabled={!preferences.enabled}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.settingInfo}>
-                    <Ionicons name="time-outline" size={24} color={theme.colors.primary.mint} />
-                    <View style={styles.settingText}>
-                      <Text style={styles.settingTitle}>Reminder Time</Text>
-                      <Text style={styles.settingValue}>
-                        {formatTime(preferences.dailyReminderTime)}
-                      </Text>
+                  <View style={styles.settingLeft}>
+                    <View style={[styles.iconContainer, { backgroundColor: '#FFD700' + '20' }]}>
+                      <Ionicons name="time-outline" size={24} color="#FFD700" />
+                    </View>
+                    <View style={styles.settingInfo}>
+                      <Text style={styles.settingLabel}>Reminder Time</Text>
+                      <Text style={styles.timeText}>{preferences.dailyReminderTime}</Text>
                     </View>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
@@ -226,284 +369,222 @@ export default function NotificationSettingsScreen() {
             )}
           </GlassCard>
 
-          <Text style={styles.sectionTitle}>Activity Reminders</Text>
+          {showTimePicker && (
+            <DateTimePicker
+              value={tempTime}
+              mode="time"
+              is24Hour={true}
+              display="default"
+              onChange={handleTimeChange}
+            />
+          )}
+
+          {/* Sound & Vibration */}
+          <Text style={styles.sectionTitle}>Sound & Vibration</Text>
           <GlassCard style={styles.card}>
             <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <Ionicons name="flame" size={24} color="#FF6B35" />
-                <View style={styles.settingText}>
-                  <Text style={styles.settingTitle}>Streak Reminder</Text>
-                  <Text style={styles.settingDescription}>
-                    Remind me to keep my streak alive
-                  </Text>
+              <View style={styles.settingLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: theme.colors.text.tertiary + '20' }]}>
+                  <Ionicons name="volume-high" size={24} color={theme.colors.text.tertiary} />
                 </View>
-              </View>
-              <Switch
-                value={preferences.streakReminderEnabled}
-                onValueChange={(value) => handleToggle('streakReminderEnabled', value)}
-                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={theme.colors.glass.border}
-                disabled={!preferences.enabled}
-              />
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <Ionicons name="trophy" size={24} color="#FFD700" />
-                <View style={styles.settingText}>
-                  <Text style={styles.settingTitle}>Goal Reminder</Text>
-                  <Text style={styles.settingDescription}>
-                    Remind me when I'm close to a goal
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                value={preferences.goalReminderEnabled}
-                onValueChange={(value) => handleToggle('goalReminderEnabled', value)}
-                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={theme.colors.glass.border}
-                disabled={!preferences.enabled}
-              />
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <Ionicons name="medal" size={24} color="#9B59B6" />
-                <View style={styles.settingText}>
-                  <Text style={styles.settingTitle}>Achievements</Text>
-                  <Text style={styles.settingDescription}>
-                    Notify me when I unlock achievements
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                value={preferences.achievementNotificationsEnabled}
-                onValueChange={(value) => handleToggle('achievementNotificationsEnabled', value)}
-                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={theme.colors.glass.border}
-                disabled={!preferences.enabled}
-              />
-            </View>
-          </GlassCard>
-
-          <Text style={styles.sectionTitle}>Sound & Haptics</Text>
-          <GlassCard style={styles.card}>
-            <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <Ionicons name="volume-high" size={24} color={theme.colors.primary.sage} />
-                <View style={styles.settingText}>
-                  <Text style={styles.settingTitle}>Sound</Text>
-                  <Text style={styles.settingDescription}>
-                    Play sound with notifications
-                  </Text>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Sound</Text>
+                  <Text style={styles.settingDescription}>Play sound with notifications</Text>
                 </View>
               </View>
               <Switch
                 value={preferences.soundEnabled}
                 onValueChange={(value) => handleToggle('soundEnabled', value)}
-                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={theme.colors.glass.border}
                 disabled={!preferences.enabled}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
+                thumbColor={theme.colors.background.primary}
+                ios_backgroundColor={theme.colors.glass.border}
               />
             </View>
 
             <View style={styles.divider} />
 
             <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <Ionicons name="phone-portrait-outline" size={24} color={theme.colors.primary.teal} />
-                <View style={styles.settingText}>
-                  <Text style={styles.settingTitle}>Vibration</Text>
-                  <Text style={styles.settingDescription}>
-                    Vibrate with notifications
-                  </Text>
+              <View style={styles.settingLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: theme.colors.text.tertiary + '20' }]}>
+                  <Ionicons name="phone-portrait" size={24} color={theme.colors.text.tertiary} />
+                </View>
+                <View style={styles.settingInfo}>
+                  <Text style={styles.settingLabel}>Vibration</Text>
+                  <Text style={styles.settingDescription}>Vibrate device with notifications</Text>
                 </View>
               </View>
               <Switch
                 value={preferences.vibrationEnabled}
                 onValueChange={(value) => handleToggle('vibrationEnabled', value)}
-                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor={theme.colors.glass.border}
                 disabled={!preferences.enabled}
+                trackColor={{ false: theme.colors.glass.border, true: theme.colors.primary.cyan }}
+                thumbColor={theme.colors.background.primary}
+                ios_backgroundColor={theme.colors.glass.border}
               />
             </View>
           </GlassCard>
 
-          <Text style={styles.sectionTitle}>Testing</Text>
-          <GlassCard style={styles.card}>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={handleTestNotification}
-              activeOpacity={0.7}
+          {/* Test Notification */}
+          <TouchableOpacity
+            style={[styles.testButton, !preferences.enabled && styles.testButtonDisabled]}
+            onPress={handleTestNotification}
+            disabled={!preferences.enabled}
+            activeOpacity={0.7}
+          >
+            <LinearGradient
+              colors={preferences.enabled 
+                ? [theme.colors.primary.cyan, theme.colors.primary.blue] 
+                : [theme.colors.glass.border, theme.colors.glass.border]
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.testButtonGradient}
             >
-              <Ionicons name="send" size={20} color={theme.colors.primary.cyan} />
-              <Text style={styles.actionButtonText}>Send Test Notification</Text>
-              <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
-            </TouchableOpacity>
+              <Ionicons name="flask" size={20} color="#FFFFFF" />
+              <Text style={styles.testButtonText}>Send Test Notification</Text>
+            </LinearGradient>
+          </TouchableOpacity>
 
-            <View style={styles.divider} />
-
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={handleViewScheduled}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="list" size={20} color={theme.colors.primary.aqua} />
-              <Text style={styles.actionButtonText}>View Scheduled</Text>
-              <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
-            </TouchableOpacity>
-          </GlassCard>
-
-          <GlassCard style={styles.infoCard}>
-            <View style={styles.infoContent}>
-              <Ionicons name="information-circle-outline" size={20} color={theme.colors.primary.cyan} />
-              <Text style={styles.infoNoteText}>
-                Changes are saved automatically. Make sure notifications are enabled in your device settings.
-              </Text>
-            </View>
-          </GlassCard>
-
-          <View style={{ height: 40 }} />
+          <View style={styles.bottomSpacer} />
         </ScrollView>
-
-        {showTimePicker && (
-          <DateTimePicker
-            value={parseTime(preferences.dailyReminderTime)}
-            mode="time"
-            is24Hour={false}
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={handleTimeChange}
-          />
-        )}
       </SafeAreaView>
-    </View>
+    </LinearGradient>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
+  gradient: { 
+    flex: 1 
   },
-  gradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
+  container: { 
+    flex: 1 
   },
-  container: {
+  loadingContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    ...typography.body,
+    color: theme.colors.text.secondary,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing[4],
-    paddingVertical: theme.spacing[3],
+    paddingVertical: theme.spacing[2],
   },
-  backButton: {
+  headerButton: {
     width: 40,
     height: 40,
-    borderRadius: theme.borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: theme.fontSize['3xl'],
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h3,
     color: theme.colors.text.primary,
   },
   scrollView: {
     flex: 1,
   },
-  contentContainer: {
+  content: {
+    paddingHorizontal: theme.spacing[4],
+    paddingTop: theme.spacing[2],
+  },
+  infoCard: {
+    marginBottom: theme.spacing[6],
+  },
+  infoContent: {
+    flexDirection: 'row',
     padding: theme.spacing[4],
-    paddingBottom: theme.spacing[8],
+    gap: theme.spacing[3],
+  },
+  infoText: {
+    flex: 1,
+    ...typography.bodySmall,
+    color: theme.colors.text.secondary,
   },
   sectionTitle: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.bold,
-    color: theme.colors.text.secondary,
-    marginTop: theme.spacing[6],
+    ...typography.h4,
+    color: theme.colors.text.primary,
     marginBottom: theme.spacing[3],
-    marginLeft: theme.spacing[1],
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    marginTop: theme.spacing[2],
   },
   card: {
-    padding: theme.spacing[4],
-    marginBottom: theme.spacing[3],
+    marginBottom: theme.spacing[4],
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: theme.spacing[1],
+    padding: theme.spacing[4],
   },
-  settingInfo: {
+  settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
     gap: theme.spacing[3],
-  },
-  settingText: {
     flex: 1,
   },
-  settingTitle: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.semibold,
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: theme.borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingInfo: {
+    flex: 1,
+  },
+  settingLabel: {
+    ...typography.bodyMedium,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[0.5],
   },
   settingDescription: {
-    fontSize: theme.fontSize.sm,
+    ...typography.caption,
     color: theme.colors.text.secondary,
-    lineHeight: 18,
-  },
-  settingValue: {
-    fontSize: theme.fontSize.base,
-    color: theme.colors.primary.cyan,
-    fontWeight: theme.fontWeight.semibold,
   },
   divider: {
     height: 1,
     backgroundColor: theme.colors.glass.border,
-    marginVertical: theme.spacing[3],
+    marginHorizontal: theme.spacing[4],
   },
-  actionButton: {
+  timePickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing[3],
-    paddingVertical: theme.spacing[2],
-  },
-  actionButtonText: {
-    flex: 1,
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.semibold,
-    color: theme.colors.text.primary,
-  },
-  infoCard: {
-    marginTop: theme.spacing[6],
-  },
-  infoContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: theme.spacing[3],
+    justifyContent: 'space-between',
     padding: theme.spacing[4],
   },
-  infoNoteText: {
-    flex: 1,
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.text.secondary,
-    lineHeight: 20,
+  timeText: {
+    ...typography.bodyMedium,
+    color: theme.colors.primary.cyan,
+    fontFamily: fonts.bold,
+  },
+  testButton: {
+    marginTop: theme.spacing[4],
+    marginBottom: theme.spacing[2],
+    borderRadius: theme.borderRadius.xl,
+    overflow: 'hidden',
+  },
+  testButtonDisabled: {
+    opacity: 0.5,
+  },
+  testButtonGradient: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing[4],
+    gap: theme.spacing[2],
+  },
+  testButtonText: {
+    ...typography.button,
+    color: '#FFFFFF',
+  },
+  bottomSpacer: {
+    height: 100,
   },
 });
+
+export default NotificationSettingsScreen;

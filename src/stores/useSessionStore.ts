@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { Session, SessionFilter } from '../types';
 import { StorageService } from '../services/StorageService';
+import { AchievementService } from '../services/AchievementService';
+import { logger } from '../services/logger';
 
 interface SessionState {
   sessions: Session[];
@@ -39,7 +41,10 @@ const useSessionStoreBase = create<SessionState>((set, get) => ({
         filteredSessions,
         isLoading: false 
       });
+      
+      logger.info(`Loaded ${sessions.length} sessions`);
     } catch (error) {
+      logger.error('Failed to load sessions', error);
       set({ 
         error: error instanceof Error ? error.message : 'Failed to load sessions',
         isLoading: false 
@@ -61,7 +66,16 @@ const useSessionStoreBase = create<SessionState>((set, get) => ({
         filteredSessions,
         isLoading: false 
       });
+      
+      logger.success(`Session added: ${session.title}`);
+      
+      try {
+        await AchievementService.checkSessionAchievements(session, newSessions);
+      } catch (achievementError) {
+        logger.error('Achievement check failed (non-critical)', achievementError);
+      }
     } catch (error) {
+      logger.error('Failed to save session', error);
       set({ 
         error: error instanceof Error ? error.message : 'Failed to save session',
         isLoading: false 
@@ -88,7 +102,10 @@ const useSessionStoreBase = create<SessionState>((set, get) => ({
         filteredSessions,
         isLoading: false
       });
+      
+      logger.success(`Session updated: ${sessionId}`);
     } catch (error) {
+      logger.error('Failed to update session', error);
       set({ 
         error: error instanceof Error ? error.message : 'Failed to update session',
         isLoading: false 
@@ -111,7 +128,10 @@ const useSessionStoreBase = create<SessionState>((set, get) => ({
         filteredSessions,
         isLoading: false
       });
+      
+      logger.success(`Session deleted: ${sessionId}`);
     } catch (error) {
+      logger.error('Failed to delete session', error);
       set({ 
         error: error instanceof Error ? error.message : 'Failed to delete session',
         isLoading: false 

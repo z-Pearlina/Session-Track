@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, TransitionPresets, CardStyleInterpolators, StackCardInterpolationProps } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { theme } from '../theme/theme';
 import { MainTabParamList, RootStackParamList } from '../types';
+import { useSystemUI, getSafeBottomPadding } from '../utils/systemUI';
 
 import HomeScreen from '../screens/HomeScreen';
 import StartSessionScreen from '../screens/StartSessionScreen';
@@ -27,8 +29,40 @@ import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
+function BlurredTabBarBackground() {
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <BlurView
+        intensity={80}
+        tint="dark"
+        style={StyleSheet.absoluteFill}
+      />
+      <View 
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: 'rgba(30, 49, 59, 0.6)',
+          }
+        ]} 
+      />
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: 'rgba(103, 232, 249, 0.02)',
+          }
+        ]}
+      />
+    </View>
+  );
+}
+
 function MainTabs() {
   const insets = useSafeAreaInsets();
+  
+  useSystemUI();
+  
+  const bottomPadding = getSafeBottomPadding(insets.bottom);
   
   return (
     <Tab.Navigator
@@ -36,24 +70,26 @@ function MainTabs() {
         headerShown: false,
         tabBarStyle: {
           position: 'absolute',
-          bottom: insets.bottom > 0 ? insets.bottom : 16,
+          bottom: bottomPadding,
           left: 16,
           right: 16,
           height: 72,
           borderRadius: theme.borderRadius['3xl'],
-          backgroundColor: theme.colors.glass.background,
+          backgroundColor: 'transparent',
           borderTopWidth: 0,
           borderWidth: 1.5,
           borderColor: theme.colors.glass.border,
           paddingBottom: 12,
           paddingTop: 12,
           paddingHorizontal: 8,
-          elevation: 12,
-          shadowColor: '#000',
+          elevation: 0,
+          shadowColor: theme.colors.primary.cyan,
           shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.4,
-          shadowRadius: 12,
+          shadowOpacity: 0.3,
+          shadowRadius: 16,
+          overflow: 'hidden',
         },
+        tabBarBackground: () => <BlurredTabBarBackground />,
         tabBarActiveTintColor: theme.colors.primary.cyan,
         tabBarInactiveTintColor: theme.colors.text.quaternary,
         tabBarShowLabel: false,
@@ -68,15 +104,8 @@ function MainTabs() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({ color, focused }) => (
+          tabBarIcon: ({ color }) => (
             <View style={styles.iconContainer}>
-              {focused && (
-                <View style={[styles.activeGlow, { 
-                  borderColor: color, 
-                  backgroundColor: color + '15',
-                  ...theme.shadows.glowCyan 
-                }]} />
-              )}
               <Ionicons name="home" size={28} color={color} style={styles.icon} />
             </View>
           ),
@@ -87,15 +116,8 @@ function MainTabs() {
         component={StartSessionScreen}
         options={{
           title: 'Track',
-          tabBarIcon: ({ color, focused }) => (
+          tabBarIcon: ({ color }) => (
             <View style={styles.iconContainer}>
-              {focused && (
-                <View style={[styles.activeGlow, { 
-                  borderColor: color, 
-                  backgroundColor: color + '15',
-                  ...theme.shadows.glowCyan 
-                }]} />
-              )}
               <Ionicons name="list" size={28} color={color} style={styles.icon} />
             </View>
           ),
@@ -106,15 +128,8 @@ function MainTabs() {
         component={StatsScreen}
         options={{
           title: 'Stats',
-          tabBarIcon: ({ color, focused }) => (
+          tabBarIcon: ({ color }) => (
             <View style={styles.iconContainer}>
-              {focused && (
-                <View style={[styles.activeGlow, { 
-                  borderColor: color, 
-                  backgroundColor: color + '15',
-                  ...theme.shadows.glowCyan 
-                }]} />
-              )}
               <Ionicons name="stats-chart" size={28} color={color} style={styles.icon} />
             </View>
           ),
@@ -125,15 +140,8 @@ function MainTabs() {
         component={SettingsScreen}
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, focused }) => (
+          tabBarIcon: ({ color }) => (
             <View style={styles.iconContainer}>
-              {focused && (
-                <View style={[styles.activeGlow, { 
-                  borderColor: color, 
-                  backgroundColor: color + '15',
-                  ...theme.shadows.glowCyan 
-                }]} />
-              )}
               <Ionicons name="person" size={28} color={color} style={styles.icon} />
             </View>
           ),
@@ -143,7 +151,6 @@ function MainTabs() {
   );
 }
 
-// Standard iOS slide
 const smoothIOSSlide = {
   gestureEnabled: true,
   gestureDirection: 'horizontal' as const,
@@ -174,7 +181,6 @@ const smoothIOSSlide = {
   cardStyleInterpolator: CardStyleInterpolators.forHorizontalIOS,
 };
 
-// 🎨 SPECIAL: Modal (Swipe down to dismiss)
 const modalSwipeDown = {
   gestureEnabled: true,
   gestureDirection: 'vertical' as const,
@@ -234,14 +240,12 @@ export default function AppNavigator() {
           cardStyle: { backgroundColor: 'transparent' },
         }}
       >
-        {/* Main Tabs */}
         <Stack.Screen
           name="MainTabs"
           component={MainTabs}
           options={{ headerShown: false }}
         />
 
-        {/* Edit Session - Standard iOS slide */}
         <Stack.Screen
           name="EditSession"
           component={EditSessionScreen}
@@ -252,7 +256,6 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* Session Details - Standard iOS slide */}
         <Stack.Screen
           name="SessionDetails"
           component={SessionDetailsScreen}
@@ -263,7 +266,6 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* Calendar - Standard iOS slide */}
         <Stack.Screen
           name="Calendar"
           component={CalendarScreen}
@@ -274,7 +276,6 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* Category Manager - Modal swipe down */}
         <Stack.Screen
           name="CategoryManager"
           component={CategoryManagerScreen}
@@ -285,7 +286,6 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* Customize Dashboard - Modal swipe down */}
         <Stack.Screen
           name="CustomizeDashboard"
           component={CustomizeDashboardScreen}
@@ -296,7 +296,6 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* Goals - Standard iOS slide */}
         <Stack.Screen
           name="Goals"
           component={GoalsScreen}
@@ -307,7 +306,6 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* Create Goal - Modal swipe down */}
         <Stack.Screen
           name="CreateGoal"
           component={CreateGoalScreen}
@@ -318,7 +316,6 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* Goal Details - Standard iOS slide */}
         <Stack.Screen
           name="GoalDetails"
           component={GoalDetailsScreen}
@@ -329,7 +326,6 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* Achievements - Standard iOS slide */}
         <Stack.Screen
           name="Achievements"
           component={AchievementsScreen}
@@ -340,7 +336,6 @@ export default function AppNavigator() {
           }}
         />
 
-        {/* Notification Settings - Modal swipe down */}
         <Stack.Screen
           name="NotificationSettings"
           component={NotificationSettingsScreen}
@@ -365,12 +360,5 @@ const styles = StyleSheet.create({
   },
   icon: {
     zIndex: 10,
-  },
-  activeGlow: {
-    position: 'absolute',
-    width: 52,
-    height: 52,
-    borderRadius: theme.borderRadius.full,
-    borderWidth: 2,
   },
 });

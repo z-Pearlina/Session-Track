@@ -16,6 +16,7 @@ import { theme } from '../theme/theme';
 import { useSessions } from '../stores/useSessionStore';
 import { useCategories } from '../stores/useCategoryStore';
 import { GlassCard } from '../components/GlassCard';
+import { typography, fonts } from '../utils/typography';
 
 type TimeRange = 'week' | 'month' | 'year';
 
@@ -660,15 +661,13 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing[4],
   },
   headerTitle: {
-    fontSize: theme.fontSize['2xl'],
-    fontWeight: theme.fontWeight.black,
+    ...typography.h2,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[0.5],
   },
   headerSubtitle: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.tertiary,
-    fontWeight: theme.fontWeight.medium,
   },
   calendarButton: {
     width: 48,
@@ -703,8 +702,8 @@ const styles = StyleSheet.create({
     ...theme.shadows.glowCyan,
   },
   timeRangeButtonText: {
+    fontFamily: fonts.bold,
     fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.tertiary,
   },
   timeRangeButtonTextActive: {
@@ -724,24 +723,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   heroLabel: {
-    fontSize: theme.fontSize.sm,
+    ...typography.caption,
     color: theme.colors.text.tertiary,
-    fontWeight: theme.fontWeight.medium,
     marginBottom: theme.spacing[2],
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   heroValue: {
+    fontFamily: fonts.bold,
     fontSize: 42,
-    fontWeight: theme.fontWeight.black,
     color: theme.colors.text.primary,
     letterSpacing: -1.5,
     marginBottom: theme.spacing[1],
   },
   heroSubtext: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.secondary,
-    fontWeight: theme.fontWeight.medium,
   },
   heroStreakBadge: {
     flexDirection: 'row',
@@ -758,14 +755,13 @@ const styles = StyleSheet.create({
     fontSize: 28,
   },
   heroStreakNumber: {
+    fontFamily: fonts.bold,
     fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.black,
     color: '#FFB74D',
   },
   heroStreakLabel: {
-    fontSize: theme.fontSize.xs,
+    ...typography.caption,
     color: '#FFB74D',
-    fontWeight: theme.fontWeight.semibold,
   },
   statsRow: {
     flexDirection: 'row',
@@ -785,14 +781,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   statValue: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.black,
+    ...typography.h3,
     color: theme.colors.text.primary,
   },
   statLabel: {
-    fontSize: theme.fontSize.xs,
+    ...typography.caption,
     color: theme.colors.text.tertiary,
-    fontWeight: theme.fontWeight.medium,
   },
   statDivider: {
     width: 1,
@@ -808,12 +802,11 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.glass.border,
   },
   growthText: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.secondary,
-    fontWeight: theme.fontWeight.medium,
   },
   growthPercent: {
-    fontWeight: theme.fontWeight.bold,
+    fontFamily: fonts.bold,
   },
   chartCard: {
     padding: theme.spacing[5],
@@ -823,17 +816,15 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[4],
   },
   chartTitle: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.semibold,
+    ...typography.bodyMedium,
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing[1],
   },
   chartSubtitle: {
-    fontSize: theme.fontSize.xs,
+    ...typography.caption,
     color: theme.colors.text.quaternary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    fontWeight: theme.fontWeight.semibold,
   },
   chartContainer: {
     height: CHART_HEIGHT,
@@ -865,9 +856,9 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   barLabel: {
+    fontFamily: fonts.bold,
     fontSize: 10,
     color: theme.colors.text.quaternary,
-    fontWeight: theme.fontWeight.bold,
     marginTop: theme.spacing[1],
     textAlign: 'center',
     paddingBottom: 4,
@@ -883,9 +874,9 @@ const styles = StyleSheet.create({
     height: 20,
   },
   lineChartLabel: {
+    fontFamily: fonts.bold,
     fontSize: 10,
     color: theme.colors.text.quaternary,
-    fontWeight: theme.fontWeight.bold,
     textAlign: 'center',
   },
   streakCard: {
@@ -921,13 +912,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   streakTitle: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.black,
+    ...typography.h3,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[1],
   },
   streakDescription: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.tertiary,
   },
   streakStats: {
@@ -943,18 +933,16 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.glass.border,
   },
   streakStatValue: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.bodyMedium,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[1],
   },
   streakStatLabel: {
-    fontSize: theme.fontSize.xs,
+    ...typography.caption,
     color: theme.colors.text.quaternary,
   },
   sectionTitle: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.black,
+    ...typography.h3,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[3],
   },
@@ -998,19 +986,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   categoryName: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.bodyMedium,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[0.5],
   },
   categoryMeta: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.secondary,
-    fontWeight: theme.fontWeight.semibold,
+    fontFamily: fonts.semibold,
   },
   categoryMetaLight: {
     color: theme.colors.text.tertiary,
-    fontWeight: theme.fontWeight.medium,
+    fontFamily: fonts.medium,
   },
   categoryPercentageBadge: {
     backgroundColor: theme.colors.glass.medium,
@@ -1019,8 +1006,8 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.lg,
   },
   categoryPercentageText: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.bodySmall,
+    fontFamily: fonts.bold,
     color: theme.colors.text.primary,
   },
   progressBarContainer: {
@@ -1041,17 +1028,15 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[4],
   },
   emptyTitle: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h3,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[2],
   },
   emptySubtitle: {
-    fontSize: theme.fontSize.sm,
+    ...typography.body,
     color: theme.colors.text.tertiary,
     textAlign: 'center',
     marginBottom: theme.spacing[6],
-    lineHeight: 20,
   },
   emptyButton: {
     borderRadius: theme.borderRadius.full,
@@ -1065,8 +1050,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing[6],
   },
   emptyButtonText: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.buttonLarge,
     color: '#fff',
   },
 });

@@ -24,6 +24,7 @@ import { useCategories } from '../stores/useCategoryStore';
 import { Achievement, AchievementTier, AchievementCategory } from '../types';
 import { theme } from '../theme/theme';
 import { GlassCard } from '../components/GlassCard';
+import { typography, fonts } from '../utils/typography';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - (theme.spacing[4] * 3)) / 2;
@@ -375,10 +376,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: theme.fontSize['2xl'],
-    fontWeight: theme.fontWeight.black,
+    ...typography.h2,
     color: theme.colors.text.primary,
-    letterSpacing: 0.5,
   },
   statsWrapper: {
     paddingHorizontal: theme.spacing[4],
@@ -415,15 +414,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statsMainValue: {
-    fontSize: theme.fontSize['2xl'],
-    fontWeight: theme.fontWeight.black,
+    ...typography.h2,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[0.5],
   },
   statsMainLabel: {
-    fontSize: theme.fontSize.xs,
+    ...typography.caption,
     color: theme.colors.text.secondary,
-    fontWeight: theme.fontWeight.semibold,
   },
   percentageBadge: {
     backgroundColor: theme.colors.primary.cyan + '20',
@@ -432,8 +429,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.xl,
   },
   percentageText: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.black,
+    ...typography.h3,
     color: theme.colors.primary.cyan,
   },
   progressBarContainer: {
@@ -453,9 +449,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   recentLabel: {
-    fontSize: theme.fontSize.xs,
+    ...typography.caption,
     color: theme.colors.text.tertiary,
-    fontWeight: theme.fontWeight.semibold,
   },
   recentBadges: {
     flexDirection: 'row',
@@ -493,8 +488,8 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing[0.5],
   },
   filterChipText: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.bodySmall,
+    fontFamily: fonts.bold,
     color: theme.colors.text.secondary,
   },
   filterChipTextActive: {
@@ -517,14 +512,12 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing[6],
   },
   sectionTitle: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.black,
+    ...typography.h3,
     color: theme.colors.text.primary,
-    letterSpacing: 0.3,
   },
   sectionCount: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.caption,
+    fontFamily: fonts.bold,
     color: theme.colors.text.tertiary,
     backgroundColor: theme.colors.glass.border,
     paddingHorizontal: theme.spacing[2],
@@ -557,10 +550,9 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
   },
   tierText: {
+    ...typography.caption,
     fontSize: 9,
-    fontWeight: theme.fontWeight.black,
     color: theme.colors.text.tertiary,
-    letterSpacing: 0.5,
   },
   checkmarkBadge: {
     width: 24,
@@ -586,8 +578,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeTitle: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.bodyMedium,
     color: theme.colors.text.primary,
     textAlign: 'center',
     marginBottom: theme.spacing[2],
@@ -597,10 +588,9 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
   },
   badgeDescription: {
-    fontSize: theme.fontSize.xs,
+    ...typography.caption,
     color: theme.colors.text.secondary,
     textAlign: 'center',
-    lineHeight: 16,
     minHeight: 32,
   },
   badgeDescriptionLocked: {
@@ -621,10 +611,9 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.full,
   },
   badgeProgressText: {
-    fontSize: theme.fontSize.xs,
+    ...typography.caption,
     color: theme.colors.text.tertiary,
     textAlign: 'center',
-    fontWeight: theme.fontWeight.bold,
   },
   emptyState: {
     flex: 1,
@@ -633,14 +622,13 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing[16],
   },
   emptyStateTitle: {
-    fontSize: theme.fontSize['2xl'],
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h2,
     color: theme.colors.text.primary,
     marginTop: theme.spacing[4],
     marginBottom: theme.spacing[2],
   },
   emptyStateText: {
-    fontSize: theme.fontSize.base,
+    ...typography.body,
     color: theme.colors.text.secondary,
     textAlign: 'center',
     paddingHorizontal: theme.spacing[8],

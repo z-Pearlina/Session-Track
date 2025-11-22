@@ -19,7 +19,7 @@ import { useCategories } from '../stores/useCategoryStore';
 import { SwipeableSessionCard } from '../components/SwipeableSessionCard';
 import { GlassCard } from '../components/GlassCard';
 import { Session } from '../types';
-
+import { typography, fonts } from '../utils/typography';
 
 // Memoized components
 const EmptyState = React.memo(() => (
@@ -174,9 +174,9 @@ export default function CalendarScreen() {
             selectedDotColor: theme.colors.text.inverse,
             arrowColor: theme.colors.primary.cyan,
             monthTextColor: theme.colors.text.primary,
-            textDayFontFamily: 'System',
-            textMonthFontFamily: 'System',
-            textDayHeaderFontFamily: 'System',
+            textDayFontFamily: fonts.regular,
+            textMonthFontFamily: fonts.bold,
+            textDayHeaderFontFamily: fonts.semibold,
             textDayFontWeight: '400',
             textMonthFontWeight: 'bold',
             textDayHeaderFontWeight: '600',
@@ -269,10 +269,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h3,
     color: theme.colors.text.primary,
-    letterSpacing: -0.5,
   },
   scrollContent: {
     paddingHorizontal: theme.spacing[4],
@@ -290,8 +288,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[4],
   },
   dateLabel: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h3,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[3],
   },
@@ -312,13 +309,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statValue: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h4,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[0.5],
   },
   statLabel: {
-    fontSize: theme.fontSize.sm,
+    ...typography.caption,
     color: theme.colors.text.tertiary,
   },
   statDivider: {
@@ -331,8 +327,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[4],
   },
   sectionTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h4,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[3],
   },
@@ -342,12 +337,11 @@ const styles = StyleSheet.create({
     gap: theme.spacing[2],
   },
   emptyText: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.semibold,
+    ...typography.h3,
     color: theme.colors.text.primary,
   },
   emptySubtext: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.tertiary,
     textAlign: 'center',
   },

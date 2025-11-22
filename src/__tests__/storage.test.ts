@@ -44,8 +44,12 @@ describe('StorageService', () => {
         id: '1',
         title: 'Test',
         categoryId: 'work',
+        categoryName: 'Work',
+        categoryColor: '#38BDF8',
+        categoryIcon: 'briefcase',
         durationMs: 3600000,
         startedAt: new Date().toISOString(),
+        endedAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
       };
 

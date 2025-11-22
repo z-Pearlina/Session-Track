@@ -16,7 +16,7 @@ import { useGoalStore } from '../stores/useGoalStore';
 import { useCategoryById } from '../stores/useCategoryStore';
 import { theme } from '../theme/theme';
 import { GoalDetailsRouteProp, RootStackNavigationProp } from '../types';
-
+import { typography, fonts } from '../utils/typography';
 
 export default function GoalDetailsScreen() {
   const navigation = useNavigation<RootStackNavigationProp>();
@@ -321,8 +321,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: theme.fontSize['3xl'],
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h3,
     color: theme.colors.text.primary,
   },
   scrollView: {
@@ -346,12 +345,12 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[4],
   },
   progressPercentage: {
+    fontFamily: fonts.bold,
     fontSize: theme.fontSize['5xl'],
-    fontWeight: theme.fontWeight.bold,
     color: theme.colors.primary.cyan,
   },
   progressLabel: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.secondary,
     fontWeight: theme.fontWeight.semibold,
   },
@@ -361,8 +360,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing[2],
   },
   completedText: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.bodyMedium,
     color: theme.colors.success,
   },
   infoCard: {
@@ -374,16 +372,14 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[4],
   },
   goalTitle: {
-    fontSize: theme.fontSize['2xl'],
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h2,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[2],
   },
   goalDescription: {
-    fontSize: theme.fontSize.base,
+    ...typography.body,
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing[5],
-    lineHeight: 22,
   },
   statsRow: {
     flexDirection: 'row',
@@ -394,15 +390,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h4,
     color: theme.colors.primary.cyan,
     marginBottom: theme.spacing[1],
   },
   statLabel: {
-    fontSize: theme.fontSize.xs,
+    ...typography.caption,
     color: theme.colors.text.secondary,
-    fontWeight: theme.fontWeight.semibold,
   },
   statDivider: {
     width: 1,
@@ -443,12 +437,12 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     flex: 1,
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.secondary,
     fontWeight: theme.fontWeight.semibold,
   },
   detailValue: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.primary,
     fontWeight: theme.fontWeight.semibold,
   },
@@ -480,13 +474,11 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.glass.border,
   },
   actionText: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.buttonLarge,
     color: '#FFFFFF',
   },
   actionTextSecondary: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.buttonLarge,
     color: theme.colors.text.secondary,
   },
 });

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { RootStackNavigationProp } from '../types';
 import { useSessionStore } from '../stores/useSessionStore';
 import { useCategoryStore } from '../stores/useCategoryStore';
 import { logger } from '../services/logger';
+import { typography, fonts } from '../utils/typography';
 
 export default function SettingsScreen() {
   const navigation = useNavigation<RootStackNavigationProp>();
@@ -23,7 +24,7 @@ export default function SettingsScreen() {
     try {
       setIsExporting(true);
 
-      const exportData = {
+      const exportPayload = {
         exportDate: new Date().toISOString(),
         version: '1.0.0',
         categories: categories,
@@ -35,12 +36,35 @@ export default function SettingsScreen() {
         }
       };
 
-      const jsonString = JSON.stringify(exportData, null, 2);
-
+      const jsonString = JSON.stringify(exportPayload, null, 2);
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const fileName = `session-track-export-${timestamp}.json`;
 
-      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+      const documentDir = FileSystem.documentDirectory;
+      const cacheDir = FileSystem.cacheDirectory;
+      
+      if (!documentDir && !cacheDir) {
+        if (Platform.OS === 'web') {
+          const blob = new Blob([jsonString], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          a.click();
+          URL.revokeObjectURL(url);
+          Alert.alert('Export Successful!', `File downloaded as ${fileName}`);
+        } else {
+          await Share.share({
+            message: jsonString,
+            title: 'Session Track Export',
+          });
+        }
+        logger.success('Data exported via fallback method');
+        return;
+      }
+
+      const directory = documentDir || cacheDir;
+      const fileUri = `${directory}${fileName}`;
 
       await FileSystem.writeAsStringAsync(fileUri, jsonString, {
         encoding: FileSystem.EncodingType.UTF8,
@@ -56,7 +80,7 @@ export default function SettingsScreen() {
         });
 
         Alert.alert(
-          'Export Successful! ✅',
+          'Export Successful!',
           `Your data has been exported to:\n${fileName}`,
           [{ text: 'OK' }]
         );
@@ -72,7 +96,7 @@ export default function SettingsScreen() {
     } catch (error) {
       logger.error('Export failed', error);
       Alert.alert(
-        'Export Failed ❌',
+        'Export Failed',
         error instanceof Error ? error.message : 'An unknown error occurred',
         [{ text: 'OK' }]
       );
@@ -144,7 +168,7 @@ export default function SettingsScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient
-        colors={theme.gradients.backgroundAnimated}
+        colors={[...theme.gradients.backgroundAnimated] as [string, string, ...string[]]}
         style={styles.gradient}
       />
 
@@ -190,7 +214,7 @@ export default function SettingsScreen() {
             <View style={styles.infoContent}>
               <View style={styles.logoContainer}>
                 <LinearGradient
-                  colors={theme.gradients.primary}
+                  colors={[...theme.gradients.primary] as [string, string, ...string[]]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.logoGradient}
@@ -235,13 +259,12 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[6],
   },
   header: {
-    fontSize: theme.fontSize['3xl'],
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h1,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[1],
   },
   subtitle: {
-    fontSize: theme.fontSize.base,
+    ...typography.body,
     color: theme.colors.text.tertiary,
   },
   optionCard: {
@@ -264,13 +287,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   optionTitle: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.semibold,
+    ...typography.bodyMedium,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[0.5],
   },
   optionSubtitle: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.tertiary,
   },
   infoCard: {
@@ -292,20 +314,18 @@ const styles = StyleSheet.create({
     ...theme.shadows.glowCyan,
   },
   appName: {
-    fontSize: theme.fontSize['2xl'],
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h2,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[1],
   },
   appVersion: {
-    fontSize: theme.fontSize.sm,
+    ...typography.caption,
     color: theme.colors.text.tertiary,
     marginBottom: theme.spacing[3],
   },
   appDescription: {
-    fontSize: theme.fontSize.sm,
+    ...typography.body,
     color: theme.colors.text.secondary,
     textAlign: 'center',
-    lineHeight: 20,
   },
 });

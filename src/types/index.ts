@@ -47,6 +47,7 @@ export interface Category {
   name: string;
   color: string;
   icon: string;
+  emoji?: string; // ← NEW: Optional emoji field
   order?: number;
   createdAt: string;
   isDefault?: boolean;

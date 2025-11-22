@@ -4,6 +4,18 @@ import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreenExpo from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  useFonts,
+  Outfit_100Thin,
+  Outfit_200ExtraLight,
+  Outfit_300Light,
+  Outfit_400Regular,
+  Outfit_500Medium,
+  Outfit_600SemiBold,
+  Outfit_700Bold,
+  Outfit_800ExtraBold,
+  Outfit_900Black,
+} from '@expo-google-fonts/outfit';
 import AppNavigator from './src/navigation/AppNavigator';
 import { StorageService } from './src/services/StorageService';
 import { NotificationService } from './src/services/NotificationService';
@@ -20,6 +32,19 @@ export default function App() {
   const [initError, setInitError] = useState<string | null>(null);
   const [showCustomSplash, setShowCustomSplash] = useState(true);
   const [appReady, setAppReady] = useState(false);
+
+  // Load Outfit fonts
+  const [fontsLoaded, fontError] = useFonts({
+    Outfit_100Thin,
+    Outfit_200ExtraLight,
+    Outfit_300Light,
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold,
+    Outfit_800ExtraBold,
+    Outfit_900Black,
+  });
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -52,17 +77,32 @@ export default function App() {
   }, []);
 
   const onLayoutRootView = useCallback(async () => {
-    if (appReady) {
+    if (appReady && fontsLoaded) {
       await SplashScreenExpo.hideAsync();
     }
-  }, [appReady]);
+  }, [appReady, fontsLoaded]);
 
   const handleSplashFinish = useCallback(() => {
     setShowCustomSplash(false);
   }, []);
 
-  if (!appReady) {
+  // Wait for both app initialization and fonts to load
+  if (!appReady || !fontsLoaded) {
     return null;
+  }
+
+  // Handle font loading error
+  if (fontError) {
+    logger.error('Font loading failed', fontError);
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorIcon}>⚠️</Text>
+        <Text style={styles.errorTitle}>Font Loading Error</Text>
+        <Text style={styles.errorMessage}>
+          Failed to load fonts. Please restart the application.
+        </Text>
+      </View>
+    );
   }
 
   if (initError) {
@@ -113,11 +153,13 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[3],
     textAlign: 'center',
+    fontFamily: theme.fontFamily.bold,
   },
   errorMessage: {
     fontSize: theme.fontSize.base,
     color: theme.colors.text.secondary,
     textAlign: 'center',
     lineHeight: 24,
+    fontFamily: theme.fontFamily.regular,
   },
 });

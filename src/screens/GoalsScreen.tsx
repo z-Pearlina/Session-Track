@@ -17,6 +17,7 @@ import { Goal } from '../types';
 import { theme } from '../theme/theme';
 import { GlassCard } from '../components/GlassCard';
 import { RootStackNavigationProp } from '../types';
+import { typography, fonts } from '../utils/typography';
 
 export default function GoalsScreen() {
   const navigation = useNavigation<RootStackNavigationProp>();
@@ -120,7 +121,7 @@ export default function GoalsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Stats Cards - NO SCROLLVIEW HERE */}
+        {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <GlassCard style={styles.statCard}>
             <Text style={styles.statValue}>{stats.total}</Text>
@@ -136,7 +137,7 @@ export default function GoalsScreen() {
           </GlassCard>
         </View>
 
-        {/* Filter Chips - NO SCROLLVIEW HERE */}
+        {/* Filter Chips */}
         <View style={styles.filtersWrapper}>
           <ScrollView
             horizontal
@@ -165,7 +166,7 @@ export default function GoalsScreen() {
           </ScrollView>
         </View>
 
-        {/* Goals List - ONLY THIS SCROLLS */}
+        {/* Goals List */}
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.contentContainer}
@@ -391,8 +392,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: theme.fontSize['3xl'],
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h2,
     color: theme.colors.text.primary,
   },
   statsContainer: {
@@ -407,15 +407,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statValue: {
+    fontFamily: fonts.bold,
     fontSize: theme.fontSize['2xl'],
-    fontWeight: theme.fontWeight.bold,
     color: theme.colors.primary.cyan,
     marginBottom: theme.spacing[1],
   },
   statLabel: {
-    fontSize: theme.fontSize.xs,
+    ...typography.caption,
     color: theme.colors.text.secondary,
-    fontWeight: theme.fontWeight.semibold,
     letterSpacing: 0.5,
   },
   filtersWrapper: {
@@ -435,8 +434,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   filterChipText: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.semibold,
+    ...typography.bodySmall,
+    fontFamily: fonts.semibold,
     color: theme.colors.text.secondary,
   },
   filterChipTextActive: {
@@ -451,8 +450,7 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing[8],
   },
   sectionTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h4,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[3],
     letterSpacing: 0.3,
@@ -483,8 +481,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   goalTitle: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.bodyMedium,
     color: theme.colors.text.primary,
     flex: 1,
   },
@@ -497,14 +494,14 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[2],
   },
   goalProgress: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.secondary,
     fontWeight: theme.fontWeight.semibold,
   },
   goalPercentage: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.primary.cyan,
-    fontWeight: theme.fontWeight.bold,
+    fontFamily: fonts.bold,
   },
   progressBarBackground: {
     height: 6,
@@ -529,25 +526,22 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
   },
   periodText: {
-    fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.caption,
     color: theme.colors.primary.cyan,
     letterSpacing: 0.5,
   },
   goalDates: {
-    fontSize: theme.fontSize.xs,
+    ...typography.caption,
     color: theme.colors.text.tertiary,
-    fontWeight: theme.fontWeight.semibold,
   },
   completedText: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.success,
-    fontWeight: theme.fontWeight.semibold,
+    fontFamily: fonts.semibold,
   },
   archivedText: {
-    fontSize: theme.fontSize.xs,
+    ...typography.caption,
     color: theme.colors.text.tertiary,
-    fontWeight: theme.fontWeight.semibold,
     fontStyle: 'italic',
   },
   emptyState: {
@@ -557,14 +551,13 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing[16],
   },
   emptyStateTitle: {
-    fontSize: theme.fontSize['2xl'],
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h3,
     color: theme.colors.text.primary,
     marginTop: theme.spacing[4],
     marginBottom: theme.spacing[2],
   },
   emptyStateText: {
-    fontSize: theme.fontSize.base,
+    ...typography.body,
     color: theme.colors.text.secondary,
     textAlign: 'center',
     paddingHorizontal: theme.spacing[8],
@@ -588,8 +581,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing[2],
   },
   createGoalText: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.buttonLarge,
     color: '#FFFFFF',
   },
 });

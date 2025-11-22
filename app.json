@@ -18,7 +18,8 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
-        ]
+        ],
+        "UIViewControllerBasedStatusBarAppearance": false
       }
     },
     "android": {
@@ -28,6 +29,12 @@
       },
       "package": "com.flowtrix.app",
       "edgeToEdgeEnabled": true,
+      "navigationBar": {
+        "visible": false,
+        "barStyle": "dark-content",
+        "backgroundColor": "#00000000"
+      },
+      "softwareKeyboardLayoutMode": "pan",
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "POST_NOTIFICATIONS",
@@ -55,7 +62,8 @@
           "androidCollapsedTitle": "#{unread_notifications} new notifications",
           "iosDisplayInForeground": true
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {

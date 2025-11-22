@@ -11,6 +11,8 @@ import {
 import { logger } from "./logger";
 import { STORAGE_KEYS, APP_CONFIG } from "../config/constants";
 
+const ACHIEVEMENT_KEY_PREFIX = "@flowtrix:achievement:";
+
 export class StorageService {
   private static async retryWithBackoff<T>(
     fn: () => Promise<T>,
@@ -65,8 +67,6 @@ export class StorageService {
       throw error;
     }
   }
-
-  // --- Session Methods ---
 
   static async getSessions(): Promise<Session[]> {
     return this.retryWithBackoff(async () => {
@@ -137,8 +137,6 @@ export class StorageService {
     }, "Clear all sessions");
   }
 
-  // --- Category Methods ---
-
   static async getCategories(): Promise<Category[]> {
     return this.retryWithBackoff(async () => {
       const data = await AsyncStorage.getItem(STORAGE_KEYS.CATEGORIES);
@@ -206,8 +204,6 @@ export class StorageService {
     return sessions.some((s) => s.categoryId === categoryId);
   }
 
-  // --- Goal Methods ---
-
   static async getGoals(): Promise<Goal[]> {
     return this.retryWithBackoff(async () => {
       const data = await AsyncStorage.getItem(STORAGE_KEYS.GOALS);
@@ -267,8 +263,6 @@ export class StorageService {
       logger.warn("All goals cleared");
     }, "Clear all goals");
   }
-
-  // --- Template Methods ---
 
   static async getTemplates(): Promise<SessionTemplate[]> {
     return this.retryWithBackoff(async () => {
@@ -334,78 +328,50 @@ export class StorageService {
     }, "Delete template");
   }
 
-  // --- Achievement Methods ---
-
   static async getAchievements(): Promise<Achievement[]> {
     return this.retryWithBackoff(async () => {
-      const data = await AsyncStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS);
-      const achievements = data ? JSON.parse(data) : [];
+      const keys = await AsyncStorage.getAllKeys();
+      const achievementKeys = keys.filter(key => 
+        key.startsWith(ACHIEVEMENT_KEY_PREFIX)
+      );
+      
+      if (achievementKeys.length === 0) return [];
+      
+      const pairs = await AsyncStorage.multiGet(achievementKeys);
+      const achievements: Achievement[] = pairs
+        .map(([_, value]) => {
+          if (!value) return null;
+          try {
+            return JSON.parse(value) as Achievement;
+          } catch {
+            return null;
+          }
+        })
+        .filter((a): a is Achievement => a !== null);
+      
       logger.info(`Loaded ${achievements.length} achievements`);
       return achievements;
-    }, "Get achievements").catch(() => {
-      logger.warn("Failed to load achievements, returning empty array");
-      return [];
-    });
+    }, "Get achievements");
   }
 
   static async saveAchievement(achievement: Achievement): Promise<void> {
     return this.retryWithBackoff(async () => {
-      const achievements = await this.getAchievements();
-
-      // Check if achievement already exists to prevent duplicates
-      const existingIndex = achievements.findIndex(
-        (a) => a.id === achievement.id
-      );
-
-      if (existingIndex !== -1) {
-        // Update existing achievement instead of creating duplicate
-        achievements[existingIndex] = achievement;
-        logger.info(
-          `Achievement updated (already exists): ${achievement.title}`
-        );
-      } else {
-        // Add new achievement
-        achievements.push(achievement);
-        logger.success(`Achievement saved: ${achievement.title}`);
-      }
-
-      await AsyncStorage.setItem(
-        STORAGE_KEYS.ACHIEVEMENTS,
-        JSON.stringify(achievements)
-      );
+      const key = `${ACHIEVEMENT_KEY_PREFIX}${achievement.id}`;
+      await AsyncStorage.setItem(key, JSON.stringify(achievement));
+      logger.success(`Achievement saved: ${achievement.title}`);
     }, "Save achievement");
   }
 
-  static async deduplicateAchievements(): Promise<void> {
+  static async saveAchievements(achievements: Achievement[]): Promise<void> {
     return this.retryWithBackoff(async () => {
-      const achievements = await this.getAchievements();
-      const uniqueAchievements = achievements.reduce((acc, current) => {
-        const exists = acc.find((item) => item.id === current.id);
-        if (!exists) {
-          acc.push(current);
-        } else {
-          // Keep the one with more progress
-          const existingIndex = acc.findIndex((item) => item.id === current.id);
-          if (
-            current.progress > acc[existingIndex].progress ||
-            current.isUnlocked
-          ) {
-            acc[existingIndex] = current;
-          }
-        }
-        return acc;
-      }, [] as Achievement[]);
-
-      if (uniqueAchievements.length !== achievements.length) {
-        await AsyncStorage.setItem(
-          STORAGE_KEYS.ACHIEVEMENTS,
-          JSON.stringify(uniqueAchievements)
-        );
-        logger.success(
-          `Deduplicated achievements: ${achievements.length} -> ${uniqueAchievements.length}`
-        );
-      }
-    }, "Deduplicate achievements");
+      const pairs: [string, string][] = achievements.map(achievement => [
+        `${ACHIEVEMENT_KEY_PREFIX}${achievement.id}`,
+        JSON.stringify(achievement),
+      ]);
+      
+      await AsyncStorage.multiSet(pairs);
+      logger.success(`Saved ${achievements.length} achievements in batch`);
+    }, "Save achievements batch");
   }
 
   static async updateAchievement(
@@ -413,42 +379,46 @@ export class StorageService {
     updates: Partial<Achievement>
   ): Promise<void> {
     return this.retryWithBackoff(async () => {
-      const achievements = await this.getAchievements();
-      const index = achievements.findIndex((a) => a.id === achievementId);
-
-      if (index === -1) {
+      const key = `${ACHIEVEMENT_KEY_PREFIX}${achievementId}`;
+      const existingData = await AsyncStorage.getItem(key);
+      
+      if (!existingData) {
         throw new Error(`Achievement not found: ${achievementId}`);
       }
 
-      achievements[index] = { ...achievements[index], ...updates };
-      await AsyncStorage.setItem(
-        STORAGE_KEYS.ACHIEVEMENTS,
-        JSON.stringify(achievements)
-      );
+      const current = JSON.parse(existingData);
+      const updated = { ...current, ...updates };
+      
+      await AsyncStorage.setItem(key, JSON.stringify(updated));
       logger.success(`Achievement updated: ${achievementId}`);
     }, "Update achievement");
   }
 
   static async deleteAchievement(achievementId: string): Promise<void> {
     return this.retryWithBackoff(async () => {
-      const achievements = await this.getAchievements();
-      const filtered = achievements.filter((a) => a.id !== achievementId);
-      await AsyncStorage.setItem(
-        STORAGE_KEYS.ACHIEVEMENTS,
-        JSON.stringify(filtered)
-      );
+      const key = `${ACHIEVEMENT_KEY_PREFIX}${achievementId}`;
+      await AsyncStorage.removeItem(key);
       logger.success(`Achievement deleted: ${achievementId}`);
     }, "Delete achievement");
   }
 
   static async clearAchievements(): Promise<void> {
     return this.retryWithBackoff(async () => {
-      await AsyncStorage.setItem(STORAGE_KEYS.ACHIEVEMENTS, JSON.stringify([]));
+      const keys = await AsyncStorage.getAllKeys();
+      const achievementKeys = keys.filter(key => 
+        key.startsWith(ACHIEVEMENT_KEY_PREFIX)
+      );
+      
+      if (achievementKeys.length > 0) {
+        await AsyncStorage.multiRemove(achievementKeys);
+      }
       logger.success("All achievements cleared");
     }, "Clear achievements");
   }
 
-  // --- Preference Methods ---
+  static async deduplicateAchievements(): Promise<void> {
+    return Promise.resolve();
+  }
 
   static async getDashboardPreferences(): Promise<DashboardPreferences> {
     return this.retryWithBackoff(async () => {
@@ -504,8 +474,6 @@ export class StorageService {
     }, "Save notification preferences");
   }
 
-  // --- Global Data Methods ---
-
   static async getAllData(): Promise<{
     sessions: Session[];
     categories: Category[];
@@ -521,25 +489,25 @@ export class StorageService {
         STORAGE_KEYS.SESSIONS,
         STORAGE_KEYS.CATEGORIES,
         STORAGE_KEYS.GOALS,
-        STORAGE_KEYS.ACHIEVEMENTS,
         STORAGE_KEYS.TEMPLATES,
         STORAGE_KEYS.DASHBOARD_PREFERENCES,
         STORAGE_KEYS.NOTIFICATION_PREFERENCES,
       ];
 
       const results = await AsyncStorage.multiGet(keys);
+      const achievements = await this.getAchievements();
 
       const data = {
         sessions: results[0][1] ? JSON.parse(results[0][1]) : [],
         categories: results[1][1] ? JSON.parse(results[1][1]) : [],
         goals: results[2][1] ? JSON.parse(results[2][1]) : [],
-        achievements: results[3][1] ? JSON.parse(results[3][1]) : [],
-        templates: results[4][1] ? JSON.parse(results[4][1]) : [],
-        preferences: results[5][1]
-          ? JSON.parse(results[5][1])
+        achievements: achievements,
+        templates: results[3][1] ? JSON.parse(results[3][1]) : [],
+        preferences: results[4][1]
+          ? JSON.parse(results[4][1])
           : { visibleCategoryIds: [] },
-        notificationPreferences: results[6][1]
-          ? JSON.parse(results[6][1])
+        notificationPreferences: results[5][1]
+          ? JSON.parse(results[5][1])
           : null,
         version: "1.0.0",
       };
@@ -589,13 +557,6 @@ export class StorageService {
         entries.push([STORAGE_KEYS.GOALS, JSON.stringify(data.goals)]);
       }
 
-      if (data.achievements) {
-        entries.push([
-          STORAGE_KEYS.ACHIEVEMENTS,
-          JSON.stringify(data.achievements),
-        ]);
-      }
-
       if (data.templates) {
         entries.push([STORAGE_KEYS.TEMPLATES, JSON.stringify(data.templates)]);
       }
@@ -614,7 +575,14 @@ export class StorageService {
         ]);
       }
 
-      await AsyncStorage.multiSet(entries);
+      if (entries.length > 0) {
+        await AsyncStorage.multiSet(entries);
+      }
+
+      if (data.achievements && data.achievements.length > 0) {
+        await this.saveAchievements(data.achievements);
+      }
+
       logger.success("Data restored successfully");
     } catch (error) {
       logger.error("Failed to restore data", error);
@@ -637,13 +605,14 @@ export class StorageService {
         STORAGE_KEYS.SESSIONS,
         STORAGE_KEYS.CATEGORIES,
         STORAGE_KEYS.GOALS,
-        STORAGE_KEYS.ACHIEVEMENTS,
         STORAGE_KEYS.TEMPLATES,
         STORAGE_KEYS.DASHBOARD_PREFERENCES,
         STORAGE_KEYS.NOTIFICATION_PREFERENCES,
       ];
 
       await AsyncStorage.multiRemove(keys);
+      await this.clearAchievements();
+      
       logger.success("All data cleared (backup created)");
     } catch (error) {
       logger.error("Failed to clear all data", error);

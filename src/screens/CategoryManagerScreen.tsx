@@ -26,9 +26,9 @@ import {
 } from '../stores/useCategoryStore';
 import { GlassCard } from '../components/GlassCard';
 import { Category } from '../types';
-import { validation } from '../services/validation';
 import { SUCCESS_MESSAGES, ERROR_MESSAGES } from '../config/constants';
-
+import { typography, fonts } from '../utils/typography';
+import { parseCategoryName, getSuggestedEmojis, containsEmoji } from '../utils/emojiUtils';
 
 const CATEGORY_ICONS = [
   'briefcase', 'school', 'fitness', 'restaurant', 'bed', 'book', 'code', 'brush',
@@ -61,7 +61,11 @@ const CategoryCardItem = React.memo<{
     <View style={styles.categoryContent}>
       <View style={styles.categoryLeft}>
         <View style={[styles.iconContainer, { backgroundColor: category.color + '20' }]}>
-          <Ionicons name={category.icon as any} size={24} color={category.color} />
+          {category.emoji ? (
+            <Text style={styles.categoryEmoji}>{category.emoji}</Text>
+          ) : (
+            <Ionicons name={category.icon as any} size={24} color={category.color} />
+          )}
         </View>
         <View style={styles.categoryInfo}>
           <Text style={styles.categoryName}>{category.name}</Text>
@@ -83,6 +87,59 @@ const CategoryCardItem = React.memo<{
     </View>
   </GlassCard>
 ));
+
+const EmojiPicker = React.memo<{ 
+  selectedEmoji?: string; 
+  onSelect: (emoji: string) => void;
+  categoryName: string;
+}>(({ selectedEmoji, onSelect, categoryName }) => {
+  const suggestedEmojis = getSuggestedEmojis(categoryName);
+  const allEmojis = [
+    ...suggestedEmojis,
+    '⭐', '✨', '🎯', '💡', '🔥', '✅', '📌', '🎨',
+    '💼', '💻', '📊', '🏢', '📈', '📚', '✏️', '🎓',
+    '💪', '🏃', '⚽', '🏋️', '🧘', '❤️', '🩺', '🍽️',
+    '😴', '🛏️', '💤', '🎵', '🎸', '🎧', '🎮', '🕹️',
+  ];
+  
+  // Remove duplicates
+  const uniqueEmojis = Array.from(new Set(allEmojis));
+  
+  return (
+    <View style={styles.emojiGrid}>
+      {/* Clear emoji option */}
+      <TouchableOpacity
+        style={[
+          styles.emojiOption, 
+          !selectedEmoji && styles.emojiOptionSelected
+        ]}
+        onPress={() => onSelect('')}
+        activeOpacity={0.7}
+      >
+        <Ionicons 
+          name="close-circle" 
+          size={24} 
+          color={!selectedEmoji ? theme.colors.primary.cyan : theme.colors.text.quaternary} 
+        />
+      </TouchableOpacity>
+      
+      {/* Emoji options */}
+      {uniqueEmojis.map((emoji, index) => (
+        <TouchableOpacity
+          key={`${emoji}-${index}`}
+          style={[
+            styles.emojiOption, 
+            selectedEmoji === emoji && styles.emojiOptionSelected
+          ]}
+          onPress={() => onSelect(emoji)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.emojiText}>{emoji}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+});
 
 const IconSelector = React.memo<{ selectedIcon: string; onSelect: (icon: string) => void }>(
   ({ selectedIcon, onSelect }) => (
@@ -122,18 +179,54 @@ const ColorSelector = React.memo<{ selectedColor: string; onSelect: (color: stri
   )
 );
 
-const PreviewCard = React.memo<{ name: string; icon: string; color: string }>(
-  ({ name, icon, color }) => (
-    <GlassCard style={styles.previewCard}>
-      <View style={styles.previewContent}>
-        <View style={[styles.previewIcon, { backgroundColor: color + '20' }]}>
+const PreviewCard = React.memo<{ 
+  name: string; 
+  icon: string; 
+  color: string;
+  emoji?: string;
+}>(({ name, icon, color, emoji }) => (
+  <GlassCard style={styles.previewCard}>
+    <View style={styles.previewContent}>
+      <View style={[styles.previewIcon, { backgroundColor: color + '20' }]}>
+        {emoji ? (
+          <Text style={styles.previewEmoji}>{emoji}</Text>
+        ) : (
           <Ionicons name={icon as any} size={32} color={color} />
-        </View>
-        <Text style={styles.previewName}>{name || 'Category Name'}</Text>
+        )}
       </View>
-    </GlassCard>
-  )
-);
+      <Text style={styles.previewName}>{name || 'Category Name'}</Text>
+    </View>
+  </GlassCard>
+));
+
+/**
+ * Validate category name
+ */
+function validateCategoryName(
+  name: string,
+  existingCategories: Category[],
+  editingCategoryId?: string
+): string | null {
+  const trimmedName = name.trim();
+  
+  if (!trimmedName) {
+    return 'Category name is required';
+  }
+  
+  if (trimmedName.length > 50) {
+    return 'Category name must be 50 characters or less';
+  }
+  
+  const isDuplicate = existingCategories.some(
+    (cat) => cat.name.toLowerCase() === trimmedName.toLowerCase() && cat.id !== editingCategoryId
+  );
+  
+  if (isDuplicate) {
+    return 'A category with this name already exists';
+  }
+  
+  return null;
+}
 
 export default function CategoryManagerScreen() {
   const navigation = useNavigation();
@@ -149,6 +242,7 @@ export default function CategoryManagerScreen() {
   const [name, setName] = useState('');
   const [selectedIcon, setSelectedIcon] = useState('apps');
   const [selectedColor, setSelectedColor] = useState('#38BDF8');
+  const [selectedEmoji, setSelectedEmoji] = useState<string | undefined>();
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -169,11 +263,13 @@ export default function CategoryManagerScreen() {
       setName(category.name);
       setSelectedIcon(category.icon);
       setSelectedColor(category.color);
+      setSelectedEmoji(category.emoji);
     } else {
       setEditingCategory(null);
       setName('');
       setSelectedIcon('apps');
       setSelectedColor('#38BDF8');
+      setSelectedEmoji(undefined);
     }
     setShowModal(true);
   }, []);
@@ -185,11 +281,12 @@ export default function CategoryManagerScreen() {
     setName('');
     setSelectedIcon('apps');
     setSelectedColor('#38BDF8');
+    setSelectedEmoji(undefined);
     Keyboard.dismiss();
   }, [isSaving]);
 
   const handleSave = useCallback(async () => {
-    const validationError = validation.validateCategoryName(name, categories, editingCategory?.id);
+    const validationError = validateCategoryName(name, categories, editingCategory?.id);
     if (validationError) {
       Alert.alert('Validation Error', validationError);
       return;
@@ -202,6 +299,7 @@ export default function CategoryManagerScreen() {
           name: name.trim(),
           icon: selectedIcon,
           color: selectedColor,
+          emoji: selectedEmoji,
         });
         Alert.alert('Success', SUCCESS_MESSAGES.CATEGORY_UPDATED);
       } else {
@@ -210,6 +308,7 @@ export default function CategoryManagerScreen() {
           name: name.trim(),
           icon: selectedIcon,
           color: selectedColor,
+          emoji: selectedEmoji,
           createdAt: new Date().toISOString(),
           isDefault: false,
         };
@@ -229,7 +328,7 @@ export default function CategoryManagerScreen() {
     } finally {
       setIsSaving(false);
     }
-  }, [name, selectedIcon, selectedColor, editingCategory, categories, addCategory, updateCategory, handleCloseModal]);
+  }, [name, selectedIcon, selectedColor, selectedEmoji, editingCategory, categories, addCategory, updateCategory, handleCloseModal]);
 
   const handleDelete = useCallback(
     (category: Category) => {
@@ -283,7 +382,10 @@ export default function CategoryManagerScreen() {
   const ListFooterComponent = useCallback(() => <View style={{ height: 100 }} />, []);
 
   return (
-    <LinearGradient colors={theme.gradients.backgroundAnimated} style={styles.gradient}>
+    <LinearGradient
+      colors={[...theme.gradients.backgroundAnimated] as [string, string, ...string[]]}
+      style={styles.gradient}
+    >
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.headerButton} onPress={handleGoBack}>
@@ -313,7 +415,10 @@ export default function CategoryManagerScreen() {
           <View style={styles.modalOverlay}>
             <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={handleCloseModal} />
             <View style={styles.modalContent}>
-              <LinearGradient colors={theme.gradients.backgroundAnimated} style={styles.modalGradient}>
+              <LinearGradient
+                colors={[...theme.gradients.backgroundAnimated] as [string, string, ...string[]]}
+                style={styles.modalGradient}
+              >
                 <View style={styles.modalHeader}>
                   <TouchableOpacity onPress={handleCloseModal} disabled={isSaving}>
                     <Ionicons name="close" size={28} color={theme.colors.text.secondary} />
@@ -342,17 +447,34 @@ export default function CategoryManagerScreen() {
                           onSubmitEditing={handleSave}
                         />
                       </View>
+
                       <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Select Icon</Text>
+                        <Text style={styles.inputLabel}>Emoji (Optional)</Text>
+                        <EmojiPicker 
+                          selectedEmoji={selectedEmoji} 
+                          onSelect={(emoji) => setSelectedEmoji(emoji || undefined)}
+                          categoryName={name}
+                        />
+                      </View>
+
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>Icon Fallback</Text>
                         <IconSelector selectedIcon={selectedIcon} onSelect={setSelectedIcon} />
                       </View>
+                      
                       <View style={styles.inputGroup}>
                         <Text style={styles.inputLabel}>Select Color</Text>
                         <ColorSelector selectedColor={selectedColor} onSelect={setSelectedColor} />
                       </View>
+                      
                       <View style={styles.previewSection}>
                         <Text style={styles.inputLabel}>Preview</Text>
-                        <PreviewCard name={name} icon={selectedIcon} color={selectedColor} />
+                        <PreviewCard 
+                          name={name} 
+                          icon={selectedIcon} 
+                          color={selectedColor} 
+                          emoji={selectedEmoji}
+                        />
                       </View>
                     </>
                   )}
@@ -376,20 +498,20 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: theme.spacing[4], paddingVertical: theme.spacing[2] },
   headerButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: theme.fontSize.lg, fontWeight: theme.fontWeight.bold, color: theme.colors.text.primary, letterSpacing: -0.5 },
+  headerTitle: { ...typography.h3, color: theme.colors.text.primary },
   flatListContent: { paddingHorizontal: theme.spacing[4], paddingTop: theme.spacing[2] },
   infoCard: { marginBottom: theme.spacing[6] },
   infoContent: { flexDirection: 'row', padding: theme.spacing[4], gap: theme.spacing[3] },
-  infoText: { flex: 1, fontSize: theme.fontSize.sm, color: theme.colors.text.secondary, lineHeight: 20 },
-  sectionTitle: { fontSize: theme.fontSize.lg, fontWeight: theme.fontWeight.bold, color: theme.colors.text.primary, marginBottom: theme.spacing[3] },
+  infoText: { flex: 1, ...typography.bodySmall, color: theme.colors.text.secondary },
+  sectionTitle: { ...typography.h4, color: theme.colors.text.primary, marginBottom: theme.spacing[3] },
   categoryCard: { marginBottom: theme.spacing[3] },
   categoryContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: theme.spacing[4] },
   categoryLeft: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing[3], flex: 1 },
   iconContainer: { width: 48, height: 48, borderRadius: theme.borderRadius.lg, alignItems: 'center', justifyContent: 'center' },
   categoryInfo: { flex: 1 },
-  categoryName: { fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.semibold, color: theme.colors.text.primary, marginBottom: theme.spacing[0.5] },
+  categoryName: { ...typography.bodyMedium, color: theme.colors.text.primary, marginBottom: theme.spacing[0.5] },
   defaultBadge: { backgroundColor: theme.colors.primary.cyan + '20', paddingHorizontal: theme.spacing[2], paddingVertical: theme.spacing[0.5], borderRadius: theme.borderRadius.sm, alignSelf: 'flex-start' },
-  defaultBadgeText: { fontSize: theme.fontSize.xs, fontWeight: theme.fontWeight.semibold, color: theme.colors.primary.cyan },
+  defaultBadgeText: { ...typography.caption, color: theme.colors.primary.cyan, fontFamily: fonts.bold },
   categoryActions: { flexDirection: 'row', gap: theme.spacing[2] },
   actionButton: { width: 40, height: 40, borderRadius: theme.borderRadius.lg, backgroundColor: theme.colors.background.secondary, alignItems: 'center', justifyContent: 'center' },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },
@@ -397,12 +519,12 @@ const styles = StyleSheet.create({
   modalContent: { height: '90%', borderTopLeftRadius: theme.borderRadius['2xl'], borderTopRightRadius: theme.borderRadius['2xl'], overflow: 'hidden' },
   modalGradient: { flex: 1 },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: theme.spacing[4], paddingVertical: theme.spacing[4], borderBottomWidth: 1, borderBottomColor: theme.colors.glass.border },
-  modalTitle: { fontSize: theme.fontSize.xl, fontWeight: theme.fontWeight.bold, color: theme.colors.text.primary },
-  saveButton: { fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.bold, color: theme.colors.primary.cyan },
+  modalTitle: { ...typography.h3, color: theme.colors.text.primary },
+  saveButton: { ...typography.button, color: theme.colors.primary.cyan },
   modalScroll: { padding: theme.spacing[4] },
   inputGroup: { marginBottom: theme.spacing[6] },
-  inputLabel: { fontSize: theme.fontSize.base, fontWeight: theme.fontWeight.semibold, color: theme.colors.text.primary, marginBottom: theme.spacing[3] },
-  input: { height: 56, backgroundColor: theme.colors.background.secondary, borderWidth: 1, borderColor: theme.colors.glass.border, borderRadius: theme.borderRadius.lg, paddingHorizontal: theme.spacing[4], fontSize: theme.fontSize.base, color: theme.colors.text.primary },
+  inputLabel: { ...typography.bodyMedium, color: theme.colors.text.primary, marginBottom: theme.spacing[3] },
+  input: { ...typography.body, height: 56, backgroundColor: theme.colors.background.secondary, borderWidth: 1, borderColor: theme.colors.glass.border, borderRadius: theme.borderRadius.lg, paddingHorizontal: theme.spacing[4], color: theme.colors.text.primary },
   iconGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing[2] },
   iconOption: { width: 56, height: 56, borderRadius: theme.borderRadius.lg, backgroundColor: theme.colors.background.secondary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'transparent' },
   iconOptionSelected: { borderWidth: 2, borderColor: theme.colors.primary.cyan, backgroundColor: theme.colors.background.tertiary },
@@ -413,5 +535,38 @@ const styles = StyleSheet.create({
   previewCard: { overflow: 'hidden' },
   previewContent: { flexDirection: 'row', alignItems: 'center', padding: theme.spacing[5], gap: theme.spacing[4] },
   previewIcon: { width: 64, height: 64, borderRadius: theme.borderRadius.xl, alignItems: 'center', justifyContent: 'center' },
-  previewName: { fontSize: theme.fontSize.xl, fontWeight: theme.fontWeight.bold, color: theme.colors.text.primary },
+  previewName: { ...typography.h3, color: theme.colors.text.primary },
+  
+  // New styles for Emoji
+  emojiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  emojiOption: {
+    width: 48,
+    height: 48,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.glass.light,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emojiOptionSelected: {
+    borderColor: theme.colors.primary.cyan,
+    backgroundColor: theme.colors.primary.cyan + '15',
+  },
+  emojiText: {
+    fontSize: 24,
+    textAlign: 'center',
+  },
+  categoryEmoji: {
+    fontSize: 24,
+    textAlign: 'center',
+  },
+  previewEmoji: {
+    fontSize: 32,
+    textAlign: 'center',
+  },
 });

@@ -20,9 +20,38 @@ import { theme } from '../theme/theme';
 import { useSessions, useUpdateSession, useDeleteSession } from '../stores/useSessionStore';
 import { useCategories, useLoadCategories } from '../stores/useCategoryStore';
 import { GlassCard } from '../components/GlassCard';
-import { validation } from '../services/validation';
+import { ValidationService } from '../services/validation';
 import { SUCCESS_MESSAGES, ERROR_MESSAGES } from '../config/constants';
 import { dateUtils } from '../utils/dateUtils';
+import { Category } from '../types';
+import { typography } from '../utils/typography';
+
+function validateSessionTitle(title: string): string | null {
+  const trimmed = title.trim();
+  if (!trimmed) {
+    return null; 
+  }
+  if (trimmed.length > 100) {
+    return 'Title must be 100 characters or less';
+  }
+  return null;
+}
+
+
+function validateSessionNotes(notes: string): string | null {
+  if (notes && notes.length > 500) {
+    return 'Notes must be 500 characters or less';
+  }
+  return null;
+}
+
+function validateCategoryExists(categoryId: string, categories: Category[]): string | null {
+  const exists = categories.some(c => c.id === categoryId);
+  if (!exists) {
+    return 'Please select a valid category';
+  }
+  return null;
+}
 
 export default function EditSessionScreen() {
   const navigation = useNavigation();
@@ -46,28 +75,28 @@ export default function EditSessionScreen() {
       Alert.alert('Error', 'Session not found');
       navigation.goBack();
     }
-  }, [session]);
+  }, [session, navigation]);
 
   useEffect(() => {
     loadCategories();
-  }, []);
+  }, [loadCategories]);
 
   if (!session) return null;
 
   const handleSave = async () => {
-    const titleError = validation.validateSessionTitle(title);
+    const titleError = validateSessionTitle(title);
     if (titleError) {
       Alert.alert('Validation Error', titleError);
       return;
     }
 
-    const notesError = validation.validateSessionNotes(notes);
+    const notesError = validateSessionNotes(notes);
     if (notesError) {
       Alert.alert('Validation Error', notesError);
       return;
     }
 
-    const categoryError = validation.validateCategoryExists(selectedCategory, categories);
+    const categoryError = validateCategoryExists(selectedCategory, categories);
     if (categoryError) {
       Alert.alert('Validation Error', categoryError);
       return;
@@ -75,10 +104,16 @@ export default function EditSessionScreen() {
 
     setIsSaving(true);
     try {
+      const category = categories.find(c => c.id === selectedCategory);
+      
       await updateSession(sessionId, {
         title: title.trim() || 'Untitled Session',
         notes: notes.trim(),
         categoryId: selectedCategory,
+        categoryName: category?.name || session.categoryName,
+        categoryColor: category?.color || session.categoryColor,
+        categoryIcon: category?.icon || session.categoryIcon,
+        updatedAt: new Date().toISOString(),
       });
 
       Alert.alert('Success', SUCCESS_MESSAGES.SESSION_UPDATED, [
@@ -96,7 +131,7 @@ export default function EditSessionScreen() {
 
   const handleDelete = () => {
     Alert.alert(
-      '🗑️ Delete Session',
+      'Delete Session',
       `"${session.title}"\n\nThis action cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
@@ -131,7 +166,10 @@ export default function EditSessionScreen() {
   };
 
   return (
-    <LinearGradient colors={theme.gradients.backgroundAnimated} style={styles.gradient}>
+    <LinearGradient
+      colors={[...theme.gradients.backgroundAnimated] as [string, string, ...string[]]}
+      style={styles.gradient}
+    >
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
@@ -259,7 +297,7 @@ export default function EditSessionScreen() {
                 disabled={isSaving}
               >
                 <LinearGradient
-                  colors={theme.gradients.primary}
+                  colors={[...theme.gradients.primary] as [string, string, ...string[]]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.saveButtonGradient}
@@ -305,8 +343,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h4,
     color: theme.colors.text.primary,
     letterSpacing: -0.5,
   },
@@ -331,7 +368,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing[2],
   },
   infoText: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.secondary,
   },
   infoNote: {
@@ -356,18 +393,17 @@ const styles = StyleSheet.create({
     gap: theme.spacing[2],
   },
   inputLabel: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.medium,
+    ...typography.bodyMedium,
     color: theme.colors.text.secondary,
   },
   input: {
+    ...typography.body,
     height: 56,
     backgroundColor: theme.colors.background.secondary,
     borderWidth: 1,
     borderColor: theme.colors.glass.border,
     borderRadius: theme.borderRadius.lg,
     paddingHorizontal: theme.spacing[4],
-    fontSize: theme.fontSize.base,
     color: theme.colors.text.primary,
   },
   textArea: {
@@ -422,8 +458,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing[8],
   },
   saveButtonText: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.buttonLarge,
     color: theme.colors.text.inverse,
   },
   categoryHeader: {

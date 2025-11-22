@@ -14,6 +14,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { typography, fonts } from '../utils/typography';
 import { theme } from '../theme/theme';
 import {
   useSessions,
@@ -37,7 +38,7 @@ import { FilterChips } from '../components/FilterChips';
 import { SearchBar } from '../components/SearchBar';
 import { Ionicons } from '@expo/vector-icons';
 import { Session } from '../types';
-import { usePaginatedSessions } from '../hooks/usePaginatedSessions'; // Import the hook
+import { usePaginatedSessions } from '../hooks/usePaginatedSessions';
 
 const getTodayDateString = () => new Date().toDateString();
 const getYesterdayDateString = () => {
@@ -347,7 +348,7 @@ export default function HomeScreen() {
     handleClearSearch,
     hasActiveFilters,
     paginatedSessions.length,
-    sortedSessions.length, // Show total count, not just loaded count
+    sortedSessions.length, 
   ]);
 
   const ListEmptyComponent = useCallback(() => (
@@ -416,11 +417,9 @@ export default function HomeScreen() {
         }
         keyboardShouldPersistTaps="handled"
         
-        // Pagination Props
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         
-        // Optimization Props
         removeClippedSubviews={true}
         maxToRenderPerBatch={10}
         updateCellsBatchingPeriod={50}
@@ -444,7 +443,7 @@ const styles = StyleSheet.create({
   },
   flatListContent: {
     paddingTop: 120,
-    paddingBottom: 0, // Handled by footer now
+    paddingBottom: 0,
   },
   miniStatsWrapper: {
     marginBottom: theme.spacing[6],
@@ -471,13 +470,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyCardsText: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.semibold,
+    ...typography.bodyMedium,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[1],
   },
   emptyCardsSubtext: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.tertiary,
     textAlign: 'center',
   },
@@ -493,8 +491,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing[4],
   },
   sectionTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h4,
     color: theme.colors.text.primary,
   },
   countBadge: {
@@ -506,8 +503,8 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary.cyan + '40',
   },
   countText: {
+    fontFamily: fonts.bold,
     fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.bold,
     color: theme.colors.primary.cyan,
   },
   emptyStateCard: {
@@ -518,18 +515,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h3,
     color: theme.colors.text.primary,
     marginTop: theme.spacing[4],
     marginBottom: theme.spacing[2],
   },
   emptySubtext: {
-    fontSize: theme.fontSize.base,
+    ...typography.body,
     color: theme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: theme.spacing[6],
-    lineHeight: 22,
   },
   emptyStateButton: {
     borderRadius: theme.borderRadius['2xl'],
@@ -549,11 +544,9 @@ const styles = StyleSheet.create({
     gap: theme.spacing[2],
   },
   emptyStateButtonText: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.buttonLarge,
     color: '#FFFFFF',
   },
-  // Footer Styles
   footerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -565,12 +558,12 @@ const styles = StyleSheet.create({
     gap: theme.spacing[2],
   },
   loadingText: {
+    ...typography.bodySmall,
     color: theme.colors.text.tertiary,
-    fontSize: theme.fontSize.sm,
   },
   endText: {
+    ...typography.caption,
     color: theme.colors.text.quaternary,
-    fontSize: theme.fontSize.xs,
     marginBottom: theme.spacing[2],
   },
 });

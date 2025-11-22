@@ -20,6 +20,7 @@ import {
   useToggleCategoryVisibility
 } from '../stores/useDashboardStore';
 import { GlassCard } from '../components/GlassCard';
+import { typography } from '../utils/typography';
 
 export default function CustomizeDashboardScreen() {
   const navigation = useNavigation();
@@ -163,8 +164,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h4,
     color: theme.colors.text.primary,
     letterSpacing: -0.5,
   },
@@ -182,21 +182,19 @@ const styles = StyleSheet.create({
   },
   infoText: {
     flex: 1,
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.secondary,
-    lineHeight: 20,
   },
   previewSection: {
     marginBottom: theme.spacing[4],
   },
   sectionTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h4,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[1],
   },
   sectionSubtitle: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.tertiary,
   },
   categoriesList: {
@@ -229,13 +227,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   categoryName: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.semibold,
+    ...typography.bodyMedium,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[0.5],
   },
   categoryDescription: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.tertiary,
   },
   tipsCard: {
@@ -251,8 +248,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing[2],
   },
   tipsTitle: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.semibold,
+    ...typography.bodyMedium,
     color: theme.colors.text.primary,
   },
   tipsList: {
@@ -265,8 +261,7 @@ const styles = StyleSheet.create({
   },
   tipText: {
     flex: 1,
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.secondary,
-    lineHeight: 20,
   },
 });

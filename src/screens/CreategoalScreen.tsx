@@ -21,6 +21,7 @@ import { Goal, GoalPeriod } from '../types';
 import { theme } from '../theme/theme';
 import { GlassCard } from '../components/GlassCard';
 import { RootStackNavigationProp } from '../types';
+import { typography, fonts } from '../utils/typography';
 
 export default function CreateGoalScreen() {
   const navigation = useNavigation<RootStackNavigationProp>();
@@ -457,8 +458,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: theme.fontSize['3xl'],
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h2,
     color: theme.colors.text.primary,
     letterSpacing: 0.5,
   },
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing[8],
   },
   label: {
-    fontSize: theme.fontSize.xs,
+    ...typography.caption,
     fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing[2],
@@ -485,8 +485,8 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[4],
   },
   input: {
+    ...typography.body,
     padding: theme.spacing[4],
-    fontSize: theme.fontSize.base,
     color: theme.colors.text.primary,
     fontWeight: theme.fontWeight.medium,
   },
@@ -505,8 +505,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   timeInput: {
+    fontFamily: fonts.bold,
     fontSize: theme.fontSize['3xl'],
-    fontWeight: theme.fontWeight.bold,
     color: theme.colors.primary.cyan,
     textAlign: 'center',
     marginBottom: theme.spacing[1],
@@ -613,8 +613,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing[2],
   },
   submitText: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.buttonLarge,
     color: theme.colors.text.inverse,
   },
 });

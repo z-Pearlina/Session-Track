@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { Goal } from "../types";
 import { StorageService } from "../services/StorageService";
 import { NotificationService } from "../services/NotificationService";
+import { AchievementService } from "../services/AchievementService";
 import { logger } from "../services/logger";
 
 interface GoalState {
@@ -147,23 +148,29 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
         completedAt: isCompleted ? new Date().toISOString() : goal.completedAt,
       });
 
-      set((state) => ({
-        goals: state.goals.map((g) =>
-          g.id === goalId
-            ? {
-                ...g,
-                currentProgress: newProgress,
-                status: isCompleted ? "completed" : g.status,
-                completedAt: isCompleted ? new Date().toISOString() : g.completedAt,
-                updatedAt: new Date().toISOString(),
-              }
-            : g
-        ),
-        isLoading: false,
-      }));
+      const updatedGoals = get().goals.map((g) =>
+        g.id === goalId
+          ? {
+              ...g,
+              currentProgress: newProgress,
+              status: isCompleted ? "completed" : g.status,
+              completedAt: isCompleted ? new Date().toISOString() : g.completedAt,
+              updatedAt: new Date().toISOString(),
+            }
+          : g
+      );
+
+      set({ goals: updatedGoals, isLoading: false });
 
       if (isCompleted) {
         await NotificationService.sendGoalCompletedNotification(goal.title);
+        
+        try {
+          const completedGoals = updatedGoals.filter(g => g.status === 'completed');
+          await AchievementService.checkGoalAchievements(completedGoals);
+        } catch (achievementError) {
+          logger.error('Achievement check failed (non-critical)', achievementError);
+        }
       }
 
       logger.success(`Goal progress updated: ${goalId}`);
@@ -187,22 +194,28 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
         completedAt: new Date().toISOString(),
       });
 
-      set((state) => ({
-        goals: state.goals.map((goal) =>
-          goal.id === goalId
-            ? {
-                ...goal,
-                status: "completed",
-                completedAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-              }
-            : goal
-        ),
-        isLoading: false,
-      }));
+      const updatedGoals = get().goals.map((g) =>
+        g.id === goalId
+          ? {
+              ...g,
+              status: "completed",
+              completedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          : g
+      );
+
+      set({ goals: updatedGoals, isLoading: false });
 
       if (goal) {
         await NotificationService.sendGoalCompletedNotification(goal.title);
+      }
+
+      try {
+        const completedGoals = updatedGoals.filter(g => g.status === 'completed');
+        await AchievementService.checkGoalAchievements(completedGoals);
+      } catch (achievementError) {
+        logger.error('Achievement check failed (non-critical)', achievementError);
       }
 
       logger.success(`Goal completed: ${goalId}`);

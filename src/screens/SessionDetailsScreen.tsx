@@ -16,6 +16,7 @@ import { useSessions, useDeleteSession } from '../stores/useSessionStore';
 import { useGetCategoryById } from '../stores/useCategoryStore';
 import { GlassCard } from '../components/GlassCard';
 import { RootStackParamList, RootStackNavigationProp } from '../types';
+import { typography, fonts } from '../utils/typography';
 
 type SessionDetailsRouteProp = RouteProp<RootStackParamList, 'SessionDetails'>;
 
@@ -196,14 +197,14 @@ export default function SessionDetailsScreen() {
                 <Ionicons name="calendar" size={18} color={theme.colors.text.tertiary} />
                 <Text style={styles.metadataLabel}>Created:</Text>
                 <Text style={styles.metadataValue}>
-                  {new Date(session.createdAt).toLocaleDateString()}
+                  {session.createdAt ? new Date(session.createdAt).toLocaleDateString() : 'N/A'}
                 </Text>
               </View>
               <View style={styles.metadataRow}>
                 <Ionicons name="refresh" size={18} color={theme.colors.text.tertiary} />
                 <Text style={styles.metadataLabel}>Updated:</Text>
                 <Text style={styles.metadataValue}>
-                  {new Date(session.updatedAt).toLocaleDateString()}
+                  {session.updatedAt ? new Date(session.updatedAt).toLocaleDateString() : 'N/A'}
                 </Text>
               </View>
               <View style={styles.metadataRow}>
@@ -266,8 +267,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h3,
     color: theme.colors.text.primary,
     letterSpacing: -0.5,
   },
@@ -292,12 +292,11 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   categoryBadgeText: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.semibold,
+    ...typography.caption,
+    fontFamily: fonts.semibold,
   },
   sessionTitle: {
-    fontSize: theme.fontSize['2xl'],
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h2,
     color: theme.colors.text.primary,
     lineHeight: 32,
   },
@@ -322,13 +321,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   durationLabel: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.tertiary,
     marginBottom: theme.spacing[1],
   },
   durationValue: {
+    fontFamily: fonts.bold,
     fontSize: theme.fontSize['3xl'],
-    fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.primary,
   },
   timeCardsRow: {
@@ -345,18 +344,17 @@ const styles = StyleSheet.create({
     gap: theme.spacing[2],
   },
   timeCardLabel: {
-    fontSize: theme.fontSize.xs,
+    ...typography.caption,
     color: theme.colors.text.tertiary,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   timeCardValue: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.bodyMedium,
     color: theme.colors.text.primary,
   },
   timeCardDate: {
-    fontSize: theme.fontSize.sm,
+    ...typography.bodySmall,
     color: theme.colors.text.secondary,
   },
   notesCard: {
@@ -372,14 +370,12 @@ const styles = StyleSheet.create({
     gap: theme.spacing[2],
   },
   notesLabel: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.semibold,
+    ...typography.bodyMedium,
     color: theme.colors.text.primary,
   },
   notesText: {
-    fontSize: theme.fontSize.base,
+    ...typography.body,
     color: theme.colors.text.secondary,
-    lineHeight: 24,
   },
   metadataCard: {
     marginBottom: theme.spacing[6],
@@ -394,13 +390,13 @@ const styles = StyleSheet.create({
     gap: theme.spacing[2],
   },
   metadataLabel: {
-    fontSize: theme.fontSize.sm,
+    ...typography.caption,
     color: theme.colors.text.tertiary,
     width: 70,
   },
   metadataValue: {
+    ...typography.caption,
     flex: 1,
-    fontSize: theme.fontSize.sm,
     color: theme.colors.text.secondary,
   },
   actionsContainer: {
@@ -418,8 +414,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing[4],
   },
   editButtonText: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.buttonLarge,
     color: theme.colors.text.inverse,
   },
   deleteButtonLarge: {
@@ -436,8 +431,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing[4],
   },
   deleteButtonText: {
-    fontSize: theme.fontSize.lg,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.buttonLarge,
     color: theme.colors.danger,
   },
   errorContainer: {
@@ -448,8 +442,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing[4],
   },
   errorText: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h3,
     color: theme.colors.text.primary,
   },
   backButton: {
@@ -459,8 +452,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.full,
   },
   backButtonText: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.buttonLarge,
     color: theme.colors.text.inverse,
   },
 });

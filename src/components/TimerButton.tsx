@@ -26,13 +26,13 @@ export function TimerButton({
     
     switch (variant) {
       case 'primary':
-        return theme.gradients.primary as [string, string, ...string[]];
+        return [...theme.gradients.primary] as [string, string, ...string[]];
       case 'secondary':
         return [theme.colors.background.tertiary, theme.colors.background.secondary];
       case 'danger':
         return [theme.colors.danger, '#E85555'];
       default:
-        return theme.gradients.primary as [string, string, ...string[]];
+        return [...theme.gradients.primary] as [string, string, ...string[]];
     }
   };
 

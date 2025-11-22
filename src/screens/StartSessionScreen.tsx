@@ -22,21 +22,66 @@ import { theme } from '../theme/theme';
 import { useTimer } from '../hooks/useTimer';
 import { useAddSession } from '../stores/useSessionStore';
 import { useCategories, useLoadCategories } from '../stores/useCategoryStore';
-import { useUpdateGoalProgress } from '../stores/useGoalStore';
+import { useUpdateGoalProgress, useGoalById } from '../stores/useGoalStore';
 import { Session } from '../types';
 import { RootStackNavigationProp, StartSessionRouteProp } from '../types';
-import { useSafeAreaInsets } from 'react-native-safe-area-context'; // 1. Import: useSafeAreaInsets
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { typography, fonts } from '../utils/typography';
+
+// ========================================
+// PHASE 3: Goal Indicator Component with Remove Option
+// ========================================
+interface GoalIndicatorProps {
+  goalTitle: string;
+  onRemove: () => void;
+}
+
+const GoalIndicator: React.FC<GoalIndicatorProps> = ({ goalTitle, onRemove }) => {
+  // Safety check
+  if (!goalTitle || goalTitle.trim() === '') {
+    return null;
+  }
+  
+  return (
+    <BlurView intensity={40} tint="dark" style={styles.goalIndicator}>
+      <View style={styles.goalIndicatorContent}>
+        <Ionicons name="flag" size={18} color={theme.colors.primary.cyan} />
+        <View style={styles.goalTextContainer}>
+          <Text style={styles.goalLabel}>Working towards goal:</Text>
+          <Text style={styles.goalTitle} numberOfLines={1}>
+            {goalTitle}
+          </Text>
+        </View>
+        {/* Remove button */}
+        <TouchableOpacity 
+          onPress={onRemove}
+          style={styles.removeGoalButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="close-circle" size={20} color={theme.colors.text.tertiary} />
+        </TouchableOpacity>
+      </View>
+    </BlurView>
+  );
+};
 
 export default function StartSessionScreen() {
   const navigation = useNavigation<RootStackNavigationProp>();
   const route = useRoute<StartSessionRouteProp>();
-  const { goalId, categoryId } = route.params || {};
+  
+  // Local state for goal ID management
+  const [currentGoalId, setCurrentGoalId] = useState<string | undefined>(undefined);
+  
+  const { categoryId } = route.params || {};
+  
+  // Get goal data based on current goal ID
+  const goal = useGoalById(currentGoalId || '');
+  
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [startedAt, setStartedAt] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('work');
 
-  // Pulsating glow animation
   const glowAnim = useRef(new Animated.Value(1)).current;
 
   const {
@@ -55,23 +100,26 @@ export default function StartSessionScreen() {
   const loadCategories = useLoadCategories();
   const updateGoalProgress = useUpdateGoalProgress();
 
-  const insets = useSafeAreaInsets(); // 2. Calculate padding:
-  const scrollBottomPadding = 102 + insets.bottom; // 2. Calculate padding:
+  const insets = useSafeAreaInsets(); 
+  const scrollBottomPadding = 102 + insets.bottom; 
 
-
-  // Load categories when screen mounts
   useEffect(() => {
     loadCategories();
   }, [loadCategories]);
 
-  // Set category from params if provided
+  useEffect(() => {
+    // Only set goalId from params if we're coming fresh (no active session)
+    if (!isRunning && !isPaused && route.params?.goalId) {
+      setCurrentGoalId(route.params.goalId);
+    }
+  }, [route.params?.goalId, isRunning, isPaused]);
+
   useEffect(() => {
     if (categoryId) {
       setSelectedCategory(categoryId);
     }
   }, [categoryId]);
 
-  // Pulsating glow animation
   useEffect(() => {
     if (isRunning) {
       Animated.loop(
@@ -92,6 +140,26 @@ export default function StartSessionScreen() {
       glowAnim.setValue(1);
     }
   }, [isRunning, glowAnim]);
+
+  // ========================================
+  // NEW: Handle removing goal from session
+  // ========================================
+  const handleRemoveGoal = () => {
+    Alert.alert(
+      'Remove Goal?',
+      'This session will no longer count towards your goal. You can continue the session as a regular session.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove Goal',
+          style: 'destructive',
+          onPress: () => {
+            setCurrentGoalId(undefined);
+          },
+        },
+      ]
+    );
+  };
 
   const handleStart = () => {
     const now = new Date().toISOString();
@@ -133,30 +201,40 @@ export default function StartSessionScreen() {
       const endedAt = new Date().toISOString();
       const sessionMinutes = Math.floor(elapsedMs / 60000);
 
+      const category = categories.find(c => c.id === selectedCategory);
+
       const session: Session = {
         id: `session_${Date.now()}`,
         title: title.trim() || 'Untitled Session',
         categoryId: selectedCategory,
+        categoryName: category?.name || 'Unknown',
+        categoryColor: category?.color || '#38BDF8',
+        categoryIcon: category?.icon || 'help-circle',
         durationMs: elapsedMs,
         notes: notes.trim(),
-        goalId: goalId,
+        goalId: currentGoalId, // Use currentGoalId from state
         startedAt: startedAt!,
         endedAt,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
+
       await addSession(session);
 
-      if (goalId && sessionMinutes > 0) {
+      if (currentGoalId && sessionMinutes > 0) {
         try {
-          await updateGoalProgress(goalId, sessionMinutes);
+          await updateGoalProgress(currentGoalId, sessionMinutes);
         } catch (error) {
-          console.warn('Failed to update goal progress:', error);
+          Alert.alert(
+            'Error',
+            'Failed to update goal progress.',
+            [{ text: 'OK' }]
+          );
         }
       }
 
-      const successMessage = goalId
+      const successMessage = currentGoalId
         ? `Session saved and ${sessionMinutes} minute(s) added to your goal!`
         : 'Session saved successfully';
 
@@ -181,6 +259,7 @@ export default function StartSessionScreen() {
     setNotes('');
     setStartedAt(null);
     setSelectedCategory('work');
+    setCurrentGoalId(undefined);
   };
 
   const formatTime = (ms: number): string => {
@@ -202,7 +281,6 @@ export default function StartSessionScreen() {
       style={styles.gradient}
     >
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        {/* Custom Header */}
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.headerButton}
@@ -214,6 +292,14 @@ export default function StartSessionScreen() {
           <View style={styles.headerButton} />
         </View>
 
+        {/* PHASE 3: Goal Indicator with Remove Option */}
+        {currentGoalId && goal?.title && (
+          <GoalIndicator 
+            goalTitle={goal.title}
+            onRemove={handleRemoveGoal}
+          />
+        )}
+
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
@@ -221,13 +307,11 @@ export default function StartSessionScreen() {
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <ScrollView
               style={styles.scrollView}
-              contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]} // 3. Apply to ScrollView:
+              contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]} 
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-              {/* ✨ NEW: Glowing Circular Timer */}
               <View style={styles.timerContainer}>
-                {/* Pulsating Glow Background */}
                 <Animated.View
                   style={[
                     styles.glowBackground,
@@ -243,12 +327,10 @@ export default function StartSessionScreen() {
                   />
                 </Animated.View>
 
-                {/* Circular Timer */}
                 <BlurView intensity={30} tint="dark" style={styles.timerCircle}>
                   <View style={styles.timerInner}>
                     <Text style={styles.timerText}>{formatTime(elapsedMs)}</Text>
 
-                    {/* Status Badge */}
                     {isPaused && (
                       <View style={styles.statusBadge}>
                         <Ionicons name="pause" size={12} color={theme.colors.warning} />
@@ -265,7 +347,6 @@ export default function StartSessionScreen() {
                 </BlurView>
               </View>
 
-              {/* Input Fields */}
               <View style={styles.formContainer}>
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Session Title</Text>
@@ -275,7 +356,8 @@ export default function StartSessionScreen() {
                     placeholderTextColor={theme.colors.text.quaternary}
                     value={title}
                     onChangeText={setTitle}
-                    editable={!isRunning}
+                    returnKeyType="done"
+                    onSubmitEditing={Keyboard.dismiss}
                   />
                 </View>
 
@@ -328,9 +410,7 @@ export default function StartSessionScreen() {
                 </View>
               </View>
 
-              {/* ✅ FIXED: Timer Controls with proper pause/resume logic */}
               <View style={styles.controlsContainer}>
-                {/* Initial State: Not Started */}
                 {!isRunning && !isPaused && (
                   <TouchableOpacity style={styles.primaryButton} onPress={handleStart}>
                     <LinearGradient
@@ -343,7 +423,6 @@ export default function StartSessionScreen() {
                   </TouchableOpacity>
                 )}
 
-                {/* Running State: Show Pause and Stop */}
                 {isRunning && !isPaused && (
                   <View style={styles.activeControls}>
                     <TouchableOpacity
@@ -370,7 +449,6 @@ export default function StartSessionScreen() {
                   </View>
                 )}
 
-                {/* Paused State: Show Reset, Resume, and Stop */}
                 {isPaused && (
                   <View style={styles.pausedControls}>
                     <TouchableOpacity
@@ -408,7 +486,6 @@ export default function StartSessionScreen() {
                 )}
               </View>
 
-              {/* Helpful Tip */}
               {!isRunning && !isPaused && (
                 <View style={styles.tipContainer}>
                   <Ionicons name="bulb-outline" size={20} color={theme.colors.primary.cyan} />
@@ -449,10 +526,49 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.h3,
     color: theme.colors.text.primary,
   },
+  // ========================================
+  // PHASE 3: Goal Indicator Styles
+  // ========================================
+  goalIndicator: {
+    marginHorizontal: theme.spacing[4],
+    marginTop: theme.spacing[2],
+    marginBottom: theme.spacing[3],
+    borderRadius: theme.borderRadius.xl,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary.cyan + '40',
+  },
+  goalIndicatorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: theme.spacing[4],
+    gap: theme.spacing[3],
+  },
+  goalTextContainer: {
+    flex: 1,
+    gap: theme.spacing[1],
+  },
+  goalLabel: {
+    ...typography.caption,
+    color: theme.colors.text.tertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontFamily: fonts.semibold,
+  },
+  goalTitle: {
+    ...typography.bodyMedium,
+    color: theme.colors.primary.cyan,
+    fontFamily: fonts.semibold,
+  },
+  removeGoalButton: {
+    padding: theme.spacing[2],
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.glass.light,
+  },
+  // ========================================
   keyboardView: {
     flex: 1,
   },
@@ -461,10 +577,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: theme.spacing[4],
-    paddingBottom: theme.spacing[8], // This will be overridden by the inline style
+    paddingBottom: theme.spacing[8], 
   },
-
-  // ✨ NEW: Glowing Circular Timer Styles
   timerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -497,8 +611,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   timerText: {
+    fontFamily: fonts.bold,
     fontSize: 48,
-    fontWeight: theme.fontWeight.bold,
     color: theme.colors.text.primary,
     letterSpacing: -2,
   },
@@ -515,8 +629,8 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.glass.border,
   },
   statusText: {
-    fontSize: theme.fontSize.xs,
-    fontWeight: theme.fontWeight.semibold,
+    ...typography.caption,
+    fontFamily: fonts.semibold,
     color: theme.colors.text.secondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -527,7 +641,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: theme.colors.danger,
   },
-
   formContainer: {
     gap: theme.spacing[5],
   },
@@ -535,19 +648,19 @@ const styles = StyleSheet.create({
     gap: theme.spacing[2],
   },
   label: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.semibold,
+    ...typography.caption,
+    fontFamily: fonts.semibold,
     color: theme.colors.text.secondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   input: {
+    ...typography.body,
     backgroundColor: theme.colors.glass.background,
     borderWidth: 1,
     borderColor: theme.colors.glass.border,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing[4],
-    fontSize: theme.fontSize.base,
     color: theme.colors.text.primary,
   },
   notesInput: {
@@ -560,8 +673,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   manageLink: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.semibold,
+    ...typography.bodySmall,
+    fontFamily: fonts.semibold,
     color: theme.colors.primary.cyan,
   },
   categoryChipsContainer: {
@@ -590,16 +703,14 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   categoryChipText: {
-    fontSize: theme.fontSize.sm,
-    fontWeight: theme.fontWeight.medium,
+    ...typography.bodySmall,
+    fontFamily: fonts.medium,
     color: theme.colors.text.secondary,
   },
   categoryChipTextActive: {
     color: theme.colors.text.primary,
-    fontWeight: theme.fontWeight.bold,
+    fontFamily: fonts.bold,
   },
-
-  // ✅ FIXED: Button Controls
   controlsContainer: {
     marginTop: theme.spacing[6],
     gap: theme.spacing[3],
@@ -616,8 +727,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing[4],
   },
   buttonText: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.buttonLarge,
     color: '#FFFFFF',
   },
   secondaryButton: {
@@ -632,8 +742,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.xl,
   },
   secondaryButtonText: {
-    fontSize: theme.fontSize.base,
-    fontWeight: theme.fontWeight.bold,
+    ...typography.buttonLarge,
     color: theme.colors.text.primary,
   },
   dangerButton: {
@@ -661,7 +770,6 @@ const styles = StyleSheet.create({
   flexButton: {
     flex: 1,
   },
-
   tipContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -674,9 +782,8 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.xl,
   },
   tipText: {
+    ...typography.bodySmall,
     flex: 1,
-    fontSize: theme.fontSize.sm,
     color: theme.colors.text.secondary,
-    lineHeight: 20,
   },
 });
