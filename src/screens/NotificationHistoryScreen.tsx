@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,18 @@ import {
 } from '../stores/useNotificationStore';
 import { NotificationHistoryItem } from '../services/NotificationService';
 
+const EmptyState = React.memo(() => (
+  <View style={styles.emptyContainer}>
+    <View style={[styles.emptyIcon, { backgroundColor: theme.colors.glass.light }]}>
+      <Ionicons name="notifications-off-outline" size={48} color={theme.colors.text.tertiary} />
+    </View>
+    <Text style={styles.emptyTitle}>No Notifications Yet</Text>
+    <Text style={styles.emptyText}>
+      You'll see your notification history here
+    </Text>
+  </View>
+));
+
 const NotificationHistoryScreen: React.FC = () => {
   const navigation = useNavigation();
   const history = useNotificationHistory();
@@ -44,27 +56,27 @@ const NotificationHistoryScreen: React.FC = () => {
     loadHistory();
   }, []);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadHistory();
     setRefreshing(false);
-  };
+  }, [loadHistory]);
 
-  const handleNotificationPress = async (item: NotificationHistoryItem) => {
+  const handleNotificationPress = useCallback(async (item: NotificationHistoryItem) => {
     if (!item.read) {
       await markAsRead(item.id);
     }
 
     if (item.data?.screen) {
-      navigation.navigate(item.data.screen as any, item.data.params);
+      (navigation as any).navigate(item.data.screen, item.data.params);
     }
-  };
+  }, [markAsRead, navigation]);
 
-  const handleDismiss = async (notificationId: string) => {
+  const handleDismiss = useCallback(async (notificationId: string) => {
     await markAsDismissed(notificationId);
-  };
+  }, [markAsDismissed]);
 
-  const handleClearAll = () => {
+  const handleClearAll = useCallback(() => {
     Alert.alert(
       'Clear History',
       'Are you sure you want to clear all notification history?',
@@ -79,11 +91,11 @@ const NotificationHistoryScreen: React.FC = () => {
         },
       ]
     );
-  };
+  }, [clearHistory]);
 
-  const handleGoBack = () => navigation.goBack();
+  const handleGoBack = useCallback(() => navigation.goBack(), [navigation]);
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationIcon = useCallback((type: string) => {
     switch (type) {
       case 'session_completion':
         return { name: 'checkmark-circle' as const, color: '#10B981' };
@@ -93,10 +105,10 @@ const NotificationHistoryScreen: React.FC = () => {
         return { name: 'flag' as const, color: '#F59E0B' };
       case 'goal_progress':
         return { name: 'trending-up' as const, color: '#F59E0B' };
+      case 'goal_reminder':
+        return { name: 'calendar' as const, color: '#F59E0B' };
       case 'streak_reminder':
-        return { name: 'flame' as const, color: '#EF4444' };
-      case 'streak_milestone':
-        return { name: 'flame' as const, color: '#EF4444' };
+        return { name: 'flash' as const, color: '#8B5CF6' };
       case 'achievement_unlocked':
         return { name: 'trophy' as const, color: '#9B59B6' };
       case 'daily_reminder':
@@ -104,25 +116,26 @@ const NotificationHistoryScreen: React.FC = () => {
       default:
         return { name: 'notifications' as const, color: theme.colors.text.tertiary };
     }
-  };
+  }, []);
 
-  const renderNotification = ({ item }: ListRenderItemInfo<NotificationHistoryItem>) => {
+  const renderNotification = useCallback(({ item }: ListRenderItemInfo<NotificationHistoryItem>) => {
     const icon = getNotificationIcon(item.type);
     const isUnread = !item.read && !item.dismissed;
 
     return (
       <GlassCard style={styles.notificationCard}>
         <TouchableOpacity
-          style={[styles.notificationContent, isUnread && styles.unreadCard]}
+          style={[
+            styles.notificationContent,
+            isUnread && styles.unreadCard,
+          ]}
           onPress={() => handleNotificationPress(item)}
           activeOpacity={0.7}
         >
-          {/* Icon */}
           <View style={[styles.iconContainer, { backgroundColor: icon.color + '20' }]}>
             <Ionicons name={icon.name} size={24} color={icon.color} />
           </View>
 
-          {/* Content */}
           <View style={styles.contentContainer}>
             <View style={styles.titleRow}>
               <Text style={styles.title} numberOfLines={1}>
@@ -130,18 +143,22 @@ const NotificationHistoryScreen: React.FC = () => {
               </Text>
               {isUnread && <View style={styles.unreadDot} />}
             </View>
+
             <Text style={styles.body} numberOfLines={2}>
               {item.body}
             </Text>
+
             <Text style={styles.timestamp}>
               {formatDistanceToNow(new Date(item.sentAt), { addSuffix: true })}
             </Text>
           </View>
 
-          {/* Actions */}
           <TouchableOpacity
             style={styles.dismissButton}
-            onPress={() => handleDismiss(item.id)}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleDismiss(item.id);
+            }}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons name="close" size={20} color={theme.colors.text.tertiary} />
@@ -149,46 +166,31 @@ const NotificationHistoryScreen: React.FC = () => {
         </TouchableOpacity>
       </GlassCard>
     );
-  };
+  }, [getNotificationIcon, handleNotificationPress, handleDismiss]);
 
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <View style={[styles.emptyIcon, { backgroundColor: theme.colors.glass.light }]}>
-        <Ionicons name="notifications-off-outline" size={48} color={theme.colors.text.tertiary} />
-      </View>
-      <Text style={styles.emptyTitle}>No Notifications</Text>
-      <Text style={styles.emptyText}>
-        You'll see your notification history here
-      </Text>
-    </View>
+  const keyExtractor = useCallback((item: NotificationHistoryItem) => item.id, []);
+
+  const ListEmptyComponent = useCallback(() => <EmptyState />, []);
+
+  const ListFooterComponent = useCallback(() => <View style={{ height: 100 }} />, []);
+
+  const visibleHistory = React.useMemo(
+    () => history.filter(item => !item.dismissed),
+    [history]
   );
-
-  const renderHeader = () => (
-    <View style={styles.infoCardContainer}>
-      <GlassCard style={styles.infoCard}>
-        <View style={styles.infoContent}>
-          <Ionicons name="information-circle" size={24} color={theme.colors.primary.cyan} />
-          <Text style={styles.infoText}>
-            Track all your notifications in one place. Tap to view details or swipe to dismiss.
-          </Text>
-        </View>
-      </GlassCard>
-    </View>
-  );
-
-  const visibleHistory = history.filter(item => !item.dismissed);
 
   return (
-    <LinearGradient
-      colors={theme.gradients.backgroundAnimated}
-      style={styles.gradient}
-    >
+    <View style={styles.gradient}>
+      <LinearGradient
+        colors={theme.gradients.backgroundAnimated}
+        style={StyleSheet.absoluteFill}
+      />
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.headerButton} onPress={handleGoBack}>
             <Ionicons name="arrow-back" size={24} color={theme.colors.text.secondary} />
           </TouchableOpacity>
+          
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Notifications</Text>
             {unreadCount > 0 && (
@@ -197,23 +199,23 @@ const NotificationHistoryScreen: React.FC = () => {
               </View>
             )}
           </View>
-          {visibleHistory.length > 0 && (
+
+          {visibleHistory.length > 0 ? (
             <TouchableOpacity style={styles.headerButton} onPress={handleClearAll}>
               <Ionicons name="trash-outline" size={24} color={theme.colors.danger} />
             </TouchableOpacity>
+          ) : (
+            <View style={styles.headerButton} />
           )}
-          {visibleHistory.length === 0 && <View style={styles.headerButton} />}
         </View>
 
-        {/* List */}
         <FlatList
           data={visibleHistory}
           renderItem={renderNotification}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
-          ListHeaderComponent={renderHeader}
-          ListEmptyComponent={renderEmpty}
-          ListFooterComponent={<View style={{ height: 100 }} />}
+          ListEmptyComponent={ListEmptyComponent}
+          ListFooterComponent={ListFooterComponent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl 
@@ -229,7 +231,7 @@ const NotificationHistoryScreen: React.FC = () => {
           windowSize={5}
         />
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 
@@ -263,7 +265,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
   },
   badge: {
-    backgroundColor: theme.colors.danger,
+    backgroundColor: theme.colors.primary.cyan,
     borderRadius: theme.borderRadius.full,
     paddingHorizontal: theme.spacing[2],
     paddingVertical: 2,
@@ -280,22 +282,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: theme.spacing[4],
-  },
-  infoCardContainer: {
-    marginBottom: theme.spacing[4],
-  },
-  infoCard: {
-    marginTop: theme.spacing[2],
-  },
-  infoContent: {
-    flexDirection: 'row',
-    padding: theme.spacing[4],
-    gap: theme.spacing[3],
-  },
-  infoText: {
-    flex: 1,
-    ...typography.bodySmall,
-    color: theme.colors.text.secondary,
+    paddingTop: theme.spacing[2],
   },
   notificationCard: {
     marginBottom: theme.spacing[3],
@@ -378,6 +365,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     textAlign: 'center',
     paddingHorizontal: theme.spacing[8],
+    maxWidth: 300,
   },
 });
 

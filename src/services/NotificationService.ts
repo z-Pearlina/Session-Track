@@ -1,19 +1,27 @@
 import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logger } from './logger';
+import { STORAGE_KEYS } from '../config/constants';
 
 export interface NotificationPreferences {
   enabled: boolean;
+  
   sessionCompletionEnabled: boolean;
   sessionReminderEnabled: boolean;
+  
   goalCompletionEnabled: boolean;
   goalProgressEnabled: boolean;
+  goalReminderEnabled: boolean;
+  
   streakReminderEnabled: boolean;
-  streakMilestoneEnabled: boolean;
+  
   achievementNotificationsEnabled: boolean;
+  
   dailyReminderEnabled: boolean;
   dailyReminderTime: string;
+  
   soundEnabled: boolean;
   vibrationEnabled: boolean;
 }
@@ -34,35 +42,67 @@ export type NotificationType =
   | 'session_reminder'
   | 'goal_completion'
   | 'goal_progress'
+  | 'goal_reminder'
   | 'streak_reminder'
-  | 'streak_milestone'
   | 'achievement_unlocked'
-  | 'daily_reminder';
+  | 'daily_reminder'
+  | 'test';
 
-const STORAGE_KEYS = {
-  PREFERENCES: '@flowtrix:notification_preferences',
-  HISTORY: '@flowtrix:notification_history',
-  DAILY_REMINDER_ID: '@flowtrix:daily_reminder_id',
-  LAST_SENT: '@flowtrix:last_sent_notifications',
+const DEFAULT_PREFERENCES: NotificationPreferences = {
+  enabled: true,
+  sessionCompletionEnabled: true,
+  sessionReminderEnabled: false,
+  goalCompletionEnabled: true,
+  goalProgressEnabled: true,
+  goalReminderEnabled: true,
+  streakReminderEnabled: true,
+  achievementNotificationsEnabled: true,
+  dailyReminderEnabled: false,
+  dailyReminderTime: '20:00',
+  soundEnabled: true,
+  vibrationEnabled: true,
+};
+
+const NOTIFICATION_STORAGE = {
+  HISTORY: '@flowtrix:notifications:history',
+  LAST_SENT: '@flowtrix:notifications:last_sent',
+  DAILY_REMINDER_ID: '@flowtrix:notifications:daily_reminder_id',
 } as const;
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-    priority: Notifications.AndroidNotificationPriority.HIGH,
-  }),
-});
-
 export class NotificationService {
-  private static notificationListener: Notifications.Subscription | null = null;
-  private static responseListener: Notifications.Subscription | null = null;
-  private static navigationCallback: ((screen: string, params?: any) => void) | null = null;
+  private static isInitialized = false;
 
   static async initialize(): Promise<void> {
+    if (this.isInitialized) return;
+
+    try {
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+        }),
+      });
+
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') {
+        await this.requestPermissions();
+      }
+
+      this.isInitialized = true;
+      logger.success('Notification service initialized');
+    } catch (error) {
+      logger.error('Failed to initialize notification service', error);
+      throw error;
+    }
+  }
+
+  static async requestPermissions(): Promise<boolean> {
+    if (!Device.isDevice) {
+      logger.warn('Notifications require physical device');
+      return false;
+    }
+
     try {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
@@ -73,147 +113,49 @@ export class NotificationService {
       }
 
       if (finalStatus !== 'granted') {
-        logger.warn('Notification permissions not granted');
-        return;
+        logger.warn('Notification permissions denied');
+        return false;
       }
 
-      if (Platform.OS === 'android') {
-        await this.setupAndroidChannels();
-      }
-
-      this.setupNotificationListeners();
-      await this.rescheduleDailyReminder();
-
-      logger.success('Notification service initialized successfully');
+      logger.success('Notification permissions granted');
+      return true;
     } catch (error) {
-      logger.error('Failed to initialize notification service', error);
+      logger.error('Failed to request permissions', error);
+      return false;
     }
   }
 
-  private static async setupAndroidChannels(): Promise<void> {
-    await Notifications.setNotificationChannelAsync('general', {
-      name: 'General',
-      importance: Notifications.AndroidImportance.DEFAULT,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#38BDF8',
-      sound: 'default',
-    });
-
-    await Notifications.setNotificationChannelAsync('sessions', {
-      name: 'Sessions',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#10B981',
-      sound: 'default',
-    });
-
-    await Notifications.setNotificationChannelAsync('goals', {
-      name: 'Goals',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#F59E0B',
-      sound: 'default',
-    });
-
-    await Notifications.setNotificationChannelAsync('streaks', {
-      name: 'Streaks',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#EF4444',
-      sound: 'default',
-    });
-
-    await Notifications.setNotificationChannelAsync('achievements', {
-      name: 'Achievements',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 150, 150, 150, 150, 150],
-      lightColor: '#9B59B6',
-      sound: 'default',
-    });
-
-    await Notifications.setNotificationChannelAsync('reminders', {
-      name: 'Reminders',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FFD700',
-      sound: 'default',
-    });
+  static async getPermissionStatus(): Promise<string> {
+    const { status } = await Notifications.getPermissionsAsync();
+    return status;
   }
-
-  private static setupNotificationListeners(): void {
-    this.notificationListener = Notifications.addNotificationReceivedListener(
-      async (notification) => {
-        logger.info('Notification received:', notification);
-        
-        // ✅ FIX: Properly type the notification type with fallback
-        const notificationType: NotificationType = 
-          (notification.request.content.data?.type as NotificationType) || 'session_completion';
-        
-        await this.addToHistory({
-          id: notification.request.identifier,
-          type: notificationType, // ✅ Now properly typed
-          title: notification.request.content.title || '',
-          body: notification.request.content.body || '',
-          data: notification.request.content.data,
-          sentAt: new Date().toISOString(),
-          read: false,
-          dismissed: false,
-        });
-      }
-    );
-
-    this.responseListener = Notifications.addNotificationResponseReceivedListener(
-      async (response) => {
-        logger.info('Notification tapped:', response);
-        
-        const data = response.notification.request.content.data;
-        const notificationId = response.notification.request.identifier;
-        
-        await this.markAsRead(notificationId);
-        
-        if (data?.screen && this.navigationCallback) {
-          this.navigationCallback(data.screen as string, data.params); // ✅ FIX: Cast to string
-        }
-      }
-    );
-  }
-
-  static setNavigationCallback(callback: (screen: string, params?: any) => void): void {
-    this.navigationCallback = callback;
-  }
-
-  static removeListeners(): void {
-    if (this.notificationListener) {
-      // ✅ FIX: Use correct method name
-      this.notificationListener.remove();
-    }
-    if (this.responseListener) {
-      // ✅ FIX: Use correct method name
-      this.responseListener.remove();
-    }
-  }
-
-  // ========================================
-  // PREFERENCES MANAGEMENT
-  // ========================================
 
   static async getPreferences(): Promise<NotificationPreferences> {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEYS.PREFERENCES);
-      if (!raw) {
-        return this.getDefaultPreferences();
-      }
-      return JSON.parse(raw);
+      const stored = await AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATION_PREFERENCES);
+      if (!stored) return DEFAULT_PREFERENCES;
+
+      const parsed = JSON.parse(stored);
+      return { ...DEFAULT_PREFERENCES, ...parsed };
     } catch (error) {
       logger.error('Failed to load notification preferences', error);
-      return this.getDefaultPreferences();
+      return DEFAULT_PREFERENCES;
     }
   }
 
   static async savePreferences(preferences: NotificationPreferences): Promise<void> {
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(preferences));
-      await this.rescheduleDailyReminder();
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.NOTIFICATION_PREFERENCES,
+        JSON.stringify(preferences)
+      );
+
+      if (preferences.dailyReminderEnabled) {
+        await this.scheduleDailyReminder();
+      } else {
+        await this.cancelDailyReminder();
+      }
+
       logger.success('Notification preferences saved');
     } catch (error) {
       logger.error('Failed to save notification preferences', error);
@@ -221,416 +163,276 @@ export class NotificationService {
     }
   }
 
-  static async updatePreference<K extends keyof NotificationPreferences>(
-    key: K,
-    value: NotificationPreferences[K]
-  ): Promise<void> {
-    const preferences = await this.getPreferences();
-    preferences[key] = value;
-    await this.savePreferences(preferences);
-  }
-
-  private static getDefaultPreferences(): NotificationPreferences {
-    return {
-      enabled: true,
-      sessionCompletionEnabled: true,
-      sessionReminderEnabled: false,
-      goalCompletionEnabled: true,
-      goalProgressEnabled: true,
-      streakReminderEnabled: true,
-      streakMilestoneEnabled: true,
-      achievementNotificationsEnabled: true,
-      dailyReminderEnabled: true,
-      dailyReminderTime: '20:00',
-      soundEnabled: true,
-      vibrationEnabled: true,
-    };
-  }
-
-  // ========================================
-  // NOTIFICATION HISTORY
-  // ========================================
-
-  static async getHistory(): Promise<NotificationHistoryItem[]> {
-    try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEYS.HISTORY);
-      if (!raw) return [];
-      
-      const history: NotificationHistoryItem[] = JSON.parse(raw);
-      return history.sort((a, b) => 
-        new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime()
-      );
-    } catch (error) {
-      logger.error('Failed to load notification history', error);
-      return [];
-    }
-  }
-
-  private static async addToHistory(item: NotificationHistoryItem): Promise<void> {
-    try {
-      const history = await this.getHistory();
-      history.push(item);
-      const trimmed = history.slice(-100);
-      await AsyncStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(trimmed));
-    } catch (error) {
-      logger.error('Failed to add notification to history', error);
-    }
-  }
-
-  static async markAsRead(notificationId: string): Promise<void> {
-    try {
-      const history = await this.getHistory();
-      const updated = history.map(item =>
-        item.id === notificationId ? { ...item, read: true } : item
-      );
-      await AsyncStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updated));
-    } catch (error) {
-      logger.error('Failed to mark notification as read', error);
-    }
-  }
-
-  static async markAsDismissed(notificationId: string): Promise<void> {
-    try {
-      const history = await this.getHistory();
-      const updated = history.map(item =>
-        item.id === notificationId ? { ...item, dismissed: true } : item
-      );
-      await AsyncStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updated));
-    } catch (error) {
-      logger.error('Failed to mark notification as dismissed', error);
-    }
-  }
-
-  static async clearHistory(): Promise<void> {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify([]));
-      logger.success('Notification history cleared');
-    } catch (error) {
-      logger.error('Failed to clear notification history', error);
-      throw error;
-    }
-  }
-
-  static async getUnreadCount(): Promise<number> {
-    const history = await this.getHistory();
-    return history.filter(item => !item.read && !item.dismissed).length;
-  }
-
-  // ========================================
-  // DEDUPLICATION
-  // ========================================
-
-  private static async wasRecentlySent(
+  private static async sendNotification(
     type: NotificationType,
-    uniqueKey: string,
-    withinMinutes: number = 60
-  ): Promise<boolean> {
+    title: string,
+    body: string,
+    data?: any
+  ): Promise<string | null> {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEYS.LAST_SENT);
-      if (!raw) return false;
-      
-      const lastSent: Record<string, string> = JSON.parse(raw);
-      const key = `${type}:${uniqueKey}`;
-      const lastSentTime = lastSent[key];
-      
-      if (!lastSentTime) return false;
-      
-      const minutesAgo = (Date.now() - new Date(lastSentTime).getTime()) / (1000 * 60);
-      return minutesAgo < withinMinutes;
+      await this.initialize();
+
+      const preferences = await this.getPreferences();
+      if (!preferences.enabled) {
+        logger.info('Notifications disabled globally');
+        return null;
+      }
+
+      if (!this.isNotificationTypeEnabled(type, preferences)) {
+        logger.info(`Notification type ${type} is disabled`);
+        return null;
+      }
+
+      if (await this.isDuplicate(type, data)) {
+        logger.info(`Duplicate notification prevented: ${type}`);
+        return null;
+      }
+
+      const content: Notifications.NotificationContentInput = {
+        title,
+        body,
+        data: { type, ...data },
+        sound: preferences.soundEnabled,
+        vibrate: preferences.vibrationEnabled ? [0, 250, 250, 250] : undefined,
+      };
+
+      const id = await Notifications.scheduleNotificationAsync({
+        content,
+        trigger: null,
+      });
+
+      await this.addToHistory({
+        id,
+        type,
+        title,
+        body,
+        data,
+        sentAt: new Date().toISOString(),
+        read: false,
+        dismissed: false,
+      });
+
+      await this.saveLastSent(type, data);
+
+      logger.success(`Notification sent: ${type} - ${title}`);
+      return id;
     } catch (error) {
+      logger.error('Failed to send notification', error);
+      return null;
+    }
+  }
+
+  private static isNotificationTypeEnabled(
+    type: NotificationType,
+    preferences: NotificationPreferences
+  ): boolean {
+    const typeMap: Record<NotificationType, keyof NotificationPreferences> = {
+      session_completion: 'sessionCompletionEnabled',
+      session_reminder: 'sessionReminderEnabled',
+      goal_completion: 'goalCompletionEnabled',
+      goal_progress: 'goalProgressEnabled',
+      goal_reminder: 'goalReminderEnabled',
+      streak_reminder: 'streakReminderEnabled',
+      achievement_unlocked: 'achievementNotificationsEnabled',
+      daily_reminder: 'dailyReminderEnabled',
+      test: 'enabled',
+    };
+
+    const key = typeMap[type];
+    return preferences[key] as boolean;
+  }
+
+  private static async isDuplicate(type: NotificationType, data?: any): Promise<boolean> {
+    try {
+      const lastSentKey = `${type}:${JSON.stringify(data || {})}`;
+      const stored = await AsyncStorage.getItem(`${NOTIFICATION_STORAGE.LAST_SENT}:${lastSentKey}`);
+      
+      if (!stored) return false;
+
+      const lastSent = new Date(stored);
+      const now = new Date();
+      const diffMinutes = (now.getTime() - lastSent.getTime()) / (1000 * 60);
+
+      const windows: Record<NotificationType, number> = {
+        session_completion: 1,
+        session_reminder: 60,
+        goal_completion: 5,
+        goal_progress: 30,
+        goal_reminder: 1440,
+        streak_reminder: 1440,
+        achievement_unlocked: 2,
+        daily_reminder: 1440,
+        test: 0.5,
+      };
+
+      return diffMinutes < windows[type];
+    } catch (error) {
+      logger.error('Deduplication check failed', error);
       return false;
     }
   }
 
-  private static async recordSent(type: NotificationType, uniqueKey: string): Promise<void> {
+  private static async saveLastSent(type: NotificationType, data?: any): Promise<void> {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEYS.LAST_SENT);
-      const lastSent: Record<string, string> = raw ? JSON.parse(raw) : {};
-      
-      const key = `${type}:${uniqueKey}`;
-      lastSent[key] = new Date().toISOString();
-      
-      await AsyncStorage.setItem(STORAGE_KEYS.LAST_SENT, JSON.stringify(lastSent));
+      const key = `${type}:${JSON.stringify(data || {})}`;
+      await AsyncStorage.setItem(
+        `${NOTIFICATION_STORAGE.LAST_SENT}:${key}`,
+        new Date().toISOString()
+      );
     } catch (error) {
-      logger.error('Failed to record sent notification', error);
+      logger.error('Failed to save last sent timestamp', error);
     }
   }
 
-  // ========================================
-  // SESSION NOTIFICATIONS
-  // ========================================
-
-  static async sendSessionCompletion(sessionTitle: string, durationMinutes: number): Promise<void> {
-    const preferences = await this.getPreferences();
-    
-    if (!preferences.enabled || !preferences.sessionCompletionEnabled) {
-      return;
-    }
-
-    const uniqueKey = `${sessionTitle}-${Date.now()}`;
-    if (await this.wasRecentlySent('session_completion', uniqueKey, 5)) {
-      logger.info('Session completion notification recently sent, skipping');
-      return;
-    }
-
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '✅ Session Completed!',
-          body: `Great job! You tracked ${durationMinutes} minutes for "${sessionTitle}"`,
-          sound: preferences.soundEnabled ? 'default' : undefined,
-          data: {
-            type: 'session_completion',
-            sessionTitle,
-            durationMinutes,
-            screen: 'Home',
-          },
-        },
-        trigger: null,
-      });
-
-      await this.recordSent('session_completion', uniqueKey);
-      logger.success('Session completion notification sent');
-    } catch (error) {
-      logger.error('Failed to send session completion notification', error);
-    }
+  static async sendSessionCompletion(
+    sessionTitle: string,
+    durationMinutes: number,
+    categoryName: string
+  ): Promise<void> {
+    await this.sendNotification(
+      'session_completion',
+      '✅ Session Completed!',
+      `${sessionTitle} • ${durationMinutes} min in ${categoryName}`,
+      { sessionTitle, durationMinutes, categoryName }
+    );
   }
 
   static async sendSessionReminder(): Promise<void> {
-    const preferences = await this.getPreferences();
-    
-    if (!preferences.enabled || !preferences.sessionReminderEnabled) {
-      return;
-    }
-
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '⏱️ Time to Track!',
-          body: "Don't forget to track your session today!",
-          sound: preferences.soundEnabled ? 'default' : undefined,
-          data: {
-            type: 'session_reminder',
-            screen: 'StartSession',
-          },
-        },
-        trigger: null,
-      });
-
-      logger.success('Session reminder sent');
-    } catch (error) {
-      logger.error('Failed to send session reminder', error);
-    }
+    await this.sendNotification(
+      'session_reminder',
+      '⏱️ Time to Track!',
+      'Don\'t forget to log your sessions today',
+      {}
+    );
   }
 
-  // ========================================
-  // GOAL NOTIFICATIONS
-  // ========================================
-
   static async sendGoalCompletion(goalTitle: string): Promise<void> {
-    const preferences = await this.getPreferences();
-    
-    if (!preferences.enabled || !preferences.goalCompletionEnabled) {
-      return;
-    }
-
-    if (await this.wasRecentlySent('goal_completion', goalTitle, 60)) {
-      logger.info('Goal completion notification recently sent, skipping');
-      return;
-    }
-
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '🎉 Goal Completed!',
-          body: `Congratulations! You've achieved "${goalTitle}"!`,
-          sound: preferences.soundEnabled ? 'default' : undefined,
-          data: {
-            type: 'goal_completion',
-            goalTitle,
-            screen: 'Goals',
-          },
-        },
-        trigger: null,
-      });
-
-      await this.recordSent('goal_completion', goalTitle);
-      logger.success('Goal completion notification sent');
-    } catch (error) {
-      logger.error('Failed to send goal completion notification', error);
-    }
+    await this.sendNotification(
+      'goal_completion',
+      '🎯 Goal Achieved!',
+      `Congratulations on completing: ${goalTitle}`,
+      { goalTitle }
+    );
   }
 
   static async sendGoalProgress(
     goalTitle: string,
-    progress: number,
-    target: number
+    currentMinutes: number,
+    targetMinutes: number
   ): Promise<void> {
-    const preferences = await this.getPreferences();
+    const progress = Math.round((currentMinutes / targetMinutes) * 100);
     
-    if (!preferences.enabled || !preferences.goalProgressEnabled) {
-      return;
-    }
-
-    const percentage = Math.round((progress / target) * 100);
-    
-    if (percentage !== 80 && percentage !== 90) {
-      return;
-    }
-
-    const uniqueKey = `${goalTitle}-${percentage}`;
-    if (await this.wasRecentlySent('goal_progress', uniqueKey, 1440)) {
-      return;
-    }
-
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '🎯 Almost There!',
-          body: `You're ${percentage}% complete on "${goalTitle}". Keep going!`,
-          sound: preferences.soundEnabled ? 'default' : undefined,
-          data: {
-            type: 'goal_progress',
-            goalTitle,
-            percentage,
-            screen: 'Goals',
-          },
-        },
-        trigger: null,
-      });
-
-      await this.recordSent('goal_progress', uniqueKey);
-      logger.success('Goal progress notification sent');
-    } catch (error) {
-      logger.error('Failed to send goal progress notification', error);
-    }
+    await this.sendNotification(
+      'goal_progress',
+      `📈 ${progress}% Complete!`,
+      `You're making great progress with "${goalTitle}"`,
+      { goalTitle, progress, currentMinutes, targetMinutes }
+    );
   }
 
-  // ========================================
-  // STREAK NOTIFICATIONS
-  // ========================================
+  static async sendGoalReminder(goalTitle: string, daysLeft: number): Promise<void> {
+    await this.sendNotification(
+      'goal_reminder',
+      '📅 Goal Deadline Reminder',
+      `"${goalTitle}" is due in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`,
+      { goalTitle, daysLeft }
+    );
+  }
 
   static async sendStreakReminder(currentStreak: number): Promise<void> {
-    const preferences = await this.getPreferences();
-    
-    if (!preferences.enabled || !preferences.streakReminderEnabled) {
-      return;
-    }
-
-    if (await this.wasRecentlySent('streak_reminder', 'daily', 1440)) {
-      return;
-    }
-
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '🔥 Keep Your Streak!',
-          body: `You're on a ${currentStreak}-day streak! Don't break it today.`,
-          sound: preferences.soundEnabled ? 'default' : undefined,
-          data: {
-            type: 'streak_reminder',
-            currentStreak,
-            screen: 'Home',
-          },
-        },
-        trigger: null,
-      });
-
-      await this.recordSent('streak_reminder', 'daily');
-      logger.success('Streak reminder sent');
-    } catch (error) {
-      logger.error('Failed to send streak reminder', error);
-    }
+    await this.sendNotification(
+      'streak_reminder',
+      '⚡ Keep Your Streak Going!',
+      `You're on a ${currentStreak} day streak. Log a session today to continue!`,
+      { currentStreak }
+    );
   }
-
-  static async sendStreakMilestone(streakDays: number): Promise<void> {
-    const preferences = await this.getPreferences();
-    
-    if (!preferences.enabled || !preferences.streakMilestoneEnabled) {
-      return;
-    }
-
-    const milestones = [3, 7, 14, 30, 50, 100];
-    if (!milestones.includes(streakDays)) {
-      return;
-    }
-
-    const uniqueKey = `${streakDays}`;
-    if (await this.wasRecentlySent('streak_milestone', uniqueKey, 1440)) {
-      return;
-    }
-
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '🔥 Streak Milestone!',
-          body: `Amazing! You've maintained a ${streakDays}-day streak!`,
-          sound: preferences.soundEnabled ? 'default' : undefined,
-          data: {
-            type: 'streak_milestone',
-            streakDays,
-            screen: 'Home',
-          },
-        },
-        trigger: null,
-      });
-
-      await this.recordSent('streak_milestone', uniqueKey);
-      logger.success('Streak milestone notification sent');
-    } catch (error) {
-      logger.error('Failed to send streak milestone notification', error);
-    }
-  }
-
-  // ========================================
-  // ACHIEVEMENT NOTIFICATIONS
-  // ========================================
 
   static async sendAchievementUnlocked(
     achievementTitle: string,
-    achievementDescription: string
+    tier: string
   ): Promise<void> {
-    const preferences = await this.getPreferences();
-    
-    if (!preferences.enabled || !preferences.achievementNotificationsEnabled) {
-      return;
-    }
+    const tierEmojis = {
+      bronze: '🥉',
+      silver: '🥈',
+      gold: '🥇',
+      platinum: '💎',
+    };
 
-    if (await this.wasRecentlySent('achievement_unlocked', achievementTitle, 60)) {
-      logger.info('Achievement notification recently sent, skipping');
-      return;
-    }
+    const emoji = tierEmojis[tier as keyof typeof tierEmojis] || '🏆';
 
+    await this.sendNotification(
+      'achievement_unlocked',
+      `${emoji} Achievement Unlocked!`,
+      achievementTitle,
+      { achievementTitle, tier }
+    );
+  }
+
+  static async scheduleDailyReminder(): Promise<string | null> {
     try {
-      await Notifications.scheduleNotificationAsync({
+      const preferences = await this.getPreferences();
+      
+      if (!preferences.enabled || !preferences.dailyReminderEnabled) {
+        await this.cancelDailyReminder();
+        return null;
+      }
+
+      const [hours, minutes] = preferences.dailyReminderTime.split(':').map(Number);
+      await this.cancelDailyReminder();
+      
+      const now = new Date();
+      const scheduledTime = new Date();
+      scheduledTime.setHours(hours, minutes, 0, 0);
+      
+      if (scheduledTime <= now) {
+        scheduledTime.setDate(scheduledTime.getDate() + 1);
+      }
+      
+      const secondsUntilTrigger = Math.floor(
+        (scheduledTime.getTime() - now.getTime()) / 1000
+      );
+      
+      const id = await Notifications.scheduleNotificationAsync({
         content: {
-          title: '🏆 Achievement Unlocked!',
-          body: `${achievementTitle}: ${achievementDescription}`,
+          title: '⏱️ Time to Track!',
+          body: 'Log your sessions and keep your streak going!',
           sound: preferences.soundEnabled ? 'default' : undefined,
           data: {
-            type: 'achievement_unlocked',
-            achievementTitle,
-            screen: 'Achievements',
+            type: 'daily_reminder',
+            screen: 'StartSession',
           },
         },
-        trigger: null,
+        trigger: {
+          seconds: secondsUntilTrigger,
+          repeats: true,
+        },
       });
 
-      await this.recordSent('achievement_unlocked', achievementTitle);
-      logger.success(`Achievement notification sent: ${achievementTitle}`);
+      await AsyncStorage.setItem(NOTIFICATION_STORAGE.DAILY_REMINDER_ID, id);
+      logger.success(`Daily reminder scheduled for ${hours}:${minutes}`);
+      
+      return id;
     } catch (error) {
-      logger.error('Failed to send achievement notification', error);
+      logger.error('Failed to schedule daily reminder', error);
+      return null;
     }
   }
 
-  // ========================================
-  // GOAL REMINDERS (Optional - for goal deadlines)
-  // ========================================
+  static async cancelDailyReminder(): Promise<void> {
+    try {
+      const id = await AsyncStorage.getItem(NOTIFICATION_STORAGE.DAILY_REMINDER_ID);
+      if (id) {
+        await Notifications.cancelScheduledNotificationAsync(id);
+        await AsyncStorage.removeItem(NOTIFICATION_STORAGE.DAILY_REMINDER_ID);
+        logger.info('Daily reminder cancelled');
+      }
+    } catch (error) {
+      logger.error('Failed to cancel daily reminder', error);
+    }
+  }
 
-  /**
-   * Schedule a reminder for an upcoming goal deadline
-   */
-  static async scheduleGoalReminder(
+  static async scheduleGoalDeadlineReminder(
     goalTitle: string,
     goalId: string,
     deadlineDate: Date
@@ -638,34 +440,33 @@ export class NotificationService {
     try {
       const preferences = await this.getPreferences();
       
-      if (!preferences.enabled || !preferences.goalProgressEnabled) {
+      if (!preferences.enabled || !preferences.goalReminderEnabled) {
         return null;
       }
 
-      // Calculate seconds until deadline (remind 1 day before)
       const reminderDate = new Date(deadlineDate);
-      reminderDate.setDate(reminderDate.getDate() - 1); // 1 day before deadline
-      reminderDate.setHours(9, 0, 0, 0); // 9 AM reminder
+      reminderDate.setDate(reminderDate.getDate() - 1);
+      reminderDate.setHours(9, 0, 0, 0);
       
       const now = new Date();
       
-      // Don't schedule if reminder time has passed
       if (reminderDate <= now) {
         return null;
       }
       
-      const secondsUntilReminder = Math.floor((reminderDate.getTime() - now.getTime()) / 1000);
+      const secondsUntilReminder = Math.floor(
+        (reminderDate.getTime() - now.getTime()) / 1000
+      );
       
       const id = await Notifications.scheduleNotificationAsync({
         content: {
-          title: '🎯 Goal Deadline Reminder',
-          body: `"${goalTitle}" is due tomorrow! Keep pushing!`,
-          sound: preferences.soundEnabled ? 'default' : undefined,
+          title: '📅 Goal Deadline Tomorrow',
+          body: `"${goalTitle}" is due tomorrow!`,
           data: {
-            type: 'goal_progress',
+            type: 'goal_reminder',
             goalId,
             goalTitle,
-            screen: 'Goals',
+            screen: 'GoalDetails',
             params: { goalId },
           },
         },
@@ -682,10 +483,7 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Cancel a specific goal reminder
-   */
-  static async cancelGoalReminder(notificationId: string): Promise<void> {
+  static async cancelGoalDeadlineReminder(notificationId: string): Promise<void> {
     try {
       await Notifications.cancelScheduledNotificationAsync(notificationId);
       logger.info('Goal reminder cancelled');
@@ -694,155 +492,110 @@ export class NotificationService {
     }
   }
 
-  // ========================================
-  // DAILY REMINDER
-  // ========================================
-
-  static async scheduleDailyReminder(): Promise<string | null> {
-    try {
-      const preferences = await this.getPreferences();
-      
-      if (!preferences.enabled || !preferences.dailyReminderEnabled) {
-        await this.cancelDailyReminder();
-        return null;
-      }
-
-      const [hours, minutes] = preferences.dailyReminderTime.split(':').map(Number);
-      await this.cancelDailyReminder();
-      
-      // ✅ FIX: Calculate seconds until target time (works on both iOS and Android)
-      const now = new Date();
-      const scheduledTime = new Date();
-      scheduledTime.setHours(hours, minutes, 0, 0);
-      
-      // If scheduled time is earlier today, schedule for tomorrow
-      if (scheduledTime <= now) {
-        scheduledTime.setDate(scheduledTime.getDate() + 1);
-      }
-      
-      const secondsUntilTrigger = Math.floor((scheduledTime.getTime() - now.getTime()) / 1000);
-      
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '⏱️ Time to Track!',
-          body: 'Log your sessions and keep your streak going! 🔥',
-          sound: preferences.soundEnabled ? 'default' : undefined,
-          data: {
-            type: 'daily_reminder',
-            screen: 'StartSession',
-          },
-        },
-        trigger: {
-          seconds: secondsUntilTrigger,
-          repeats: true,
-        },
-      });
-
-      await AsyncStorage.setItem(STORAGE_KEYS.DAILY_REMINDER_ID, id);
-      logger.success(`Daily reminder scheduled for ${hours}:${minutes} (in ${Math.floor(secondsUntilTrigger / 3600)} hours)`);
-      
-      return id;
-    } catch (error) {
-      logger.error('Failed to schedule daily reminder', error);
-      return null;
-    }
-  }
-
-  private static async cancelDailyReminder(): Promise<void> {
-    try {
-      const existingId = await AsyncStorage.getItem(STORAGE_KEYS.DAILY_REMINDER_ID);
-      if (existingId) {
-        await Notifications.cancelScheduledNotificationAsync(existingId);
-        await AsyncStorage.removeItem(STORAGE_KEYS.DAILY_REMINDER_ID);
-        logger.info('Daily reminder cancelled');
-      }
-    } catch (error) {
-      logger.error('Failed to cancel daily reminder', error);
-    }
-  }
-
-  private static async rescheduleDailyReminder(): Promise<void> {
-    await this.cancelDailyReminder();
-    await this.scheduleDailyReminder();
-  }
-
-  // ========================================
-  // UTILITY METHODS
-  // ========================================
-
-  static async getPermissionStatus(): Promise<'granted' | 'denied' | 'undetermined'> {
-    const { status } = await Notifications.getPermissionsAsync();
-    return status;
-  }
-
-  static async requestPermissions(): Promise<boolean> {
-    const { status } = await Notifications.requestPermissionsAsync();
-    return status === 'granted';
-  }
-
   static async sendTestNotification(): Promise<void> {
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '🧪 Test Notification',
-          body: 'If you see this, notifications are working correctly!',
-          sound: true,
-          data: { type: 'session_completion' }, // ✅ Use valid type
-        },
-        trigger: null,
-      });
-      logger.success('Test notification sent');
-    } catch (error) {
-      logger.error('Failed to send test notification', error);
-      throw error;
-    }
+    await this.sendNotification(
+      'test',
+      '🧪 Test Notification',
+      'Notifications are working perfectly!',
+      { test: true }
+    );
   }
 
-  static async cancelAllNotifications(): Promise<void> {
+  static async getHistory(): Promise<NotificationHistoryItem[]> {
     try {
-      await Notifications.cancelAllScheduledNotificationsAsync();
-      await AsyncStorage.removeItem(STORAGE_KEYS.DAILY_REMINDER_ID);
-      logger.info('All notifications cancelled');
-    } catch (error) {
-      logger.error('Failed to cancel notifications', error);
-    }
-  }
+      const stored = await AsyncStorage.getItem(NOTIFICATION_STORAGE.HISTORY);
+      if (!stored) return [];
 
-  static async getScheduledNotifications(): Promise<Notifications.NotificationRequest[]> {
-    try {
-      return await Notifications.getAllScheduledNotificationsAsync();
+      const history: NotificationHistoryItem[] = JSON.parse(stored);
+      return history.sort((a, b) => 
+        new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime()
+      );
     } catch (error) {
-      logger.error('Failed to get scheduled notifications', error);
+      logger.error('Failed to load notification history', error);
       return [];
     }
   }
 
-  static async dismissAllNotifications(): Promise<void> {
+  private static async addToHistory(item: NotificationHistoryItem): Promise<void> {
     try {
-      await Notifications.dismissAllNotificationsAsync();
-      logger.info('All notifications dismissed');
+      const history = await this.getHistory();
+      history.unshift(item);
+
+      const trimmed = history.slice(0, 100);
+
+      await AsyncStorage.setItem(
+        NOTIFICATION_STORAGE.HISTORY,
+        JSON.stringify(trimmed)
+      );
     } catch (error) {
-      logger.error('Failed to dismiss notifications', error);
+      logger.error('Failed to add to history', error);
     }
   }
 
-  static async getBadgeCount(): Promise<number> {
+  static async markAsRead(notificationId: string): Promise<void> {
     try {
-      return await Notifications.getBadgeCountAsync();
+      const history = await this.getHistory();
+      const updated = history.map(item =>
+        item.id === notificationId ? { ...item, read: true } : item
+      );
+
+      await AsyncStorage.setItem(
+        NOTIFICATION_STORAGE.HISTORY,
+        JSON.stringify(updated)
+      );
+
+      logger.info('Notification marked as read');
     } catch (error) {
+      logger.error('Failed to mark as read', error);
+    }
+  }
+
+  static async markAsDismissed(notificationId: string): Promise<void> {
+    try {
+      const history = await this.getHistory();
+      const updated = history.map(item =>
+        item.id === notificationId ? { ...item, dismissed: true, read: true } : item
+      );
+
+      await AsyncStorage.setItem(
+        NOTIFICATION_STORAGE.HISTORY,
+        JSON.stringify(updated)
+      );
+
+      logger.info('Notification marked as dismissed');
+    } catch (error) {
+      logger.error('Failed to mark as dismissed', error);
+    }
+  }
+
+  static async clearHistory(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(NOTIFICATION_STORAGE.HISTORY);
+      logger.success('Notification history cleared');
+    } catch (error) {
+      logger.error('Failed to clear history', error);
+      throw error;
+    }
+  }
+
+  static async getUnreadCount(): Promise<number> {
+    try {
+      const history = await this.getHistory();
+      return history.filter(item => !item.read && !item.dismissed).length;
+    } catch (error) {
+      logger.error('Failed to get unread count', error);
       return 0;
     }
   }
 
-  static async setBadgeCount(count: number): Promise<void> {
-    try {
-      await Notifications.setBadgeCountAsync(count);
-    } catch (error) {
-      logger.error('Failed to set badge count', error);
-    }
+  static async getScheduledNotifications(): Promise<Notifications.NotificationRequest[]> {
+    return await Notifications.getAllScheduledNotificationsAsync();
   }
 
-  static async clearBadgeCount(): Promise<void> {
-    await this.setBadgeCount(0);
+  static async cancelAllNotifications(): Promise<void> {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    logger.info('All scheduled notifications cancelled');
   }
 }
+
+export default NotificationService;

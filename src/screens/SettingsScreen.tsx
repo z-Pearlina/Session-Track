@@ -1,5 +1,18 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform, Share } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Alert, 
+  Platform, 
+  Share 
+  // REMOVED ScrollView from here
+} from 'react-native'; 
+
+// ADDED this import:
+import { ScrollView } from 'react-native-gesture-handler';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -67,7 +80,7 @@ export default function SettingsScreen() {
       const fileUri = `${directory}${fileName}`;
 
       await FileSystem.writeAsStringAsync(fileUri, jsonString, {
-        encoding: FileSystem.EncodingType.UTF8,
+        encoding: 'utf8',
       });
 
       const isAvailable = await Sharing.isAvailableAsync();
@@ -166,16 +179,17 @@ export default function SettingsScreen() {
   ];
 
   return (
-    <View style={styles.root}>
-      <LinearGradient
-        colors={[...theme.gradients.backgroundAnimated] as [string, string, ...string[]]}
-        style={styles.gradient}
-      />
-
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+    <LinearGradient
+      colors={[...theme.gradients.backgroundAnimated] as [string, string, ...string[]]}
+      style={styles.root}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          // These props help with gesture handling too:
+          bounces={true}
+          overScrollMode="always"
         >
           <View style={styles.headerSection}>
             <Text style={styles.header}>Settings</Text>
@@ -233,20 +247,13 @@ export default function SettingsScreen() {
           <View style={{ height: 120 }} />
         </ScrollView>
       </SafeAreaView>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-  },
-  gradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
   },
   container: {
     flex: 1,

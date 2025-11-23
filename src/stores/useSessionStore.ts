@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Session, SessionFilter } from '../types';
 import { StorageService } from '../services/StorageService';
+import { NotificationService } from '../services/NotificationService';
 import { AchievementService } from '../services/AchievementService';
 import { logger } from '../services/logger';
 
@@ -67,6 +68,15 @@ const useSessionStoreBase = create<SessionState>((set, get) => ({
         isLoading: false 
       });
       
+      const durationMinutes = Math.round(session.durationMs / (1000 * 60));
+      
+      await NotificationService.sendSessionCompletion(
+        session.title,
+        durationMinutes,
+        session.categoryName
+      );
+      
+      logger.success(`Session completion notification sent: ${session.title}`);
       logger.success(`Session added: ${session.title}`);
       
       try {

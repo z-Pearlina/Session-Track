@@ -22,13 +22,19 @@ interface AchievementState {
 
 const MIN_SESSION_DURATION_MS = 60 * 1000;
 
+// Singleton lock to prevent concurrent initialization
+let isInitializing = false;
+let initializationPromise: Promise<void> | null = null;
+
 function deduplicateAchievements(achievements: Achievement[]): Achievement[] {
   const seen = new Map<string, Achievement>();
   achievements.forEach(achievement => {
-    if (!seen.has(achievement.id)) {
+    const existing = seen.get(achievement.id);
+    // Keep the one with more progress or unlocked status
+    if (!existing || 
+        achievement.isUnlocked || 
+        (!existing.isUnlocked && achievement.progress > existing.progress)) {
       seen.set(achievement.id, achievement);
-    } else {
-      logger.warn(`Duplicate achievement ID found: ${achievement.id}`);
     }
   });
   return Array.from(seen.values());
@@ -48,17 +54,8 @@ const useAchievementStoreBase = create<AchievementState>((set, get) => ({
     try {
       let achievements = await StorageService.getAchievements();
       
-      const uniqueIds = new Set(achievements.map(a => a.id));
-      if (achievements.length !== uniqueIds.size) {
-        logger.warn('Duplicates detected in storage, cleaning up...');
-        achievements = deduplicateAchievements(achievements);
-        
-        await StorageService.clearAchievements();
-        for (const achievement of achievements) {
-          await StorageService.saveAchievement(achievement);
-        }
-        logger.success('Duplicates removed from storage');
-      }
+      // Always deduplicate when loading
+      achievements = deduplicateAchievements(achievements);
       
       set({ achievements, isLoading: false, isInitialized: true });
       logger.info(`Loaded ${achievements.length} unique achievements`);
@@ -74,57 +71,90 @@ const useAchievementStoreBase = create<AchievementState>((set, get) => ({
   initializeDefaultAchievements: async () => {
     const { isInitialized } = get();
     
+    // Already initialized in state
     if (isInitialized) {
-      logger.info('Achievements already initialized, skipping');
+      logger.info('Achievements already initialized in state, skipping');
       return;
     }
 
-    set({ isLoading: true, error: null });
-    try {
-      let existingAchievements = await StorageService.getAchievements();
-      
-      if (existingAchievements.length > 0) {
-        const uniqueIds = new Set(existingAchievements.map(a => a.id));
-        if (existingAchievements.length !== uniqueIds.size) {
-          logger.warn('Duplicates found during init, cleaning...');
-          existingAchievements = deduplicateAchievements(existingAchievements);
-          
-          await StorageService.clearAchievements();
-          for (const achievement of existingAchievements) {
-            await StorageService.saveAchievement(achievement);
-          }
-        }
-        
-        set({ achievements: existingAchievements, isLoading: false, isInitialized: true });
-        logger.info('Using existing achievements');
-        return;
-      }
-
-      await StorageService.clearAchievements();
-      
-      const allAchievements = ACHIEVEMENT_DEFINITIONS.map(achievement => ({ ...achievement }));
-      
-      for (const achievement of allAchievements) {
-        await StorageService.saveAchievement(achievement);
-      }
-
-      set({ achievements: allAchievements, isLoading: false, isInitialized: true });
-      logger.success(`Initialized ${allAchievements.length} default achievements`);
-    } catch (error) {
-      logger.error('Failed to initialize achievements', error);
-      set({
-        error: error instanceof Error ? error.message : 'Failed to initialize achievements',
-        isLoading: false
-      });
+    // If already initializing, wait for that to complete
+    if (isInitializing && initializationPromise) {
+      logger.info('Initialization already in progress, waiting...');
+      await initializationPromise;
+      return;
     }
+
+    // Set the lock
+    isInitializing = true;
+    
+    initializationPromise = (async () => {
+      set({ isLoading: true, error: null });
+      try {
+        let existingAchievements = await StorageService.getAchievements();
+        
+        if (existingAchievements.length > 0) {
+          // Deduplicate existing achievements
+          const deduped = deduplicateAchievements(existingAchievements);
+          
+          // If duplicates were found, clean up storage
+          if (existingAchievements.length !== deduped.length) {
+            logger.warn(`Found ${existingAchievements.length - deduped.length} duplicates, cleaning up...`);
+            await StorageService.clearAchievements();
+            for (const achievement of deduped) {
+              await StorageService.saveAchievement(achievement);
+            }
+          }
+          
+          set({ achievements: deduped, isLoading: false, isInitialized: true });
+          logger.info(`Using ${deduped.length} existing achievements`);
+          return;
+        }
+
+        // No existing achievements, initialize defaults
+        logger.info('No existing achievements, initializing defaults...');
+        await StorageService.clearAchievements();
+        
+        const allAchievements = ACHIEVEMENT_DEFINITIONS.map(achievement => ({ 
+          ...achievement,
+          isUnlocked: false,
+          progress: 0,
+        }));
+        
+        for (const achievement of allAchievements) {
+          await StorageService.saveAchievement(achievement);
+        }
+
+        set({ achievements: allAchievements, isLoading: false, isInitialized: true });
+        logger.success(`Initialized ${allAchievements.length} default achievements`);
+      } catch (error) {
+        logger.error('Failed to initialize achievements', error);
+        set({
+          error: error instanceof Error ? error.message : 'Failed to initialize achievements',
+          isLoading: false
+        });
+      } finally {
+        isInitializing = false;
+        initializationPromise = null;
+      }
+    })();
+
+    await initializationPromise;
   },
 
   resetAchievements: async () => {
+    // Reset the initialization lock
+    isInitializing = false;
+    initializationPromise = null;
+    
     set({ isLoading: true, error: null, isInitialized: false });
     try {
       await StorageService.clearAchievements();
       
-      const allAchievements = ACHIEVEMENT_DEFINITIONS.map(achievement => ({ ...achievement }));
+      const allAchievements = ACHIEVEMENT_DEFINITIONS.map(achievement => ({ 
+        ...achievement,
+        isUnlocked: false,
+        progress: 0,
+      }));
       
       for (const achievement of allAchievements) {
         await StorageService.saveAchievement(achievement);
@@ -143,7 +173,12 @@ const useAchievementStoreBase = create<AchievementState>((set, get) => ({
 
   checkAndUnlockAchievements: async (sessions: Session[], goals: Goal[], categories: Category[]) => {
     const unlockedAchievements: Achievement[] = [];
-    const { achievements } = get();
+    const { achievements, isInitialized } = get();
+
+    // Don't check if not initialized
+    if (!isInitialized || achievements.length === 0) {
+      return unlockedAchievements;
+    }
 
     const validSessions = sessions.filter(s => s.durationMs >= MIN_SESSION_DURATION_MS);
     const stats = calculateStats(validSessions, goals, categories);
@@ -427,7 +462,13 @@ function checkAchievementCondition(
   return { shouldUnlock, progress: Math.round(progress) };
 }
 
-export const useAchievements = () => useAchievementStoreBase((state) => state.achievements);
+// Selector hooks with deduplication at render time
+export const useAchievements = () => {
+  const achievements = useAchievementStoreBase((state) => state.achievements);
+  // Deduplicate at render time as a safety measure
+  return deduplicateAchievements(achievements);
+};
+
 export const useAchievementsLoading = () => useAchievementStoreBase((state) => state.isLoading);
 export const useAchievementsError = () => useAchievementStoreBase((state) => state.error);
 export const useAchievementById = (achievementId: string) =>

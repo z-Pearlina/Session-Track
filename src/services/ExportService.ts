@@ -1,16 +1,10 @@
-import {
-  documentDirectory,
-  writeAsStringAsync,
-} from "expo-file-system";
+import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { Session, Goal, Achievement, Category } from "../types";
 import { logger } from "./logger";
 import { format } from "date-fns";
 
 export class ExportService {
-  /**
-   * Export all data to JSON format
-   */
   static async exportToJSON(data: {
     sessions: Session[];
     goals: Goal[];
@@ -23,9 +17,9 @@ export class ExportService {
         new Date(),
         "yyyy-MM-dd-HHmmss"
       )}.json`;
-      const fileUri = `${documentDirectory}${fileName}`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 
-      await writeAsStringAsync(fileUri, jsonString);
+      await FileSystem.writeAsStringAsync(fileUri, jsonString);
 
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
@@ -42,9 +36,6 @@ export class ExportService {
     }
   }
 
-  /**
-   * Export sessions to CSV format
-   */
   static async exportSessionsToCSV(sessions: Session[]): Promise<void> {
     try {
       const csvContent = this.convertSessionsToCSV(sessions);
@@ -52,9 +43,9 @@ export class ExportService {
         new Date(),
         "yyyy-MM-dd-HHmmss"
       )}.csv`;
-      const fileUri = `${documentDirectory}${fileName}`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 
-      await writeAsStringAsync(fileUri, csvContent);
+      await FileSystem.writeAsStringAsync(fileUri, csvContent);
 
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
@@ -71,9 +62,6 @@ export class ExportService {
     }
   }
 
-  /**
-   * Export goals to CSV format
-   */
   static async exportGoalsToCSV(goals: Goal[]): Promise<void> {
     try {
       const csvContent = this.convertGoalsToCSV(goals);
@@ -81,9 +69,9 @@ export class ExportService {
         new Date(),
         "yyyy-MM-dd-HHmmss"
       )}.csv`;
-      const fileUri = `${documentDirectory}${fileName}`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 
-      await writeAsStringAsync(fileUri, csvContent);
+      await FileSystem.writeAsStringAsync(fileUri, csvContent);
 
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
@@ -100,9 +88,6 @@ export class ExportService {
     }
   }
 
-  /**
-   * Convert sessions array to CSV string
-   */
   private static convertSessionsToCSV(sessions: Session[]): string {
     const headers = [
       "Date",
@@ -145,9 +130,6 @@ export class ExportService {
     return csvLines.join("\n");
   }
 
-  /**
-   * Convert goals array to CSV string
-   */
   private static convertGoalsToCSV(goals: Goal[]): string {
     const headers = [
       "Title",
@@ -190,9 +172,6 @@ export class ExportService {
     return csvLines.join("\n");
   }
 
-  /**
-   * Escape special characters for CSV format
-   */
   private static escapeCSV(value: string): string {
     if (value.includes(",") || value.includes('"') || value.includes("\n")) {
       return `"${value.replace(/"/g, '""')}"`;
@@ -200,9 +179,6 @@ export class ExportService {
     return value;
   }
 
-  /**
-   * Import sessions from CSV content
-   */
   static async importSessionsFromCSV(csvContent: string): Promise<Session[]> {
     try {
       const lines = csvContent.split("\n");
@@ -238,9 +214,6 @@ export class ExportService {
     }
   }
 
-  /**
-   * Parse a single CSV line handling quoted values
-   */
   private static parseCSVLine(line: string): string[] {
     const values: string[] = [];
     let current = "";
@@ -269,9 +242,6 @@ export class ExportService {
     return values;
   }
 
-  /**
-   * Calculate estimated export file size in bytes
-   */
   static getExportFileSize(sessions: Session[], goals: Goal[]): number {
     const data = { sessions, goals };
     const jsonString = JSON.stringify(data);
@@ -291,9 +261,6 @@ export class ExportService {
     return byteLength;
   }
 
-  /**
-   * Export achievements to CSV format
-   */
   static async exportAchievementsToCSV(
     achievements: Achievement[]
   ): Promise<void> {
@@ -303,9 +270,9 @@ export class ExportService {
         new Date(),
         "yyyy-MM-dd-HHmmss"
       )}.csv`;
-      const fileUri = `${documentDirectory}${fileName}`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
 
-      await writeAsStringAsync(fileUri, csvContent);
+      await FileSystem.writeAsStringAsync(fileUri, csvContent);
 
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
@@ -322,9 +289,6 @@ export class ExportService {
     }
   }
 
-  /**
-   * Convert achievements array to CSV string
-   */
   private static convertAchievementsToCSV(achievements: Achievement[]): string {
     const headers = [
       "Title",
@@ -355,9 +319,6 @@ export class ExportService {
     return csvLines.join("\n");
   }
 
-  /**
-   * Export all data to separate CSV files
-   */
   static async exportAllToCSV(data: {
     sessions: Session[];
     goals: Goal[];
@@ -374,9 +335,6 @@ export class ExportService {
     }
   }
 
-  /**
-   * Validate CSV content before import
-   */
   static validateCSVContent(csvContent: string): {
     isValid: boolean;
     errors: string[];

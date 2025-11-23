@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Goal } from "../types";
+import { Goal, GoalStatus } from "../types";
 import { StorageService } from "../services/StorageService";
 import { NotificationService } from "../services/NotificationService";
 import { AchievementService } from "../services/AchievementService";
@@ -60,11 +60,12 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
       );
       
       if (daysUntilEnd > 1) {
-        await NotificationService.scheduleGoalReminder(
-          goal.id,
+        await NotificationService.scheduleGoalDeadlineReminder(
           goal.title,
-          Math.max(1, daysUntilEnd - 1)
+          goal.id,
+          new Date(goal.endDate)
         );
+        logger.info(`Goal deadline reminder scheduled for: ${goal.title}`);
       }
       
       logger.success(`Goal added: ${goal.title}`);
@@ -135,25 +136,37 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
       const previousPercentage = (goal.currentProgress / goal.targetMinutes) * 100;
 
       if (progressPercentage >= 80 && previousPercentage < 80 && !isCompleted) {
-        await NotificationService.sendGoalProgressNotification(
+        await NotificationService.sendGoalProgress(
           goal.title,
           newProgress,
           goal.targetMinutes
         );
+        logger.info(`Goal 80% notification sent: ${goal.title}`);
       }
+
+      if (progressPercentage >= 90 && previousPercentage < 90 && !isCompleted) {
+        await NotificationService.sendGoalProgress(
+          goal.title,
+          newProgress,
+          goal.targetMinutes
+        );
+        logger.info(`Goal 90% notification sent: ${goal.title}`);
+      }
+
+      const newStatus: GoalStatus = isCompleted ? "completed" : goal.status;
 
       await StorageService.updateGoal(goalId, {
         currentProgress: newProgress,
-        status: isCompleted ? "completed" : goal.status,
+        status: newStatus,
         completedAt: isCompleted ? new Date().toISOString() : goal.completedAt,
       });
 
-      const updatedGoals = get().goals.map((g) =>
+      const updatedGoals: Goal[] = get().goals.map((g) =>
         g.id === goalId
           ? {
               ...g,
               currentProgress: newProgress,
-              status: isCompleted ? "completed" : g.status,
+              status: newStatus,
               completedAt: isCompleted ? new Date().toISOString() : g.completedAt,
               updatedAt: new Date().toISOString(),
             }
@@ -163,7 +176,8 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
       set({ goals: updatedGoals, isLoading: false });
 
       if (isCompleted) {
-        await NotificationService.sendGoalCompletedNotification(goal.title);
+        await NotificationService.sendGoalCompletion(goal.title);
+        logger.success(`Goal completion notification sent: ${goal.title}`);
         
         try {
           const completedGoals = updatedGoals.filter(g => g.status === 'completed');
@@ -189,16 +203,18 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
     try {
       const goal = get().goals.find((g) => g.id === goalId);
       
+      const completedStatus: GoalStatus = "completed";
+      
       await StorageService.updateGoal(goalId, {
-        status: "completed",
+        status: completedStatus,
         completedAt: new Date().toISOString(),
       });
 
-      const updatedGoals = get().goals.map((g) =>
+      const updatedGoals: Goal[] = get().goals.map((g) =>
         g.id === goalId
           ? {
               ...g,
-              status: "completed",
+              status: completedStatus,
               completedAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             }
@@ -208,7 +224,8 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
       set({ goals: updatedGoals, isLoading: false });
 
       if (goal) {
-        await NotificationService.sendGoalCompletedNotification(goal.title);
+        await NotificationService.sendGoalCompletion(goal.title);
+        logger.success(`Goal completion notification sent: ${goal.title}`);
       }
 
       try {
@@ -232,8 +249,10 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
   archiveGoal: async (goalId: string) => {
     set({ isLoading: true, error: null });
     try {
+      const archivedStatus: GoalStatus = "archived";
+      
       await StorageService.updateGoal(goalId, {
-        status: "archived",
+        status: archivedStatus,
         updatedAt: new Date().toISOString(),
       });
 
@@ -242,7 +261,7 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
           goal.id === goalId
             ? {
                 ...goal,
-                status: "archived",
+                status: archivedStatus,
                 updatedAt: new Date().toISOString(),
               }
             : goal
@@ -264,8 +283,10 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
   unarchiveGoal: async (goalId: string) => {
     set({ isLoading: true, error: null });
     try {
+      const activeStatus: GoalStatus = "active";
+      
       await StorageService.updateGoal(goalId, {
-        status: "active",
+        status: activeStatus,
         updatedAt: new Date().toISOString(),
       });
 
@@ -274,7 +295,7 @@ const useGoalStoreBase = create<GoalState>((set, get) => ({
           goal.id === goalId
             ? {
                 ...goal,
-                status: "active",
+                status: activeStatus,
                 updatedAt: new Date().toISOString(),
               }
             : goal

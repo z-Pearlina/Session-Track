@@ -1,434 +1,441 @@
-import { Achievement, Session, Goal, AchievementRequirement } from '../types';
-import { StorageService } from './StorageService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Session, Goal, Achievement, AchievementTier } from '../types';
 import { NotificationService } from './NotificationService';
 import { logger } from './logger';
 
-export const ACHIEVEMENT_DEFINITIONS: Achievement[] = [
+const STORAGE_KEY = '@flowtrix:achievements';
+
+// Achievement definitions
+const ACHIEVEMENT_DEFINITIONS: Omit<Achievement, 'isUnlocked' | 'unlockedAt' | 'progress'>[] = [
+  // Milestone Achievements
   {
-    id: 'first_steps',
+    id: 'first_session',
     title: 'First Steps',
     description: 'Complete your first session',
     category: 'milestone',
     tier: 'bronze',
     icon: 'footsteps',
     requirement: { type: 'sessionCount', value: 1 },
-    isUnlocked: false,
-    progress: 0,
   },
   {
-    id: 'getting_started',
+    id: 'ten_sessions',
     title: 'Getting Started',
-    description: 'Complete 5 sessions',
-    category: 'milestone',
-    tier: 'bronze',
-    icon: 'rocket',
-    requirement: { type: 'sessionCount', value: 5 },
-    isUnlocked: false,
-    progress: 0,
-  },
-  {
-    id: 'session_master',
-    title: 'Session Master',
-    description: 'Complete 25 sessions',
+    description: 'Complete 10 sessions',
     category: 'milestone',
     tier: 'silver',
     icon: 'star',
-    requirement: { type: 'sessionCount', value: 25 },
-    isUnlocked: false,
-    progress: 0,
+    requirement: { type: 'sessionCount', value: 10 },
   },
   {
-    id: 'productivity_pro',
-    title: 'Productivity Pro',
+    id: 'fifty_sessions',
+    title: 'Dedicated Learner',
     description: 'Complete 50 sessions',
     category: 'milestone',
     tier: 'gold',
-    icon: 'trophy',
+    icon: 'medal',
     requirement: { type: 'sessionCount', value: 50 },
-    isUnlocked: false,
-    progress: 0,
   },
   {
-    id: 'centurion',
-    title: 'Centurion',
+    id: 'hundred_sessions',
+    title: 'Century Club',
     description: 'Complete 100 sessions',
     category: 'milestone',
     tier: 'platinum',
-    icon: 'medal',
+    icon: 'trophy',
     requirement: { type: 'sessionCount', value: 100 },
-    isUnlocked: false,
-    progress: 0,
   },
+
+  // Total Hours Achievements
   {
-    id: 'hour_one',
-    title: 'First Hour',
-    description: 'Track 1 hour total',
+    id: 'ten_hours',
+    title: 'First 10 Hours',
+    description: 'Accumulate 10 hours of focus time',
     category: 'dedication',
     tier: 'bronze',
     icon: 'time',
-    requirement: { type: 'totalHours', value: 1 },
-    isUnlocked: false,
-    progress: 0,
-  },
-  {
-    id: 'ten_hour_club',
-    title: '10 Hour Club',
-    description: 'Track 10 hours total',
-    category: 'dedication',
-    tier: 'bronze',
-    icon: 'hourglass',
     requirement: { type: 'totalHours', value: 10 },
-    isUnlocked: false,
-    progress: 0,
   },
   {
-    id: 'half_century',
+    id: 'fifty_hours',
     title: 'Half Century',
-    description: 'Track 50 hours total',
+    description: 'Accumulate 50 hours of focus time',
     category: 'dedication',
     tier: 'silver',
-    icon: 'timer',
+    icon: 'hourglass',
     requirement: { type: 'totalHours', value: 50 },
-    isUnlocked: false,
-    progress: 0,
   },
   {
-    id: 'time_lord',
-    title: 'Time Lord',
-    description: 'Track 100 hours total',
+    id: 'hundred_hours',
+    title: 'Centurion',
+    description: 'Accumulate 100 hours of focus time',
     category: 'dedication',
     tier: 'gold',
-    icon: 'infinite',
+    icon: 'flame',
     requirement: { type: 'totalHours', value: 100 },
-    isUnlocked: false,
-    progress: 0,
   },
   {
-    id: 'time_master',
-    title: 'Time Master',
-    description: 'Track 500 hours total',
+    id: 'thousand_hours',
+    title: 'Master',
+    description: 'Accumulate 1000 hours of focus time',
     category: 'dedication',
     tier: 'platinum',
-    icon: 'sparkles',
-    requirement: { type: 'totalHours', value: 500 },
-    isUnlocked: false,
-    progress: 0,
+    icon: 'trophy',
+    requirement: { type: 'totalHours', value: 1000 },
   },
+
+  // Streak Achievements
   {
-    id: 'consistency',
-    title: 'Consistency',
-    description: 'Track sessions for 3 days in a row',
+    id: 'three_day_streak',
+    title: 'Building Momentum',
+    description: 'Maintain a 3-day streak',
     category: 'streak',
     tier: 'bronze',
     icon: 'flame',
     requirement: { type: 'streak', value: 3 },
-    isUnlocked: false,
-    progress: 0,
   },
   {
-    id: 'week_warrior',
+    id: 'week_streak',
     title: 'Week Warrior',
-    description: 'Track sessions for 7 days in a row',
+    description: 'Maintain a 7-day streak',
     category: 'streak',
     tier: 'silver',
-    icon: 'calendar',
+    icon: 'flash',
     requirement: { type: 'streak', value: 7 },
-    isUnlocked: false,
-    progress: 0,
   },
   {
-    id: 'fortnight_fighter',
-    title: 'Fortnight Fighter',
-    description: 'Track sessions for 14 days in a row',
+    id: 'month_streak',
+    title: 'Consistency King',
+    description: 'Maintain a 30-day streak',
     category: 'streak',
     tier: 'gold',
-    icon: 'calendar-sharp',
-    requirement: { type: 'streak', value: 14 },
-    isUnlocked: false,
-    progress: 0,
+    icon: 'rocket',
+    requirement: { type: 'streak', value: 30 },
   },
   {
-    id: 'monthly_champion',
-    title: 'Monthly Champion',
-    description: 'Track sessions for 30 days in a row',
+    id: 'hundred_day_streak',
+    title: 'Unstoppable',
+    description: 'Maintain a 100-day streak',
     category: 'streak',
     tier: 'platinum',
-    icon: 'ribbon',
-    requirement: { type: 'streak', value: 30 },
-    isUnlocked: false,
-    progress: 0,
+    icon: 'shield',
+    requirement: { type: 'streak', value: 100 },
+  },
+
+  // Speed Achievements
+  {
+    id: 'long_session_2h',
+    title: 'Deep Dive',
+    description: 'Complete a 2-hour session',
+    category: 'speed',
+    tier: 'bronze',
+    icon: 'timer',
+    requirement: { type: 'longestSession', value: 120 },
   },
   {
-    id: 'goal_getter',
-    title: 'Goal Getter',
+    id: 'long_session_4h',
+    title: 'Marathon Runner',
+    description: 'Complete a 4-hour session',
+    category: 'speed',
+    tier: 'silver',
+    icon: 'speedometer',
+    requirement: { type: 'longestSession', value: 240 },
+  },
+  {
+    id: 'long_session_8h',
+    title: 'Ultra Endurance',
+    description: 'Complete an 8-hour session',
+    category: 'speed',
+    tier: 'gold',
+    icon: 'battery-full',
+    requirement: { type: 'longestSession', value: 480 },
+  },
+
+  // Goal Achievements
+  {
+    id: 'first_goal',
+    title: 'Goal Setter',
     description: 'Complete your first goal',
     category: 'milestone',
     tier: 'bronze',
     icon: 'flag',
     requirement: { type: 'completedGoals', value: 1 },
-    isUnlocked: false,
-    progress: 0,
   },
   {
-    id: 'goal_crusher',
-    title: 'Goal Crusher',
-    description: 'Complete 5 goals',
-    category: 'milestone',
-    tier: 'silver',
-    icon: 'flag-sharp',
-    requirement: { type: 'completedGoals', value: 5 },
-    isUnlocked: false,
-    progress: 0,
-  },
-  {
-    id: 'goal_master',
-    title: 'Goal Master',
+    id: 'ten_goals',
+    title: 'Achiever',
     description: 'Complete 10 goals',
     category: 'milestone',
-    tier: 'gold',
-    icon: 'trophy-sharp',
+    tier: 'silver',
+    icon: 'checkbox',
     requirement: { type: 'completedGoals', value: 10 },
-    isUnlocked: false,
-    progress: 0,
   },
   {
-    id: 'goal_legend',
-    title: 'Goal Legend',
-    description: 'Complete 25 goals',
+    id: 'fifty_goals',
+    title: 'Goal Master',
+    description: 'Complete 50 goals',
     category: 'milestone',
-    tier: 'platinum',
-    icon: 'diamond',
-    requirement: { type: 'completedGoals', value: 25 },
-    isUnlocked: false,
-    progress: 0,
-  },
-  {
-    id: 'focused_session',
-    title: 'Focused',
-    description: 'Complete a session longer than 2 hours',
-    category: 'dedication',
-    tier: 'silver',
-    icon: 'eye',
-    requirement: { type: 'longestSession', value: 120 },
-    isUnlocked: false,
-    progress: 0,
-  },
-  {
-    id: 'marathon_session',
-    title: 'Marathon',
-    description: 'Complete a session longer than 4 hours',
-    category: 'dedication',
     tier: 'gold',
-    icon: 'fitness',
-    requirement: { type: 'longestSession', value: 240 },
-    isUnlocked: false,
-    progress: 0,
+    icon: 'ribbon',
+    requirement: { type: 'completedGoals', value: 50 },
   },
+
+  // Variety Achievements
   {
-    id: 'early_bird',
-    title: 'Early Bird',
-    description: 'Complete a session before 6 AM',
-    category: 'speed',
-    tier: 'bronze',
-    icon: 'sunny',
-    requirement: { type: 'earlyBird', value: 1 },
-    isUnlocked: false,
-    progress: 0,
-  },
-  {
-    id: 'night_owl',
-    title: 'Night Owl',
-    description: 'Complete a session after 10 PM',
-    category: 'speed',
-    tier: 'bronze',
-    icon: 'moon',
-    requirement: { type: 'nightOwl', value: 1 },
-    isUnlocked: false,
-    progress: 0,
-  },
-  {
-    id: 'weekend_warrior',
-    title: 'Weekend Warrior',
-    description: 'Complete 10 sessions on weekends',
+    id: 'five_categories',
+    title: 'Jack of All Trades',
+    description: 'Track time in 5 different categories',
     category: 'variety',
     tier: 'silver',
-    icon: 'beer',
-    requirement: { type: 'weekend', value: 10 },
-    isUnlocked: false,
-    progress: 0,
+    icon: 'apps',
+    requirement: { type: 'categoryCount', value: 5 },
   },
   {
-    id: 'category_explorer',
-    title: 'Category Explorer',
-    description: 'Use 5 different categories',
+    id: 'ten_categories',
+    title: 'Renaissance Person',
+    description: 'Track time in 10 different categories',
     category: 'variety',
-    tier: 'bronze',
+    tier: 'gold',
     icon: 'grid',
-    requirement: { type: 'categoryCount', value: 5 },
-    isUnlocked: false,
-    progress: 0,
+    requirement: { type: 'categoryCount', value: 10 },
   },
 ];
 
 export class AchievementService {
-  static async checkSessionAchievements(session: Session, allSessions: Session[]): Promise<void> {
+  /**
+   * Load all achievements with progress
+   */
+  static async loadAchievements(): Promise<Achievement[]> {
+    try {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      
+      if (stored) {
+        const unlocked = JSON.parse(stored);
+        
+        // Merge with definitions to ensure all achievements exist
+        return ACHIEVEMENT_DEFINITIONS.map(def => {
+          const unlockedData = unlocked.find((u: Achievement) => u.id === def.id);
+          return {
+            ...def,
+            isUnlocked: unlockedData?.isUnlocked || false,
+            unlockedAt: unlockedData?.unlockedAt,
+            progress: unlockedData?.progress || 0,
+          };
+        });
+      }
+      
+      // First time - return all locked
+      return ACHIEVEMENT_DEFINITIONS.map(def => ({
+        ...def,
+        isUnlocked: false,
+        progress: 0,
+      }));
+    } catch (error) {
+      logger.error('Failed to load achievements', error);
+      return [];
+    }
+  }
+
+  /**
+   * Save achievements
+   */
+  static async saveAchievements(achievements: Achievement[]): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(achievements));
+    } catch (error) {
+      logger.error('Failed to save achievements', error);
+    }
+  }
+
+  /**
+   * Unlock an achievement
+   */
+  static async unlockAchievement(achievementId: string): Promise<void> {
     try {
       const achievements = await this.loadAchievements();
-      const newlyUnlocked: Achievement[] = [];
-
-      const metrics = this.calculateMetrics(allSessions);
-
-      for (const achievement of achievements) {
-        if (achievement.isUnlocked) {
-          continue;
-        }
-
-        const { shouldUnlock, progress } = this.checkAchievement(
-          achievement,
-          metrics,
-          session
-        );
-
-        achievement.progress = progress;
-
-        if (shouldUnlock && !achievement.isUnlocked) {
-          achievement.isUnlocked = true;
-          achievement.unlockedAt = new Date().toISOString();
-          newlyUnlocked.push(achievement);
-          
-          logger.success(`Achievement unlocked: ${achievement.title}`);
-        }
+      const achievement = achievements.find(a => a.id === achievementId);
+      
+      if (!achievement || achievement.isUnlocked) {
+        return; // Already unlocked or doesn't exist
       }
+
+      // Mark as unlocked
+      achievement.isUnlocked = true;
+      achievement.unlockedAt = new Date().toISOString();
+      achievement.progress = achievement.requirement.value;
 
       await this.saveAchievements(achievements);
 
-      for (const achievement of newlyUnlocked) {
-        await NotificationService.sendAchievementUnlocked(
-          achievement.title,
-          achievement.description
-        );
+      // ==========================================
+      // FAIR NOTIFICATION TRIGGER
+      // ==========================================
+      await NotificationService.sendAchievementUnlocked(
+        achievement.title,
+        achievement.tier
+      );
+
+      logger.success(`Achievement unlocked: ${achievement.title} (${achievement.tier})`);
+    } catch (error) {
+      logger.error('Failed to unlock achievement', error);
+    }
+  }
+
+  /**
+   * Check session-based achievements
+   */
+  static async checkSessionAchievements(
+    session: Session,
+    allSessions: Session[]
+  ): Promise<void> {
+    try {
+      const achievements = await this.loadAchievements();
+      const stats = this.calculateStats(allSessions);
+
+      // Session count achievements
+      const sessionCountAchievements = achievements.filter(
+        a => a.requirement.type === 'sessionCount' && !a.isUnlocked
+      );
+
+      for (const achievement of sessionCountAchievements) {
+        if (stats.totalSessions >= achievement.requirement.value) {
+          await this.unlockAchievement(achievement.id);
+        }
+      }
+
+      // Total hours achievements
+      const hoursAchievements = achievements.filter(
+        a => a.requirement.type === 'totalHours' && !a.isUnlocked
+      );
+
+      for (const achievement of hoursAchievements) {
+        if (stats.totalHours >= achievement.requirement.value) {
+          await this.unlockAchievement(achievement.id);
+        }
+      }
+
+      // Longest session achievements
+      const longestSessionAchievements = achievements.filter(
+        a => a.requirement.type === 'longestSession' && !a.isUnlocked
+      );
+
+      const sessionMinutes = session.durationMs / (1000 * 60);
+      for (const achievement of longestSessionAchievements) {
+        if (sessionMinutes >= achievement.requirement.value) {
+          await this.unlockAchievement(achievement.id);
+        }
+      }
+
+      // Category count achievements
+      const categoryAchievements = achievements.filter(
+        a => a.requirement.type === 'categoryCount' && !a.isUnlocked
+      );
+
+      for (const achievement of categoryAchievements) {
+        if (stats.uniqueCategories >= achievement.requirement.value) {
+          await this.unlockAchievement(achievement.id);
+        }
+      }
+
+      // Streak achievements
+      const streakAchievements = achievements.filter(
+        a => a.requirement.type === 'streak' && !a.isUnlocked
+      );
+
+      for (const achievement of streakAchievements) {
+        if (stats.currentStreak >= achievement.requirement.value) {
+          await this.unlockAchievement(achievement.id);
+        }
       }
     } catch (error) {
       logger.error('Failed to check session achievements', error);
     }
   }
 
+  /**
+   * Check goal-based achievements
+   */
   static async checkGoalAchievements(completedGoals: Goal[]): Promise<void> {
     try {
       const achievements = await this.loadAchievements();
-      const newlyUnlocked: Achievement[] = [];
 
-      const completedGoalCount = completedGoals.filter(
-        g => g.status === 'completed'
-      ).length;
+      const goalAchievements = achievements.filter(
+        a => a.requirement.type === 'completedGoals' && !a.isUnlocked
+      );
 
-      for (const achievement of achievements) {
-        if (achievement.isUnlocked) {
-          continue;
+      for (const achievement of goalAchievements) {
+        if (completedGoals.length >= achievement.requirement.value) {
+          await this.unlockAchievement(achievement.id);
         }
-
-        if (achievement.requirement.type === 'completedGoals') {
-          const progress = completedGoalCount;
-          achievement.progress = progress;
-
-          if (progress >= achievement.requirement.value) {
-            achievement.isUnlocked = true;
-            achievement.unlockedAt = new Date().toISOString();
-            newlyUnlocked.push(achievement);
-            
-            logger.success(`Goal achievement unlocked: ${achievement.title}`);
-          }
-        }
-      }
-
-      await this.saveAchievements(achievements);
-
-      for (const achievement of newlyUnlocked) {
-        await NotificationService.sendAchievementUnlocked(
-          achievement.title,
-          achievement.description
-        );
       }
     } catch (error) {
       logger.error('Failed to check goal achievements', error);
     }
   }
 
-  private static calculateMetrics(sessions: Session[]) {
-    const sessionCount = sessions.length;
-
+  /**
+   * Calculate stats from sessions
+   */
+  private static calculateStats(sessions: Session[]) {
+    const totalSessions = sessions.length;
     const totalMs = sessions.reduce((sum, s) => sum + s.durationMs, 0);
     const totalHours = totalMs / (1000 * 60 * 60);
-
-    const currentStreak = this.calculateCurrentStreak(sessions);
-
-    const longestSessionMinutes = sessions.length > 0
-      ? Math.max(...sessions.map(s => s.durationMs / (1000 * 60)))
-      : 0;
-
-    const uniqueCategories = new Set(sessions.map(s => s.categoryId));
-    const categoryCount = uniqueCategories.size;
-
-    const weekendSessions = sessions.filter(s => {
-      const day = new Date(s.startedAt).getDay();
-      return day === 0 || day === 6;
-    }).length;
-
-    const earlyBirdSessions = sessions.filter(s => {
-      const hour = new Date(s.startedAt).getHours();
-      return hour < 6;
-    }).length;
-
-    const nightOwlSessions = sessions.filter(s => {
-      const hour = new Date(s.startedAt).getHours();
-      return hour >= 22;
-    }).length;
+    
+    const uniqueCategories = new Set(sessions.map(s => s.categoryId)).size;
+    
+    // Calculate streak (simplified - checks consecutive days)
+    const currentStreak = this.calculateStreak(sessions);
 
     return {
-      sessionCount,
+      totalSessions,
       totalHours,
+      uniqueCategories,
       currentStreak,
-      longestSessionMinutes,
-      categoryCount,
-      weekendSessions,
-      earlyBirdSessions,
-      nightOwlSessions,
     };
   }
 
-  private static calculateCurrentStreak(sessions: Session[]): number {
+  /**
+   * Calculate current streak
+   */
+  private static calculateStreak(sessions: Session[]): number {
     if (sessions.length === 0) return 0;
 
-    const sortedSessions = [...sessions].sort(
+    // Sort sessions by date (newest first)
+    const sorted = [...sessions].sort(
       (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
     );
 
-    const uniqueDays = new Set<string>();
-    sortedSessions.forEach(session => {
-      const dateStr = new Date(session.startedAt).toDateString();
-      uniqueDays.add(dateStr);
-    });
+    let streak = 0;
+    let currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
 
-    const days = Array.from(uniqueDays).sort((a, b) => 
-      new Date(b).getTime() - new Date(a).getTime()
+    // Check if there's a session today or yesterday
+    const lastSession = new Date(sorted[0].startedAt);
+    lastSession.setHours(0, 0, 0, 0);
+    
+    const daysDiff = Math.floor(
+      (currentDate.getTime() - lastSession.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    const today = new Date().toDateString();
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toDateString();
-    
-    if (days[0] !== today && days[0] !== yesterday) {
-      return 0;
+    if (daysDiff > 1) {
+      return 0; // Streak broken
     }
 
-    let streak = 1;
-    for (let i = 1; i < days.length; i++) {
-      const currentDate = new Date(days[i]);
-      const previousDate = new Date(days[i - 1]);
-      const diffDays = Math.floor(
-        (previousDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
-      );
+    // Count consecutive days
+    const uniqueDays = new Set<string>();
+    for (const session of sorted) {
+      const sessionDate = new Date(session.startedAt);
+      sessionDate.setHours(0, 0, 0, 0);
+      const dateKey = sessionDate.toISOString().split('T')[0];
+      uniqueDays.add(dateKey);
+    }
 
-      if (diffDays === 1) {
+    const days = Array.from(uniqueDays).sort().reverse();
+    
+    for (let i = 0; i < days.length; i++) {
+      const expectedDate = new Date(currentDate);
+      expectedDate.setDate(expectedDate.getDate() - i);
+      const expectedKey = expectedDate.toISOString().split('T')[0];
+      
+      if (days[i] === expectedKey) {
         streak++;
       } else {
         break;
@@ -438,186 +445,39 @@ export class AchievementService {
     return streak;
   }
 
-  private static checkAchievement(
-    achievement: Achievement,
-    metrics: ReturnType<typeof this.calculateMetrics>,
-    currentSession: Session
-  ): { shouldUnlock: boolean; progress: number } {
-    const { type, value } = achievement.requirement;
-
-    switch (type) {
-      case 'sessionCount':
-        return {
-          shouldUnlock: metrics.sessionCount >= value,
-          progress: metrics.sessionCount,
-        };
-
-      case 'totalHours':
-        return {
-          shouldUnlock: metrics.totalHours >= value,
-          progress: Math.floor(metrics.totalHours),
-        };
-
-      case 'streak':
-        return {
-          shouldUnlock: metrics.currentStreak >= value,
-          progress: metrics.currentStreak,
-        };
-
-      case 'longestSession':
-        return {
-          shouldUnlock: metrics.longestSessionMinutes >= value,
-          progress: Math.floor(metrics.longestSessionMinutes),
-        };
-
-      case 'categoryCount':
-        return {
-          shouldUnlock: metrics.categoryCount >= value,
-          progress: metrics.categoryCount,
-        };
-
-      case 'weekend':
-        return {
-          shouldUnlock: metrics.weekendSessions >= value,
-          progress: metrics.weekendSessions,
-        };
-
-      case 'earlyBird':
-        return {
-          shouldUnlock: metrics.earlyBirdSessions >= value,
-          progress: metrics.earlyBirdSessions,
-        };
-
-      case 'nightOwl':
-        return {
-          shouldUnlock: metrics.nightOwlSessions >= value,
-          progress: metrics.nightOwlSessions,
-        };
-
-      case 'completedGoals':
-        return {
-          shouldUnlock: false,
-          progress: achievement.progress,
-        };
-
-      default:
-        return { shouldUnlock: false, progress: 0 };
-    }
-  }
-
-  private static async loadAchievements(): Promise<Achievement[]> {
+  /**
+   * Get achievement progress
+   */
+  static async getProgress(achievementId: string): Promise<number> {
     try {
-      const stored = await StorageService.getAchievements();
-      
-      if (stored.length === 0) {
-        await this.saveAchievements(ACHIEVEMENT_DEFINITIONS);
-        return [...ACHIEVEMENT_DEFINITIONS];
-      }
-
-      return this.mergeAchievements(stored, ACHIEVEMENT_DEFINITIONS);
+      const achievements = await this.loadAchievements();
+      const achievement = achievements.find(a => a.id === achievementId);
+      return achievement?.progress || 0;
     } catch (error) {
-      logger.error('Failed to load achievements', error);
-      return [...ACHIEVEMENT_DEFINITIONS];
+      logger.error('Failed to get achievement progress', error);
+      return 0;
     }
   }
 
-  private static mergeAchievements(
-    stored: Achievement[],
-    definitions: Achievement[]
-  ): Achievement[] {
-    const merged: Achievement[] = [];
-
-    for (const def of definitions) {
-      const existing = stored.find(a => a.id === def.id);
-      
-      if (existing) {
-        merged.push({
-          ...def,
-          isUnlocked: existing.isUnlocked,
-          unlockedAt: existing.unlockedAt,
-          progress: existing.progress,
-        });
-      } else {
-        merged.push({ ...def });
-      }
-    }
-
-    return merged;
-  }
-
-  private static async saveAchievements(achievements: Achievement[]): Promise<void> {
+  /**
+   * Get unlocked count by tier
+   */
+  static async getUnlockedByTier(): Promise<Record<AchievementTier, number>> {
     try {
-      await StorageService.saveAchievements(achievements);
+      const achievements = await this.loadAchievements();
+      const unlocked = achievements.filter(a => a.isUnlocked);
+
+      return {
+        bronze: unlocked.filter(a => a.tier === 'bronze').length,
+        silver: unlocked.filter(a => a.tier === 'silver').length,
+        gold: unlocked.filter(a => a.tier === 'gold').length,
+        platinum: unlocked.filter(a => a.tier === 'platinum').length,
+      };
     } catch (error) {
-      logger.error('Failed to save achievements', error);
-      throw error;
+      logger.error('Failed to get unlocked by tier', error);
+      return { bronze: 0, silver: 0, gold: 0, platinum: 0 };
     }
-  }
-
-  static async getAllAchievements(): Promise<Achievement[]> {
-    return await this.loadAchievements();
-  }
-
-  static async getUnlockedCount(): Promise<number> {
-    const achievements = await this.loadAchievements();
-    return achievements.filter(a => a.isUnlocked).length;
-  }
-
-  static async getAchievementById(id: string): Promise<Achievement | undefined> {
-    const achievements = await this.loadAchievements();
-    return achievements.find(a => a.id === id);
-  }
-
-  static async recalculateAllProgress(
-    sessions: Session[],
-    goals: Goal[]
-  ): Promise<void> {
-    const achievements = await this.loadAchievements();
-    const metrics = this.calculateMetrics(sessions);
-    const completedGoalCount = goals.filter(g => g.status === 'completed').length;
-
-    for (const achievement of achievements) {
-      if (achievement.isUnlocked) continue;
-
-      const { type, value } = achievement.requirement;
-
-      switch (type) {
-        case 'sessionCount':
-          achievement.progress = metrics.sessionCount;
-          break;
-        case 'totalHours':
-          achievement.progress = Math.floor(metrics.totalHours);
-          break;
-        case 'streak':
-          achievement.progress = metrics.currentStreak;
-          break;
-        case 'longestSession':
-          achievement.progress = Math.floor(metrics.longestSessionMinutes);
-          break;
-        case 'categoryCount':
-          achievement.progress = metrics.categoryCount;
-          break;
-        case 'weekend':
-          achievement.progress = metrics.weekendSessions;
-          break;
-        case 'earlyBird':
-          achievement.progress = metrics.earlyBirdSessions;
-          break;
-        case 'nightOwl':
-          achievement.progress = metrics.nightOwlSessions;
-          break;
-        case 'completedGoals':
-          achievement.progress = completedGoalCount;
-          break;
-      }
-
-      if (achievement.progress >= value && !achievement.isUnlocked) {
-        achievement.isUnlocked = true;
-        achievement.unlockedAt = new Date().toISOString();
-      }
-    }
-
-    await this.saveAchievements(achievements);
-    logger.info('Recalculated all achievement progress');
   }
 }
+
+export default AchievementService;

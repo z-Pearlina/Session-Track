@@ -85,7 +85,12 @@ const useNotificationStoreBase = create<NotificationState>((set, get) => ({
       const history = await NotificationService.getHistory();
       const unreadCount = await NotificationService.getUnreadCount();
       
-      set({ history, unreadCount, isLoading: false });
+      set({ 
+        history, 
+        unreadCount,
+        isLoading: false 
+      });
+      
       logger.info(`Loaded ${history.length} notifications`);
     } catch (error) {
       logger.error('Failed to load notification history', error);
@@ -107,7 +112,11 @@ const useNotificationStoreBase = create<NotificationState>((set, get) => ({
       
       const unreadCount = updated.filter(item => !item.read && !item.dismissed).length;
       
-      set({ history: updated, unreadCount });
+      set({ 
+        history: updated, 
+        unreadCount
+      });
+      
       logger.info('Notification marked as read');
     } catch (error) {
       logger.error('Failed to mark notification as read', error);
@@ -125,7 +134,11 @@ const useNotificationStoreBase = create<NotificationState>((set, get) => ({
       
       const unreadCount = updated.filter(item => !item.read && !item.dismissed).length;
       
-      set({ history: updated, unreadCount });
+      set({ 
+        history: updated, 
+        unreadCount
+      });
+      
       logger.info('Notification marked as dismissed');
     } catch (error) {
       logger.error('Failed to mark notification as dismissed', error);
@@ -136,7 +149,13 @@ const useNotificationStoreBase = create<NotificationState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await NotificationService.clearHistory();
-      set({ history: [], unreadCount: 0, isLoading: false });
+      
+      set({ 
+        history: [], 
+        unreadCount: 0,
+        isLoading: false 
+      });
+      
       logger.success('Notification history cleared');
     } catch (error) {
       logger.error('Failed to clear notification history', error);
@@ -149,13 +168,22 @@ const useNotificationStoreBase = create<NotificationState>((set, get) => ({
   },
 
   refreshUnreadCount: async () => {
-    const unreadCount = await NotificationService.getUnreadCount();
-    set({ unreadCount });
+    try {
+      const unreadCount = await NotificationService.getUnreadCount();
+      set({ unreadCount });
+    } catch (error) {
+      logger.error('Failed to refresh unread count', error);
+    }
   },
 
   sendTestNotification: async () => {
     try {
       await NotificationService.sendTestNotification();
+      
+      setTimeout(async () => {
+        await get().loadHistory();
+      }, 1000);
+      
       logger.success('Test notification sent');
     } catch (error) {
       logger.error('Failed to send test notification', error);
