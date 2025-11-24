@@ -7,10 +7,8 @@ import {
   Alert, 
   Platform, 
   Share 
-  // REMOVED ScrollView from here
 } from 'react-native'; 
 
-// ADDED this import:
 import { ScrollView } from 'react-native-gesture-handler';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -187,7 +185,6 @@ export default function SettingsScreen() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-          // These props help with gesture handling too:
           bounces={true}
           overScrollMode="always"
         >
@@ -228,15 +225,24 @@ export default function SettingsScreen() {
             <View style={styles.infoContent}>
               <View style={styles.logoContainer}>
                 <LinearGradient
-                  colors={[...theme.gradients.primary] as [string, string, ...string[]]}
+                  colors={[theme.colors.primary.cyan, theme.colors.primary.aqua]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.logoGradient}
                 >
-                  <Ionicons name="timer" size={32} color={theme.colors.text.inverse} />
+                  <Ionicons name="timer" size={32} color={theme.colors.background.primary} />
                 </LinearGradient>
               </View>
-              <Text style={styles.appName}>FlowTrix</Text>
+
+              <LinearGradient
+                colors={[theme.colors.primary.cyan, theme.colors.primary.aqua]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.appNameGradient}
+              >
+                <Text style={styles.appName}>FlowTrix</Text>
+              </LinearGradient>
+
               <Text style={styles.appVersion}>Version 1.0.0</Text>
               <Text style={styles.appDescription}>
                 Track your focus time and build productive habits
@@ -263,7 +269,8 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing[8],
   },
   headerSection: {
-    marginBottom: theme.spacing[6],
+    marginTop: theme.spacing[0],
+    marginBottom: theme.spacing[3],
   },
   header: {
     ...typography.h1,
@@ -271,7 +278,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[1],
   },
   subtitle: {
-    ...typography.body,
+    ...typography.bodySmall,
     color: theme.colors.text.tertiary,
   },
   optionCard: {
@@ -313,17 +320,28 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing[4],
   },
   logoGradient: {
-    width: 80,
-    height: 80,
+    width: 72,
+    height: 72,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    ...theme.shadows.glowCyan,
+    shadowColor: theme.colors.primary.cyan,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  appNameGradient: {
+    paddingHorizontal: theme.spacing[6],
+    paddingVertical: theme.spacing[2.5],
+    borderRadius: theme.borderRadius['2xl'],
+    marginBottom: theme.spacing[3],
   },
   appName: {
-    ...typography.h2,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing[1],
+    fontSize: theme.fontSize['3xl'],
+    fontFamily: theme.fontFamily.bold,
+    letterSpacing: 2,
+    color: theme.colors.background.primary,
   },
   appVersion: {
     ...typography.caption,
@@ -334,5 +352,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: theme.colors.text.secondary,
     textAlign: 'center',
+    lineHeight: 22,
   },
 });

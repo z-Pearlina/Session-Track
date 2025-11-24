@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, TransitionPresets, CardStyleInterpolators, StackCardInterpolationProps } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -25,6 +25,7 @@ import CreateGoalScreen from '../screens/CreateGoalScreen';
 import GoalDetailsScreen from '../screens/GoalDetailsScreen';
 import AchievementsScreen from '../screens/AchievementsScreen';
 import NotificationSettingsScreen from '../screens/NotificationSettingsScreen';
+import NotificationHistoryScreen from '../screens/NotificationHistoryScreen';
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -53,6 +54,92 @@ function BlurredTabBarBackground() {
           }
         ]}
       />
+    </View>
+  );
+}
+
+interface TabIconProps {
+  name: string;
+  color: string;
+  focused: boolean;
+}
+
+function TabIcon({ name, color, focused }: TabIconProps) {
+  const scaleAnim = React.useRef(new Animated.Value(focused ? 1.05 : 1)).current;
+  const ringAnim = React.useRef(new Animated.Value(focused ? 1 : 0)).current;
+  const glowAnim = React.useRef(new Animated.Value(focused ? 1 : 0)).current;
+
+  React.useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: focused ? 1.05 : 1,
+        useNativeDriver: true,
+        friction: 7,
+        tension: 120,
+      }),
+      Animated.spring(ringAnim, {
+        toValue: focused ? 1 : 0,
+        useNativeDriver: true,
+        friction: 8,
+        tension: 100,
+      }),
+      Animated.timing(glowAnim, {
+        toValue: focused ? 1 : 0,
+        duration: 350,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [focused]);
+
+  return (
+    <View style={styles.tabIconWrapper}>
+      {focused && (
+        <>
+          <Animated.View
+            style={[
+              styles.glowRing,
+              {
+                opacity: glowAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 0.4],
+                }),
+                transform: [
+                  { 
+                    scale: ringAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.8, 1],
+                    })
+                  }
+                ],
+              },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.activeRing,
+              {
+                opacity: ringAnim,
+                transform: [
+                  { 
+                    scale: ringAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.8, 1],
+                    })
+                  }
+                ],
+              },
+            ]}
+          />
+        </>
+      )}
+      
+      <Animated.View
+        style={{
+          transform: [{ scale: scaleAnim }],
+        }}
+      >
+        <Ionicons name={name as any} size={28} color={color} style={styles.icon} />
+      </Animated.View>
     </View>
   );
 }
@@ -94,6 +181,9 @@ function MainTabs() {
         tabBarInactiveTintColor: theme.colors.text.quaternary,
         tabBarShowLabel: false,
         tabBarHideOnKeyboard: true,
+        tabBarItemStyle: {
+          backgroundColor: 'transparent',
+        },
         tabBarVisibilityAnimationConfig: {
           show: { animation: 'timing', config: { duration: 250 } },
           hide: { animation: 'timing', config: { duration: 200 } },
@@ -104,10 +194,8 @@ function MainTabs() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({ color }) => (
-            <View style={styles.iconContainer}>
-              <Ionicons name="home" size={28} color={color} style={styles.icon} />
-            </View>
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="home" color={color} focused={focused} />
           ),
         }}
       />
@@ -116,10 +204,8 @@ function MainTabs() {
         component={StartSessionScreen}
         options={{
           title: 'Track',
-          tabBarIcon: ({ color }) => (
-            <View style={styles.iconContainer}>
-              <Ionicons name="list" size={28} color={color} style={styles.icon} />
-            </View>
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="list" color={color} focused={focused} />
           ),
         }}
       />
@@ -128,10 +214,8 @@ function MainTabs() {
         component={StatsScreen}
         options={{
           title: 'Stats',
-          tabBarIcon: ({ color }) => (
-            <View style={styles.iconContainer}>
-              <Ionicons name="stats-chart" size={28} color={color} style={styles.icon} />
-            </View>
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="stats-chart" color={color} focused={focused} />
           ),
         }}
       />
@@ -140,10 +224,8 @@ function MainTabs() {
         component={SettingsScreen}
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => (
-            <View style={styles.iconContainer}>
-              <Ionicons name="person" size={28} color={color} style={styles.icon} />
-            </View>
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="person" color={color} focused={focused} />
           ),
         }}
       />
@@ -345,18 +427,48 @@ export default function AppNavigator() {
             cardOverlayEnabled: true,
           }}
         />
+
+        <Stack.Screen
+          name="NotificationHistory"
+          component={NotificationHistoryScreen}
+          options={{
+            ...smoothIOSSlide,
+            cardStyle: { backgroundColor: 'transparent' },
+            cardOverlayEnabled: true,
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  iconContainer: {
+  tabIconWrapper: {
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
     width: 56,
     height: 56,
+  },
+  activeRing: {
+    position: 'absolute',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: theme.colors.primary.cyan,
+  },
+  glowRing: {
+    position: 'absolute',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'transparent',
+    shadowColor: theme.colors.primary.cyan,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    elevation: 8,
   },
   icon: {
     zIndex: 10,

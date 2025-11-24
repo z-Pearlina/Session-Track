@@ -47,7 +47,7 @@ export interface Category {
   name: string;
   color: string;
   icon: string;
-  emoji?: string; // ← NEW: Optional emoji field
+  emoji?: string;
   order?: number;
   createdAt: string;
   isDefault?: boolean;
@@ -163,6 +163,7 @@ export type RootStackParamList = {
   CreateGoal: undefined;
   Achievements: undefined;
   NotificationSettings: undefined;
+  NotificationHistory: undefined;
 };
 
 export type RootStackNavigationProp = StackNavigationProp<RootStackParamList>;

@@ -9,7 +9,7 @@ import {
   InteractionManager,
   ListRenderItemInfo,
   TouchableOpacity,
-  ActivityIndicator, 
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -200,12 +200,12 @@ export default function HomeScreen() {
   }, [sessions, filteredSessions, hasActiveFilters]);
 
   // 2. Apply Pagination Hook
-  const { 
-    paginatedSessions, 
-    hasMore, 
-    loadMore, 
-    currentPage, 
-    totalPages 
+  const {
+    paginatedSessions,
+    hasMore,
+    loadMore,
+    currentPage,
+    totalPages
   } = usePaginatedSessions(sortedSessions, 20);
 
   // --- Event Handlers ---
@@ -244,21 +244,15 @@ export default function HomeScreen() {
   const ListFooterComponent = useCallback(() => {
     return (
       <View style={[styles.footerContainer, { paddingBottom: insets.bottom + 80 }]}>
-        {hasMore ? (
+        {hasMore && (
           <View style={styles.loadingFooter}>
             <ActivityIndicator color={theme.colors.primary.cyan} />
             <Text style={styles.loadingText}>Loading more...</Text>
           </View>
-        ) : (
-          paginatedSessions.length > 0 && (
-            <Text style={styles.endText}>
-              — {sortedSessions.length} Sessions —
-            </Text>
-          )
         )}
       </View>
     );
-  }, [hasMore, insets.bottom, paginatedSessions.length, sortedSessions.length]);
+  }, [hasMore, insets.bottom]);
 
   const ListHeaderComponent = useCallback(() => (
     <>
@@ -329,9 +323,10 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>
           {hasActiveFilters ? 'Filtered Sessions' : 'Recent Sessions'}
         </Text>
-        {paginatedSessions.length > 0 && (
-          <View style={styles.countBadge}>
-            <Text style={styles.countText}>{sortedSessions.length}</Text>
+        {paginatedSessions.length > 0 && !hasActiveFilters && (
+          <View style={styles.swipeHintContainer}>
+            <Ionicons name="swap-horizontal" size={16} color={theme.colors.primary.cyan} />
+            <Text style={styles.swipeHintText}>Swipe sessions to edit or delete</Text>
           </View>
         )}
       </View>
@@ -348,7 +343,7 @@ export default function HomeScreen() {
     handleClearSearch,
     hasActiveFilters,
     paginatedSessions.length,
-    sortedSessions.length, 
+    sortedSessions.length,
   ]);
 
   const ListEmptyComponent = useCallback(() => (
@@ -366,7 +361,7 @@ export default function HomeScreen() {
             : 'Tap "Start Session" below to begin tracking'
           }
         </Text>
-        
+
         {!hasActiveFilters && sessions.length === 0 && (
           <TouchableOpacity
             style={styles.emptyStateButton}
@@ -416,10 +411,10 @@ export default function HomeScreen() {
           />
         }
         keyboardShouldPersistTaps="handled"
-        
+
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
-        
+
         removeClippedSubviews={true}
         maxToRenderPerBatch={10}
         updateCellsBatchingPeriod={50}
@@ -565,5 +560,20 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: theme.colors.text.quaternary,
     marginBottom: theme.spacing[2],
+  },
+  swipeHintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing[1],
+    paddingVertical: theme.spacing[1],
+    paddingHorizontal: theme.spacing[4],
+    marginHorizontal: theme.spacing[7],
+  },
+  swipeHintText: {
+    fontSize: theme.fontSize.xs,
+    fontFamily: theme.fontFamily.medium,
+    color: theme.colors.text.tertiary,
+    letterSpacing: 0.3,
   },
 });
