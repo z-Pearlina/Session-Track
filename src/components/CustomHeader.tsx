@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../theme/theme';
 import { RootStackNavigationProp } from '../types';
 
@@ -11,7 +12,6 @@ export function CustomHeader() {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        {/* Calendar Button (was Menu) */}
         <TouchableOpacity 
           style={styles.iconButton}
           onPress={() => navigation.navigate('Calendar')}
@@ -19,10 +19,17 @@ export function CustomHeader() {
           <Ionicons name="calendar" size={28} color={theme.colors.text.secondary} />
         </TouchableOpacity>
 
-        {/* Title */}
-        <Text style={styles.title}>FlowTrix</Text>
+        <View style={styles.titleContainer}>
+          <LinearGradient
+            colors={[theme.colors.primary.cyan, theme.colors.primary.aqua]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.titleGradient}
+          >
+            <Text style={styles.title}>FlowTrix</Text>
+          </LinearGradient>
+        </View>
 
-        {/* Profile Picture */}
         <TouchableOpacity style={styles.profileButton}>
           <View style={styles.profileGlow} />
           <Image
@@ -61,11 +68,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  titleContainer: {
+    borderRadius: theme.borderRadius['2xl'],
+    overflow: 'hidden',
+  },
+  titleGradient: {
+    paddingHorizontal: theme.spacing[5],
+    paddingVertical: theme.spacing[2],
+    borderRadius: theme.borderRadius['2xl'],
+  },
   title: {
-    fontSize: theme.fontSize.xl,
-    fontWeight: theme.fontWeight.semibold,
-    letterSpacing: 3.2,
-    color: theme.colors.text.secondary,
+    fontSize: theme.fontSize.xl + 2,
+    fontFamily: theme.fontFamily.bold,
+    letterSpacing: 2.5,
+    color: theme.colors.background.primary,
   },
   profileButton: {
     position: 'relative',

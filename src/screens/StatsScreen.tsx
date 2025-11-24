@@ -657,11 +657,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: theme.spacing[4],
-    paddingTop: theme.spacing[2],
+    paddingTop: theme.spacing[7],
     paddingBottom: theme.spacing[4],
   },
   headerTitle: {
-    ...typography.h2,
+    ...typography.h1,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[0.5],
   },

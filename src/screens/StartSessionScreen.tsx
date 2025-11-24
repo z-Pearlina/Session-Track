@@ -28,16 +28,12 @@ import { RootStackNavigationProp, StartSessionRouteProp } from '../types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { typography, fonts } from '../utils/typography';
 
-// ========================================
-// PHASE 3: Goal Indicator Component with Remove Option
-// ========================================
 interface GoalIndicatorProps {
   goalTitle: string;
   onRemove: () => void;
 }
 
 const GoalIndicator: React.FC<GoalIndicatorProps> = ({ goalTitle, onRemove }) => {
-  // Safety check
   if (!goalTitle || goalTitle.trim() === '') {
     return null;
   }
@@ -52,7 +48,6 @@ const GoalIndicator: React.FC<GoalIndicatorProps> = ({ goalTitle, onRemove }) =>
             {goalTitle}
           </Text>
         </View>
-        {/* Remove button */}
         <TouchableOpacity 
           onPress={onRemove}
           style={styles.removeGoalButton}
@@ -69,12 +64,10 @@ export default function StartSessionScreen() {
   const navigation = useNavigation<RootStackNavigationProp>();
   const route = useRoute<StartSessionRouteProp>();
   
-  // Local state for goal ID management
   const [currentGoalId, setCurrentGoalId] = useState<string | undefined>(undefined);
   
   const { categoryId } = route.params || {};
   
-  // Get goal data based on current goal ID
   const goal = useGoalById(currentGoalId || '');
   
   const [title, setTitle] = useState('');
@@ -108,7 +101,6 @@ export default function StartSessionScreen() {
   }, [loadCategories]);
 
   useEffect(() => {
-    // Only set goalId from params if we're coming fresh (no active session)
     if (!isRunning && !isPaused && route.params?.goalId) {
       setCurrentGoalId(route.params.goalId);
     }
@@ -141,9 +133,6 @@ export default function StartSessionScreen() {
     }
   }, [isRunning, glowAnim]);
 
-  // ========================================
-  // NEW: Handle removing goal from session
-  // ========================================
   const handleRemoveGoal = () => {
     Alert.alert(
       'Remove Goal?',
@@ -212,7 +201,7 @@ export default function StartSessionScreen() {
         categoryIcon: category?.icon || 'help-circle',
         durationMs: elapsedMs,
         notes: notes.trim(),
-        goalId: currentGoalId, // Use currentGoalId from state
+        goalId: currentGoalId,
         startedAt: startedAt!,
         endedAt,
         createdAt: new Date().toISOString(),
@@ -292,7 +281,6 @@ export default function StartSessionScreen() {
           <View style={styles.headerButton} />
         </View>
 
-        {/* PHASE 3: Goal Indicator with Remove Option */}
         {currentGoalId && goal?.title && (
           <GoalIndicator 
             goalTitle={goal.title}
@@ -378,7 +366,6 @@ export default function StartSessionScreen() {
                             selectedCategory === category.id && styles.categoryChipActive,
                           ]}
                           onPress={() => setSelectedCategory(category.id)}
-                          disabled={isRunning}
                         >
                           <View style={[styles.categoryDot, { backgroundColor: category.color }]} />
                           <Text
@@ -529,9 +516,6 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: theme.colors.text.primary,
   },
-  // ========================================
-  // PHASE 3: Goal Indicator Styles
-  // ========================================
   goalIndicator: {
     marginHorizontal: theme.spacing[4],
     marginTop: theme.spacing[2],
@@ -568,7 +552,6 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.full,
     backgroundColor: theme.colors.glass.light,
   },
-  // ========================================
   keyboardView: {
     flex: 1,
   },

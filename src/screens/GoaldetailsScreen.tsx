@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,34 +6,60 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useGoalStore } from '../stores/useGoalStore';
-import { useCategoryById } from '../stores/useCategoryStore';
+import { useCategoryById, useCategories } from '../stores/useCategoryStore';
 import { theme } from '../theme/theme';
-import { GoalDetailsRouteProp, RootStackNavigationProp } from '../types';
+import { GoalDetailsRouteProp, RootStackNavigationProp, GoalPeriod } from '../types';
 import { typography, fonts } from '../utils/typography';
+import { GlassCard } from '../components/GlassCard';
 
 export default function GoalDetailsScreen() {
   const navigation = useNavigation<RootStackNavigationProp>();
   const route = useRoute<GoalDetailsRouteProp>();
   const { goalId } = route.params;
 
-  const { getGoalById, completeGoal, archiveGoal, unarchiveGoal, deleteGoal } = useGoalStore();
+  const { getGoalById, completeGoal, archiveGoal, unarchiveGoal, deleteGoal, updateGoal } = useGoalStore();
   const goal = getGoalById(goalId);
   const category = useCategoryById(goal?.categoryId || '');
+  const categories = useCategories();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedTitle, setEditedTitle] = useState('');
+  const [editedDescription, setEditedDescription] = useState('');
+  const [editedTargetHours, setEditedTargetHours] = useState('');
+  const [editedTargetMinutes, setEditedTargetMinutes] = useState('');
+  const [editedCategoryId, setEditedCategoryId] = useState<string | undefined>(undefined);
+  const [editedPeriod, setEditedPeriod] = useState<GoalPeriod>('weekly');
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [editedEndDate, setEditedEndDate] = useState(new Date());
 
   useEffect(() => {
     if (!goal) {
       Alert.alert('Error', 'Goal not found', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
+    } else if (isEditing && goal) {
+      setEditedTitle(goal.title);
+      setEditedDescription(goal.description || '');
+      const hours = Math.floor(goal.targetMinutes / 60);
+      const minutes = goal.targetMinutes % 60;
+      setEditedTargetHours(hours > 0 ? hours.toString() : '');
+      setEditedTargetMinutes(minutes > 0 ? minutes.toString() : '');
+      setEditedCategoryId(goal.categoryId);
+      setEditedPeriod(goal.period);
+      setEditedEndDate(new Date(goal.endDate));
     }
-  }, [goal, navigation]);
+  }, [goal, navigation, isEditing]);
 
   if (!goal) return null;
 
@@ -47,6 +73,41 @@ export default function GoalDetailsScreen() {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editedTitle.trim()) {
+      Alert.alert('Validation Error', 'Please enter a goal title');
+      return;
+    }
+
+    const hours = parseInt(editedTargetHours) || 0;
+    const minutes = parseInt(editedTargetMinutes) || 0;
+    const totalMinutes = hours * 60 + minutes;
+
+    if (totalMinutes === 0) {
+      Alert.alert('Validation Error', 'Please set a target time (hours and/or minutes)');
+      return;
+    }
+
+    try {
+      await updateGoal(goalId, {
+        title: editedTitle.trim(),
+        description: editedDescription.trim() || undefined,
+        targetMinutes: totalMinutes,
+        categoryId: editedCategoryId,
+        period: editedPeriod,
+        endDate: editedEndDate.toISOString(),
+      });
+      setIsEditing(false);
+      Alert.alert('Success', 'Goal updated successfully');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update goal. Please try again.');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
   };
 
   const handleComplete = () => {
@@ -131,6 +192,212 @@ export default function GoalDetailsScreen() {
   const isCompleted = goal.status === 'completed';
   const isArchived = goal.status === 'archived';
 
+  if (isEditing) {
+    return (
+      <View style={styles.root}>
+        <LinearGradient
+          colors={theme.gradients.backgroundAnimated}
+          style={styles.gradient}
+        />
+
+        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={handleCancelEdit} style={styles.backButton}>
+              <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Edit Goal</Text>
+            <TouchableOpacity onPress={handleSaveEdit} style={styles.deleteButton}>
+              <Ionicons name="checkmark" size={28} color={theme.colors.success} />
+            </TouchableOpacity>
+          </View>
+
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardView}
+          >
+            <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
+              <Text style={styles.label}>Goal Title *</Text>
+              <GlassCard style={styles.inputCard}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g., Practice guitar daily"
+                  placeholderTextColor={theme.colors.text.quaternary}
+                  value={editedTitle}
+                  onChangeText={setEditedTitle}
+                  maxLength={50}
+                />
+              </GlassCard>
+
+              <Text style={styles.label}>Description (Optional)</Text>
+              <GlassCard style={styles.inputCard}>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="What do you want to achieve?"
+                  placeholderTextColor={theme.colors.text.quaternary}
+                  value={editedDescription}
+                  onChangeText={setEditedDescription}
+                  multiline
+                  numberOfLines={3}
+                  maxLength={200}
+                />
+              </GlassCard>
+
+              <Text style={styles.label}>Target Time *</Text>
+              <View style={styles.timeInputRow}>
+                <GlassCard style={styles.timeInputCard}>
+                  <TextInput
+                    style={styles.timeInput}
+                    placeholder="0"
+                    placeholderTextColor={theme.colors.text.quaternary}
+                    value={editedTargetHours}
+                    onChangeText={setEditedTargetHours}
+                    keyboardType="number-pad"
+                    maxLength={3}
+                  />
+                  <Text style={styles.timeLabel}>hours</Text>
+                </GlassCard>
+
+                <GlassCard style={styles.timeInputCard}>
+                  <TextInput
+                    style={styles.timeInput}
+                    placeholder="0"
+                    placeholderTextColor={theme.colors.text.quaternary}
+                    value={editedTargetMinutes}
+                    onChangeText={setEditedTargetMinutes}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                  />
+                  <Text style={styles.timeLabel}>minutes</Text>
+                </GlassCard>
+              </View>
+
+              <Text style={styles.label}>Period *</Text>
+              <View style={styles.periodGrid}>
+                {(['daily', 'weekly', 'monthly', 'custom'] as GoalPeriod[]).map((p) => (
+                  <TouchableOpacity
+                    key={p}
+                    onPress={() => setEditedPeriod(p)}
+                    style={styles.periodButton}
+                    activeOpacity={0.7}
+                  >
+                    <GlassCard
+                      style={[
+                        styles.periodCard,
+                        editedPeriod === p && styles.periodCardActive,
+                      ]}
+                    >
+                      <Ionicons
+                        name={
+                          p === 'daily'
+                            ? 'today'
+                            : p === 'weekly'
+                            ? 'calendar'
+                            : p === 'monthly'
+                            ? 'calendar-outline'
+                            : 'time'
+                        }
+                        size={24}
+                        color={editedPeriod === p ? theme.colors.primary.cyan : theme.colors.text.secondary}
+                      />
+                      <Text
+                        style={[
+                          styles.periodText,
+                          editedPeriod === p && styles.periodTextActive,
+                        ]}
+                      >
+                        {p.charAt(0).toUpperCase() + p.slice(1)}
+                      </Text>
+                    </GlassCard>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.label}>Category (Optional)</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.categoryScroll}
+              >
+                <TouchableOpacity onPress={() => setEditedCategoryId(undefined)}>
+                  <GlassCard
+                    style={[
+                      styles.categoryCard,
+                      !editedCategoryId && styles.categoryCardActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryText,
+                        !editedCategoryId && styles.categoryTextActive,
+                      ]}
+                    >
+                      None
+                    </Text>
+                  </GlassCard>
+                </TouchableOpacity>
+                {categories.map((cat) => (
+                  <TouchableOpacity
+                    key={cat.id}
+                    onPress={() => setEditedCategoryId(cat.id)}
+                  >
+                    <GlassCard
+                      style={[
+                        styles.categoryCard,
+                        editedCategoryId === cat.id && styles.categoryCardActive,
+                      ]}
+                    >
+                      <View style={[styles.categoryDot, { backgroundColor: cat.color }]} />
+                      <Text
+                        style={[
+                          styles.categoryText,
+                          editedCategoryId === cat.id && styles.categoryTextActive,
+                        ]}
+                      >
+                        {cat.name}
+                      </Text>
+                    </GlassCard>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <Text style={styles.label}>End Date *</Text>
+              <TouchableOpacity onPress={() => setShowEndDatePicker(true)}>
+                <GlassCard style={styles.dateCard}>
+                  <Ionicons name="calendar" size={20} color={theme.colors.text.secondary} />
+                  <View style={styles.dateTextContainer}>
+                    <Text style={styles.dateLabel}>End Date</Text>
+                    <Text style={styles.dateValue}>
+                      {editedEndDate.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </Text>
+                  </View>
+                </GlassCard>
+              </TouchableOpacity>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+
+        {showEndDatePicker && (
+          <DateTimePicker
+            value={editedEndDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={(event, selectedDate) => {
+              setShowEndDatePicker(Platform.OS === 'ios');
+              if (selectedDate) {
+                setEditedEndDate(selectedDate);
+              }
+            }}
+            minimumDate={new Date()}
+          />
+        )}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <LinearGradient
@@ -139,19 +406,24 @@ export default function GoalDetailsScreen() {
       />
 
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Goal Details</Text>
-          <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-            <Ionicons name="trash-outline" size={22} color={theme.colors.danger} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            {!isCompleted && !isArchived && (
+              <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.iconButton}>
+                <Ionicons name="pencil" size={20} color={theme.colors.primary.cyan} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={handleDelete} style={styles.iconButton}>
+              <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
-          {/* Progress Circle */}
           <BlurView intensity={30} tint="dark" style={styles.progressCard}>
             <View style={styles.progressCircle}>
               <Text style={styles.progressPercentage}>{Math.round(progressPercentage)}%</Text>
@@ -165,14 +437,12 @@ export default function GoalDetailsScreen() {
             )}
           </BlurView>
 
-          {/* Goal Info */}
           <BlurView intensity={30} tint="dark" style={styles.infoCard}>
             <Text style={styles.goalTitle}>{goal.title}</Text>
             {goal.description && (
               <Text style={styles.goalDescription}>{goal.description}</Text>
             )}
 
-            {/* Stats */}
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{formatMinutes(goal.currentProgress)}</Text>
@@ -192,7 +462,6 @@ export default function GoalDetailsScreen() {
               </View>
             </View>
 
-            {/* Progress Bar */}
             <View style={styles.progressBarContainer}>
               <View style={styles.progressBarBackground}>
                 <LinearGradient
@@ -205,7 +474,6 @@ export default function GoalDetailsScreen() {
             </View>
           </BlurView>
 
-          {/* Details */}
           <BlurView intensity={30} tint="dark" style={styles.detailsCard}>
             <View style={styles.detailRow}>
               <Ionicons name="calendar-outline" size={20} color={theme.colors.text.secondary} />
@@ -236,7 +504,6 @@ export default function GoalDetailsScreen() {
             </View>
           </BlurView>
 
-          {/* Actions */}
           {!isCompleted && !isArchived && (
             <View style={styles.actionsContainer}>
               <TouchableOpacity onPress={handleStartSession} style={styles.actionButton}>
@@ -265,7 +532,6 @@ export default function GoalDetailsScreen() {
             </View>
           )}
 
-          {/* Unarchive Action */}
           {isArchived && (
             <View style={styles.actionsContainer}>
               <TouchableOpacity onPress={handleUnarchive} style={styles.actionButton}>
@@ -313,6 +579,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing[2],
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: theme.borderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   deleteButton: {
     width: 40,
     height: 40,
@@ -323,6 +601,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...typography.h3,
     color: theme.colors.text.primary,
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
@@ -480,5 +761,120 @@ const styles = StyleSheet.create({
   actionTextSecondary: {
     ...typography.buttonLarge,
     color: theme.colors.text.secondary,
+  },
+  label: {
+    ...typography.caption,
+    fontWeight: theme.fontWeight.bold,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing[2],
+    marginLeft: theme.spacing[1],
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  inputCard: {
+    marginBottom: theme.spacing[4],
+  },
+  input: {
+    ...typography.body,
+    padding: theme.spacing[4],
+    color: theme.colors.text.primary,
+    fontWeight: theme.fontWeight.medium,
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  timeInputRow: {
+    flexDirection: 'row',
+    gap: theme.spacing[3],
+    marginBottom: theme.spacing[4],
+  },
+  timeInputCard: {
+    flex: 1,
+    padding: theme.spacing[4],
+    alignItems: 'center',
+  },
+  timeInput: {
+    fontFamily: fonts.bold,
+    fontSize: theme.fontSize['3xl'],
+    color: theme.colors.primary.cyan,
+    textAlign: 'center',
+    marginBottom: theme.spacing[1],
+  },
+  timeLabel: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text.secondary,
+    fontWeight: theme.fontWeight.semibold,
+  },
+  periodGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing[3],
+    marginBottom: theme.spacing[4],
+  },
+  periodButton: {
+    width: '48%',
+  },
+  periodCard: {
+    padding: theme.spacing[4],
+    alignItems: 'center',
+    gap: theme.spacing[2],
+  },
+  periodCardActive: {
+    borderColor: theme.colors.primary.cyan,
+    borderWidth: 2,
+  },
+  periodText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text.secondary,
+  },
+  periodTextActive: {
+    color: theme.colors.primary.cyan,
+  },
+  categoryScroll: {
+    paddingBottom: theme.spacing[4],
+    gap: theme.spacing[2],
+  },
+  categoryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing[4],
+    paddingVertical: theme.spacing[2],
+    marginRight: theme.spacing[2],
+    gap: theme.spacing[2],
+  },
+  categoryCardActive: {
+    borderColor: theme.colors.primary.cyan,
+    borderWidth: 2,
+  },
+  categoryText: {
+    fontSize: theme.fontSize.sm,
+    fontWeight: theme.fontWeight.semibold,
+    color: theme.colors.text.secondary,
+  },
+  categoryTextActive: {
+    color: theme.colors.primary.cyan,
+  },
+  dateCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: theme.spacing[4],
+    gap: theme.spacing[3],
+    marginBottom: theme.spacing[4],
+  },
+  dateTextContainer: {
+    flex: 1,
+  },
+  dateLabel: {
+    fontSize: theme.fontSize.xs,
+    color: theme.colors.text.tertiary,
+    fontWeight: theme.fontWeight.semibold,
+    marginBottom: theme.spacing[0.5],
+  },
+  dateValue: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.text.primary,
+    fontWeight: theme.fontWeight.semibold,
   },
 });
