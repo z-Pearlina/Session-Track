@@ -115,7 +115,6 @@ export default function HomeScreen() {
     return unsubscribe;
   }, [navigation, loadSessions, loadCategories, loadPreferences]);
 
-  // --- Stats Calculations ---
   const todayDateString = useMemo(() => getTodayDateString(), []);
   const yesterdayDateString = useMemo(() => getYesterdayDateString(), []);
 
@@ -187,19 +186,17 @@ export default function HomeScreen() {
     );
   }, [categories, preferences.visibleCategoryIds]);
 
-  // --- Filtering & Pagination Logic ---
 
   const hasActiveFilters = useMemo(() => {
     return !!(filter.categoryId || filter.dateRange || searchQuery);
   }, [filter.categoryId, filter.dateRange, searchQuery]);
 
-  // 1. Prepare the Sorted List (All items matching filter)
-  const sortedSessions = useMemo(() => {
+    const sortedSessions = useMemo(() => {
     const baseList = hasActiveFilters ? filteredSessions : sessions;
     return baseList.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
   }, [sessions, filteredSessions, hasActiveFilters]);
 
-  // 2. Apply Pagination Hook
+  
   const {
     paginatedSessions,
     hasMore,
@@ -208,7 +205,6 @@ export default function HomeScreen() {
     totalPages
   } = usePaginatedSessions(sortedSessions, 20);
 
-  // --- Event Handlers ---
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -232,7 +228,6 @@ export default function HomeScreen() {
     Keyboard.dismiss();
   }, [setFilter]);
 
-  // --- Render Helpers ---
 
   const renderSessionItem = useCallback(({ item }: ListRenderItemInfo<Session>) => {
     return <SwipeableSessionCard session={item} />;
@@ -240,7 +235,6 @@ export default function HomeScreen() {
 
   const keyExtractor = useCallback((item: Session) => item.id, []);
 
-  // Footer component for loading indicator and spacing
   const ListFooterComponent = useCallback(() => {
     return (
       <View style={[styles.footerContainer, { paddingBottom: insets.bottom + 80 }]}>

@@ -16,7 +16,6 @@ export const CategoryDisplay: React.FC<CategoryDisplayProps> = ({
   emojiSize = 24,
   showIcon = true,
 }) => {
-  // Priority: emoji > icon
   if (category.emoji) {
     return (
       <Text 
@@ -31,7 +30,6 @@ export const CategoryDisplay: React.FC<CategoryDisplayProps> = ({
     );
   }
 
-  // Fallback to icon
   if (showIcon) {
     return (
       <Ionicons 
@@ -48,7 +46,6 @@ export const CategoryDisplay: React.FC<CategoryDisplayProps> = ({
 const styles = StyleSheet.create({
   emoji: {
     textAlign: 'center',
-    // Ensure emoji displays properly on all platforms
     includeFontPadding: false,
     textAlignVertical: 'center',
   },

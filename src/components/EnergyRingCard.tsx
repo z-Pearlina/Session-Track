@@ -9,14 +9,6 @@ interface EnergyRingCardProps {
   percentageChange: number;
 }
 
-/**
- * ✅ OPTIMIZED: Wrapped in React.memo with custom comparison
- * 
- * CHANGES:
- * - Added React.memo to prevent unnecessary re-renders
- * - Custom areEqual function for shallow comparison
- * - Only re-renders when hours, minutes, or percentageChange actually change
- */
 function EnergyRingCardComponent({ hours, minutes, percentageChange }: EnergyRingCardProps) {
   const isPositive = percentageChange >= 0;
 
@@ -44,7 +36,6 @@ function EnergyRingCardComponent({ hours, minutes, percentageChange }: EnergyRin
   );
 }
 
-// ✅ Custom comparison function for React.memo
 const areEqual = (
   prevProps: EnergyRingCardProps,
   nextProps: EnergyRingCardProps
@@ -56,7 +47,6 @@ const areEqual = (
   );
 };
 
-// ✅ Export memoized component
 export const EnergyRingCard = memo(EnergyRingCardComponent, areEqual);
 
 const styles = StyleSheet.create({
