@@ -6,7 +6,7 @@
 
 FlowTrix helps users stay focused, build consistency, track categories, set goals, earn achievements, and visualize progress — all wrapped in a clean, minimal, and elegant UI.
 
-<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/mockup.jpeg" width="700" />
+<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/mockup.jpeg" width="900" />
 
 [![React Native](https://img.shields.io/badge/React%20Native-0.81-blue?style=for-the-badge&logo=react)](https://reactnative.dev/)
 [![Expo](https://img.shields.io/badge/Expo-54.0-000000?style=for-the-badge&logo=expo)](https://expo.dev/)
@@ -99,46 +99,12 @@ npm run android  # Android
 ## 📱 Screenshots
 
 <div align="center">
-<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/1.png" width="150" />
-<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/2.png" width="150" />
-<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/3.png" width="150" />
-<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/4.png" width="150" />
-<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/5.png" width="150" />
+<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/1.png" width="180" />
+<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/2.png" width="180" />
+<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/3.png" width="180" />
+<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/4.png" width="180" />
+<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/5.png" width="180" />
 </div>
-
----
-
-## 🎨 Design System
-
-**Color Palette**
-```
-Cyan:  #67E8F9  |  Aqua:  #38BDF8  |  Mint:  #34D399
-Background: #08171c → #0d1f26 → #1e313b
-```
-
-**Typography:** Outfit font family (Google Fonts)
-
-**UI Pattern:** Glassmorphism with blur effects, spring animations, 8px spacing system
-
----
-
-## 📂 Project Structure
-
-```
-FlowTrix/
-├── assets/              # Images, fonts, splash
-├── src/
-│   ├── components/      # Reusable UI components
-│   ├── screens/         # Screen components
-│   ├── navigation/      # Navigation setup
-│   ├── stores/          # Zustand stores
-│   ├── services/        # Business logic
-│   ├── hooks/           # Custom hooks
-│   ├── types/           # TypeScript types
-│   └── theme/           # Design system
-├── app.json
-└── package.json
-```
 
 ---
 
