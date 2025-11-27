@@ -123,13 +123,6 @@ Licensed under the MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-## 👨‍💻 Author
-
-**Your Name**
-- GitHub: [@your-username](https://github.com/your-username)
-- LinkedIn: [Your Profile](https://linkedin.com/in/your-profile)
-
----
 
 <div align="center">
 
@@ -137,7 +130,7 @@ Licensed under the MIT License - see [LICENSE](LICENSE) for details.
 
 ⭐ Star this repo if you found it helpful!
 
-![GitHub stars](https://img.shields.io/github/stars/your-username/flowtrix?style=social)
-![GitHub forks](https://img.shields.io/github/forks/your-username/flowtrix?style=social)
+![GitHub stars](https://img.shields.io/github/stars/z-Pearlina/flowtrix?style=social)
+![GitHub forks](https://img.shields.io/github/forks/z-Pearlina/flowtrix?style=social)
 
 </div>
