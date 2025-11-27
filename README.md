@@ -117,13 +117,6 @@ Contributions are welcome! Fork the repo, create a feature branch, and submit a 
 
 ---
 
-## 📄 License
-
-Licensed under the MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-
 <div align="center">
 
 **Made with ❤️ using React Native and Expo**
