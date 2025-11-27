@@ -111,12 +111,6 @@ npm run android  # Android
 
 ---
 
-## 🤝 Contributing
-
-Contributions are welcome! Fork the repo, create a feature branch, and submit a PR.
-
----
-
 <div align="center">
 
 **Made with ❤️ using React Native and Expo**
