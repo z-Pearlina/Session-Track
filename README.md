@@ -1,4 +1,4 @@
-# 🌊 FlowTrix — Focus Better. Track Smarter. Achieve More.
+# 🌊 FlowTrix — Focus Better. Track Smarter.
 
 <div align="center">
 
