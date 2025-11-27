@@ -104,6 +104,9 @@ npm run android  # Android
 <img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/3.png" width="180" />
 <img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/4.png" width="180" />
 <img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/5.png" width="180" />
+<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/6.png" width="180" />
+<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/7.png" width="180" />
+<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/8.png" width="180" />
 </div>
 
 ---
