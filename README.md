@@ -130,7 +130,5 @@ Licensed under the MIT License - see [LICENSE](LICENSE) for details.
 
 ⭐ Star this repo if you found it helpful!
 
-![GitHub stars](https://img.shields.io/github/stars/z-Pearlina/flowtrix?style=social)
-![GitHub forks](https://img.shields.io/github/forks/z-Pearlina/flowtrix?style=social)
 
 </div>
