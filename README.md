@@ -7,14 +7,13 @@
 # 🌊 FlowTrix
 ### Focus Better. Track Smarter. Achieve More.
 
-</div>
-
 **A modern productivity & session-tracking mobile app built with React Native (Expo)**
 
 FlowTrix is your ultimate companion for staying focused and building consistent, productive habits. Whether you're tracking work sessions, personal projects, or study time, FlowTrix makes it effortless to monitor your progress, set meaningful goals, and celebrate your achievements.
 
 With an intuitive interface wrapped in a beautiful glassmorphism design, FlowTrix transforms time tracking into a delightful experience. Track categories, visualize your productivity trends, unlock achievements, and maintain streaks — all while enjoying a sleek, modern UI with smooth animations and thoughtful interactions.
 
+</div>
 <div align="center">
 
 [![React Native](https://img.shields.io/badge/React%20Native-0.81-61dafb?style=for-the-badge&logo=react&logoColor=white)](https://reactnative.dev/)
