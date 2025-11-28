@@ -1,6 +1,6 @@
 <table>
 <tr>
-<td width="60%">
+<td width="60%" valign="top">
 
 # 🌊 FlowTrix
 ### Focus Better. Track Smarter. Achieve More.
@@ -15,9 +15,9 @@ FlowTrix helps users stay focused, build consistency, track categories, set goal
 [![License](https://img.shields.io/badge/License-MIT-a855f7?style=for-the-badge)](LICENSE)
 
 </td>
-<td width="40%">
+<td width="40%" align="center" valign="top">
 
-<img src="https://github.com/z-Pearlina/Session-Track/blob/main/assets/mockup.jpg" width="100%"/>
+<img src="https://github.com/z-Pearlina/Session-Track/blob/main/assets/mockup.jpg" alt="FlowTrix App Mockup" width="300"/>
 
 </td>
 </tr>
