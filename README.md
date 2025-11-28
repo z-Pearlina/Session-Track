@@ -11,9 +11,6 @@ FlowTrix is your ultimate companion for staying focused and building consistent,
 
 With an intuitive interface wrapped in a beautiful glassmorphism design, FlowTrix transforms time tracking into a delightful experience. Track categories, visualize your productivity trends, unlock achievements, and maintain streaks — all while enjoying a sleek, modern UI with smooth animations and thoughtful interactions.
 
-Built with the latest React Native technologies and Expo, FlowTrix delivers a native-quality experience on both iOS and Android, combining powerful functionality with elegant design principles.
-
-
 [![React Native](https://img.shields.io/badge/React%20Native-0.81-61dafb?style=for-the-badge&logo=react&logoColor=white)](https://reactnative.dev/)
 [![Expo](https://img.shields.io/badge/Expo-54.0-000020?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
