@@ -1,4 +1,4 @@
-# 🌊 FlowTrix — Focus Better. Track Smarter. Achieve More.
+# 🌊 FlowTrix — Focus Better. Track Smarter.
 
 <div align="center">
 
@@ -104,27 +104,10 @@ npm run android  # Android
 <img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/3.png" width="180" />
 <img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/4.png" width="180" />
 <img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/5.png" width="180" />
+<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/6.png" width="180" />
+<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/7.png" width="180" />
+<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/8.png" width="180" />
 </div>
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Fork the repo, create a feature branch, and submit a PR.
-
----
-
-## 📄 License
-
-Licensed under the MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-## 👨‍💻 Author
-
-**Your Name**
-- GitHub: [@your-username](https://github.com/your-username)
-- LinkedIn: [Your Profile](https://linkedin.com/in/your-profile)
 
 ---
 
@@ -134,7 +117,5 @@ Licensed under the MIT License - see [LICENSE](LICENSE) for details.
 
 ⭐ Star this repo if you found it helpful!
 
-![GitHub stars](https://img.shields.io/github/stars/your-username/flowtrix?style=social)
-![GitHub forks](https://img.shields.io/github/forks/your-username/flowtrix?style=social)
 
 </div>
