@@ -1,19 +1,27 @@
-# 🌊 FlowTrix — Focus Better. Track Smarter.
+<table>
+<tr>
+<td width="60%">
 
-<div align="center">
+# 🌊 FlowTrix
+### Focus Better. Track Smarter. Achieve More.
 
 **A modern productivity & session-tracking mobile app built with React Native (Expo)**
 
 FlowTrix helps users stay focused, build consistency, track categories, set goals, earn achievements, and visualize progress — all wrapped in a clean, minimal, and elegant UI.
 
-<img src="https://github.com/z-Pearlina/Trackora-app/blob/main/assets/mockup.jpeg" width="900" />
+[![React Native](https://img.shields.io/badge/React%20Native-0.81-61dafb?style=for-the-badge&logo=react&logoColor=white)](https://reactnative.dev/)
+[![Expo](https://img.shields.io/badge/Expo-54.0-000020?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/License-MIT-a855f7?style=for-the-badge)](LICENSE)
 
-[![React Native](https://img.shields.io/badge/React%20Native-0.81-blue?style=for-the-badge&logo=react)](https://reactnative.dev/)
-[![Expo](https://img.shields.io/badge/Expo-54.0-000000?style=for-the-badge&logo=expo)](https://expo.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)](LICENSE)
+</td>
+<td width="40%">
 
-</div>
+<img src="https://github.com/z-Pearlina/Session-Track/blob/main/assets/mockup.jpg" width="100%"/>
+
+</td>
+</tr>
+</table>
 
 ---
 
