@@ -1,10 +1,12 @@
 <table>
 <tr>
 <td width="60%" valign="top">
-  
+
 <div align="center">
+
 # 🌊 FlowTrix
 ### Focus Better. Track Smarter. Achieve More.
+
 </div>
 
 **A modern productivity & session-tracking mobile app built with React Native (Expo)**
@@ -30,7 +32,6 @@ With an intuitive interface wrapped in a beautiful glassmorphism design, FlowTri
 </td>
 </tr>
 </table>
-
 ---
 
 ## 🚀 Features
