@@ -17,7 +17,7 @@ FlowTrix helps users stay focused, build consistency, track categories, set goal
 </td>
 <td width="40%" align="center" valign="top">
 
-<img src="https://github.com/z-Pearlina/Session-Track/blob/main/assets/mockup.jpg" alt="FlowTrix App Mockup" width="300"/>
+<img src="![Image](https://github.com/user-attachments/assets/8bed72fe-c8f6-467c-b4e4-2ad8490166b8)" alt="FlowTrix App Mockup" width="300"/>
 
 </td>
 </tr>
