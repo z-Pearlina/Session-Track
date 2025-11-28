@@ -31,7 +31,6 @@ With an intuitive interface wrapped in a beautiful glassmorphism design, FlowTri
 </td>
 </tr>
 </table>
----
 
 ## 🚀 Features
 
